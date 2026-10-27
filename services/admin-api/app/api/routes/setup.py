@@ -14,6 +14,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
+from app.api.error_locale import localize_detail
+from app.api.setup_status_messages import localize_setup_services
 from app.api.time_utils import utc_iso
 from app.core.config import settings
 from app.core.db import get_db
@@ -228,7 +230,7 @@ async def _ensure_setup_open() -> None:
 async def setup_status(request: Request) -> SetupStatusResponse:
     await ensure_indexes()
     state = await get_setup_state()
-    services = await _deployment_services()
+    services = localize_setup_services(await _deployment_services(), request.headers.get("accept-language"))
     common = {
         "ready": all(item.ok for item in services),
         "services": services,
@@ -270,7 +272,7 @@ async def setup_search_providers() -> list[dict[str, str]]:
 
 
 @router.post("/search/test")
-async def setup_search_test(payload: SetupExternalSearchRequest) -> dict[str, Any]:
+async def setup_search_test(payload: SetupExternalSearchRequest, request: Request) -> dict[str, Any]:
     await _ensure_setup_open()
     try:
         results = await test_setup_search(payload.model_dump())
@@ -280,7 +282,7 @@ async def setup_search_test(payload: SetupExternalSearchRequest) -> dict[str, An
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)[:1000]) from exc
     if not results:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="搜索服务未返回结果")
-    return {"success": True, "message": "搜索连接测试成功", "resultCount": len(results)}
+    return {"success": True, "message": localize_detail("搜索连接测试成功", 200, request.headers.get("accept-language")), "resultCount": len(results)}
 
 
 @router.post("/initialize")

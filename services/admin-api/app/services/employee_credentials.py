@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.employee_credential_messages import (
+    EXTERNAL_IDENTITY_PASSWORD,
+    INITIAL_PASSWORD_REQUIRED,
+    LOGIN_NAME_REQUIRED,
+    PASSWORD_TOO_SHORT,
+)
+
 
 MIN_PASSWORD_LENGTH = 10
 
@@ -19,17 +26,17 @@ def normalize_employee_credentials(
 
     if source != "local":
         if password:
-            raise ValueError("外部身份用户不能设置本地密码")
+            raise ValueError(EXTERNAL_IDENTITY_PASSWORD)
         return "", ""
 
     if not normalized_login:
-        raise ValueError("请填写登录名")
+        raise ValueError(LOGIN_NAME_REQUIRED)
 
     password_is_required = creating or not has_existing_password
     if password_is_required and not password:
-        raise ValueError("请设置至少 10 位密码")
+        raise ValueError(INITIAL_PASSWORD_REQUIRED)
     if password and len(password) < MIN_PASSWORD_LENGTH:
-        raise ValueError("密码至少 10 位")
+        raise ValueError(PASSWORD_TOO_SHORT)
 
     return normalized_login, password
 

@@ -51,6 +51,16 @@ def test_unlinked_call_does_not_turn_prompt_into_user_message() -> None:
     db.chat_messages.find_one.assert_not_awaited()
 
 
+def test_unlinked_call_uses_english_fallback_title() -> None:
+    db = SimpleNamespace(
+        agent_kernel_bindings=SimpleNamespace(find_one=AsyncMock(return_value=None)),
+    )
+    result = asyncio.run(load_visible_turn(
+        db, {"session_id": "dsh-other"}, "tenant-a", language="en-US",
+    ))
+    assert result["title"] == "Conversation details"
+
+
 def test_legacy_request_uses_saved_assistant_and_previous_user() -> None:
     conversation_id = ObjectId()
     assistant = {"_id": ObjectId(), "role": "assistant", "content": "回答", "seq": 2}

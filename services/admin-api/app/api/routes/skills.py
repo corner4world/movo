@@ -8,12 +8,15 @@ import urllib.request
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_current_admin_user
+from app.api.error_locale import localize_detail
 from app.api.time_utils import utc_iso
+from app.api.workflow_proxy_messages import workflow_check_fallback, workflow_proxy_error
 from app.core.config import settings
+from app.core.legacy_error_messages import backend_unavailable
 from app.core.db import get_db
 from app.product.resource_lifecycle import notify_resource_created, notify_resource_deleted
 from app.services.skill_package_proxy import install_organization_skill_zip
@@ -89,12 +92,14 @@ def _backend_url(path: str, main_id: str) -> str:
     return f"{base_url}/api{path}{separator}{urllib.parse.urlencode({'mainId': main_id})}"
 
 
-def _request_backend(method: str, path: str, main_id: str, body: Any | None = None) -> Any:
+def _request_backend(method: str, path: str, main_id: str, body: Any | None = None, *, accept_language: str | None = None) -> Any:
     data = None
     headers = {
         "Accept": "application/json",
         "X-MOVO-Service-Token": settings.backend_service_token,
     }
+    if accept_language:
+        headers["Accept-Language"] = accept_language
     if body is not None:
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -111,7 +116,7 @@ def _request_backend(method: str, path: str, main_id: str, body: Any | None = No
             message = detail or str(exc)
         raise HTTPException(status_code=exc.code, detail=message) from exc
     except urllib.error.URLError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"backend 不可用：{exc.reason}") from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=backend_unavailable(exc.reason)) from exc
     return json.loads(raw) if raw else {"code": 0, "data": None}
 
 
@@ -280,7 +285,7 @@ async def create_skill(payload: SkillPayload, current_user: dict = Depends(get_c
 
 
 @router.post("/generate-workflow-steps")
-async def generate_workflow_steps(payload: WorkflowStepsGeneratePayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def generate_workflow_steps(payload: WorkflowStepsGeneratePayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     body = payload.model_dump()
     body["existing_steps"] = _safe_list(body.pop("existingSteps", []))
@@ -288,17 +293,17 @@ async def generate_workflow_steps(payload: WorkflowStepsGeneratePayload, current
     if max_steps is not None:
         body["max_steps"] = max_steps
     try:
-        return _backend_data(_request_backend("POST", "/skills/generate-workflow-steps", main_id, body))
+        return _backend_data(_request_backend("POST", "/skills/generate-workflow-steps", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
         return {
             "steps": [],
             "source": "error",
-            "message": str(exc.detail or "生成服务不可用"),
+            "message": workflow_proxy_error(exc.detail, "生成服务不可用", request.headers.get("accept-language")),
         }
 
 
 @router.post("/generate-workflow-nodes")
-async def generate_workflow_nodes(payload: WorkflowNodesGeneratePayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def generate_workflow_nodes(payload: WorkflowNodesGeneratePayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     body = payload.model_dump()
     body["existing_nodes"] = _safe_list(body.pop("existingNodes", []))
@@ -307,97 +312,71 @@ async def generate_workflow_nodes(payload: WorkflowNodesGeneratePayload, current
     if max_nodes is not None:
         body["max_nodes"] = max_nodes
     try:
-        return _backend_data(_request_backend("POST", "/skills/generate-workflow-nodes", main_id, body))
+        return _backend_data(_request_backend("POST", "/skills/generate-workflow-nodes", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
         return {
             "nodes": [],
             "source": "error",
-            "message": str(exc.detail or "生成服务不可用"),
+            "message": workflow_proxy_error(exc.detail, "生成服务不可用", request.headers.get("accept-language")),
         }
 
 
 @router.post("/polish-workflow-node")
-async def polish_workflow_node(payload: WorkflowNodePolishPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def polish_workflow_node(payload: WorkflowNodePolishPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     body = payload.model_dump()
     body["existing_nodes"] = _safe_list(body.pop("existingNodes", []))
     body["node_catalog"] = _safe_list(body.pop("nodeCatalog", []))
     try:
-        return _backend_data(_request_backend("POST", "/skills/polish-workflow-node", main_id, body))
+        return _backend_data(_request_backend("POST", "/skills/polish-workflow-node", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
         return {
             "text": "",
             "source": "error",
-            "message": str(exc.detail or "润色服务不可用"),
+            "message": workflow_proxy_error(exc.detail, "润色服务不可用", request.headers.get("accept-language")),
         }
 
 
 @router.post("/check-workflow-logic")
-async def check_workflow_logic(payload: WorkflowLogicCheckPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def check_workflow_logic(payload: WorkflowLogicCheckPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     body = payload.model_dump()
     try:
-        return _backend_data(_request_backend("POST", "/skills/check-workflow-logic", main_id, body))
+        return _backend_data(_request_backend("POST", "/skills/check-workflow-logic", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
-        return {
-            "pass": False,
-            "logic": {
-                "label": "检查失败",
-                "level": "warning",
-                "summary": str(exc.detail or "检查服务不可用"),
-            },
-            "coverage": [],
-            "readiness": [],
-            "suggestions": ["后端检查服务暂不可用，请稍后重试。"],
-            "conclusion": "本次未完成后端语义检查。",
-            "source": "error",
-            "message": str(exc.detail or "检查服务不可用"),
-        }
+        return workflow_check_fallback(exc.detail, nodes=False, accept_language=request.headers.get("accept-language"))
 
 
 @router.post("/check-workflow-nodes")
-async def check_workflow_nodes(payload: WorkflowLogicCheckPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def check_workflow_nodes(payload: WorkflowLogicCheckPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     body = payload.model_dump()
     try:
-        return _backend_data(_request_backend("POST", "/skills/check-workflow-nodes", main_id, body))
+        return _backend_data(_request_backend("POST", "/skills/check-workflow-nodes", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
-        return {
-            "pass": False,
-            "logic": {
-                "label": "检查失败",
-                "level": "warning",
-                "summary": str(exc.detail or "检查服务不可用"),
-            },
-            "coverage": [],
-            "readiness": [],
-            "suggestions": ["后端检查服务暂不可用，请稍后重试。"],
-            "conclusion": "本次未完成后端语义节点检查。",
-            "source": "error",
-            "message": str(exc.detail or "检查服务不可用"),
-        }
+        return workflow_check_fallback(exc.detail, nodes=True, accept_language=request.headers.get("accept-language"))
 
 
 @router.post("/check-script-plugin")
-async def check_script_plugin(payload: ScriptPluginCheckPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def check_script_plugin(payload: ScriptPluginCheckPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
-    return _backend_data(_request_backend("POST", "/skills/check-script-plugin", main_id, payload.model_dump()))
+    return _backend_data(_request_backend("POST", "/skills/check-script-plugin", main_id, payload.model_dump(), accept_language=request.headers.get("accept-language")))
 
 
 @router.post("/fix-script-plugin")
-async def fix_script_plugin(payload: ScriptPluginFixPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def fix_script_plugin(payload: ScriptPluginFixPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
-    return _backend_data(_request_backend("POST", "/skills/fix-script-plugin", main_id, payload.model_dump()))
+    return _backend_data(_request_backend("POST", "/skills/fix-script-plugin", main_id, payload.model_dump(), accept_language=request.headers.get("accept-language")))
 
 
 @router.post("/generate-script-plugin")
-async def generate_script_plugin(payload: ScriptPluginGeneratePayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def generate_script_plugin(payload: ScriptPluginGeneratePayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
-    return _backend_data(_request_backend("POST", "/skills/generate-script-plugin", main_id, payload.model_dump()))
+    return _backend_data(_request_backend("POST", "/skills/generate-script-plugin", main_id, payload.model_dump(), accept_language=request.headers.get("accept-language")))
 
 
 @router.post("/enrich-writing-style")
-async def enrich_writing_style(payload: WritingStyleEnrichPayload, current_user: dict = Depends(get_current_admin_user)) -> Any:
+async def enrich_writing_style(payload: WritingStyleEnrichPayload, request: Request, current_user: dict = Depends(get_current_admin_user)) -> Any:
     main_id = str(current_user.get("main_id") or "default")
     draft = _safe_dict(payload.draft)
     body = {
@@ -423,7 +402,7 @@ async def enrich_writing_style(payload: WritingStyleEnrichPayload, current_user:
         },
     }
     try:
-        data = _backend_data(_request_backend("POST", "/skills/enrich_draft", main_id, body))
+        data = _backend_data(_request_backend("POST", "/skills/enrich_draft", main_id, body, accept_language=request.headers.get("accept-language")))
     except HTTPException as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc.detail or "写作规范补全失败")) from exc
     if not isinstance(data, dict):
@@ -444,6 +423,7 @@ async def enrich_writing_style(payload: WritingStyleEnrichPayload, current_user:
 
 @router.post("/install-zip", status_code=status.HTTP_201_CREATED)
 async def install_skill_zip(
+    request: Request,
     file: UploadFile = File(...),
     confirm_replace: bool = Form(default=False, alias="confirmReplace"),
     current_user: dict = Depends(get_current_admin_user),
@@ -451,13 +431,13 @@ async def install_skill_zip(
     filename = str(file.filename or "").strip()
     if not filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail={
-            "code": "zip_required", "message": "请选择 ZIP 格式的 Skill 安装包", "file": filename,
+            "code": "zip_required", "message": localize_detail("请选择 ZIP 格式的 Skill 安装包", 400, request.headers.get("accept-language")), "file": filename,
         })
     max_archive_bytes = 100 * 1024 * 1024
     content = await file.read(max_archive_bytes + 1)
     if len(content) > max_archive_bytes:
         raise HTTPException(status_code=413, detail={
-            "code": "archive_too_large", "message": "Skill ZIP 不能超过 100 MiB",
+            "code": "archive_too_large", "message": localize_detail("Skill ZIP 不能超过 100 MiB", 413, request.headers.get("accept-language")),
         })
     result = install_organization_skill_zip(
         main_id=str(current_user.get("main_id") or "default"),

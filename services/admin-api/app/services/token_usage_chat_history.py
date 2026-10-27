@@ -29,13 +29,14 @@ def _payload(message: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def load_visible_turn(db: Any, row: dict[str, Any], main_id: str) -> dict[str, Any]:
+async def load_visible_turn(db: Any, row: dict[str, Any], main_id: str, *, language: str = "zh") -> dict[str, Any]:
     """Return the real turn when a call can be tied to a tenant's conversation.
 
     Model prompts and raw responses are deliberately excluded: they can contain
     system instructions, tool results, or provider-specific payloads.
     """
     session_id = str(row.get("session_id") or "").strip()
+    fallback_title = "Conversation details" if language.lower().startswith("en") else "对话详情"
     request_id = str(row.get("user_request_id") or "").strip()
     assistant = None
     session_oid = None
@@ -63,13 +64,13 @@ async def load_visible_turn(db: Any, row: dict[str, Any], main_id: str) -> dict[
             session_oid = assistant.get("session_id")
 
     if session_oid is None:
-        return {"sessionId": "", "title": "对话详情", "messages": []}
+        return {"sessionId": "", "title": fallback_title, "messages": []}
 
     session = await db.chat_sessions.find_one(
         {"_id": session_oid, "main_id": main_id}, {"title": 1}
     )
     if not session:
-        return {"sessionId": "", "title": "对话详情", "messages": []}
+        return {"sessionId": "", "title": fallback_title, "messages": []}
 
     if assistant is None and session_id.startswith("dsh-"):
         call_time = row.get("created_at")
@@ -113,6 +114,6 @@ async def load_visible_turn(db: Any, row: dict[str, Any], main_id: str) -> dict[
 
     return {
         "sessionId": str(session_oid),
-        "title": str(session.get("title") or "对话详情"),
+        "title": str(session.get("title") or fallback_title),
         "messages": messages,
     }

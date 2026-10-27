@@ -5,8 +5,9 @@ from decimal import Decimal
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 
+from app.api.dashboard_messages import localize_dashboard_todos
 from app.api.deps import get_current_admin_user
 from app.core.db import get_db
 from app.core.product_edition import billing_enabled, is_community_organization, member_limit
@@ -300,13 +301,13 @@ def _todos(metrics: dict[str, Any], assets: dict[str, Any]) -> list[dict[str, st
 
 
 @router.get("/overview")
-async def overview(current_user: dict = Depends(get_current_admin_user)) -> dict[str, Any]:
+async def overview(current_user: dict = Depends(get_current_admin_user), accept_language: str | None = Header(default=None)) -> dict[str, Any]:
     main_id = str(current_user.get("main_id") or "default")
     db = get_db()
     billing = await _billing(db, main_id, current_user)
     metrics, recent_activity = await _usage_metrics(db, main_id)
     assets = await _assets(db, main_id)
-    todos = _todos(metrics, assets)
+    todos = localize_dashboard_todos(_todos(metrics, assets), metrics, assets, accept_language)
     status_text = "critical" if any(item["level"] == "error" for item in todos) else "warning" if todos else "healthy"
     return {
         "billing": billing,

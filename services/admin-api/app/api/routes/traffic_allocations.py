@@ -197,7 +197,7 @@ async def update_default_user_policy(payload: DefaultPolicyPayload, current_user
         },
         upsert=True,
     )
-    # 级联更新该组织下所有专属用户的重置周期，以确保全局重置周期设置对所有专属用户也生效
+    # Cascade the reset period to dedicated users in this organization.
     await db[USER_QUOTA_POLICY_COLLECTION].update_many(
         {"main_id": main_id, "scope_type": "user"},
         {

@@ -1,7 +1,12 @@
 from fastapi import FastAPI
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
+
+from app.api.error_locale import localize_detail
 
 from app.api.router import api_router
 from app.core.config import settings
@@ -40,6 +45,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(SystemAuditMiddleware)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def localized_http_error(request: Request, exc: StarletteHTTPException):
+        detail = localize_detail(exc.detail, exc.status_code, request.headers.get("accept-language"))
+        if detail == exc.detail:
+            return await http_exception_handler(request, exc)
+        translated = StarletteHTTPException(status_code=exc.status_code, detail=detail, headers=exc.headers)
+        return await http_exception_handler(request, translated)
 
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:

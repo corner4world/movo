@@ -85,14 +85,14 @@ async def get_directory_tree(current_user: dict = Depends(get_current_admin_user
     main_id = _main_id(current_user)
     db = get_db()
     
-    # 查找所有未删除的目录
+    # Find all directories that are not deleted.
     cursor = db[KNOWLEDGE_DIR_COLLECTION].find({
         "main_id": main_id,
         "deleted_at": None
     }).sort("created_at", 1)
     dirs = await cursor.to_list(length=5000)
     
-    # 聚合统计每个目录直接关联的文档数量 (未删除的)
+    # Count active documents directly attached to each directory.
     doc_counts: dict[str, int] = {}
     doc_cursor = db[KNOWLEDGE_DOC_COLLECTION].aggregate([
         {
@@ -114,7 +114,7 @@ async def get_directory_tree(current_user: dict = Depends(get_current_admin_user
         if kb_id:
             doc_counts[kb_id] = item["count"]
 
-    # 构造嵌套的树结构
+    # Build the nested directory tree.
     node_map: dict[str, dict[str, Any]] = {}
     roots: list[dict[str, Any]] = []
     
@@ -136,7 +136,7 @@ async def get_directory_tree(current_user: dict = Depends(get_current_admin_user
         else:
             roots.append(node)
             
-    # 递归计算总文档数 (包含子孙目录)
+    # Recursively count documents in all descendant directories.
     def calc_totals(curr: dict[str, Any]) -> int:
         total = curr["documentCount"]
         for child in curr["children"]:
@@ -161,7 +161,7 @@ async def create_directory(
     name = payload.name.strip()
     parent_id = payload.parentId or None
     
-    # 同级线下同名目录唯一性校验 (deleted_at: None)
+    # Enforce unique names among active sibling directories.
     duplicate = await db[KNOWLEDGE_DIR_COLLECTION].find_one({
         "main_id": main_id,
         "parent_id": parent_id,
@@ -234,7 +234,7 @@ async def update_directory(
         
     parent_id = existing.get("parent_id")
     
-    # 唯一性校验 (如果名字变了)
+    # Check uniqueness when the name changes.
     old_name = existing.get("name", "")
     if name != old_name:
         duplicate = await db[KNOWLEDGE_DIR_COLLECTION].find_one({
@@ -257,7 +257,7 @@ async def update_directory(
             }}
         )
         
-        # 级联更新子孙目录的 path_names
+        # Cascade path_names updates to descendants.
         cursor = db[KNOWLEDGE_DIR_COLLECTION].find({
             "main_id": main_id,
             "path_ids": directory_id,
@@ -309,7 +309,7 @@ async def move_directory(
         
     parent_id = payload.parentId or None
     
-    # 规则校验
+    # Validate directory rules.
     if parent_id == directory_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -318,7 +318,7 @@ async def move_directory(
         
     parent = None
     if parent_id:
-        # 防循环移动校验
+        # Prevent moving a directory into its own subtree.
         if directory_id in directory.get("path_ids", []):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -342,7 +342,7 @@ async def move_directory(
                 detail="不能移动到自身的子目录下"
             )
             
-    # 校验移动后目标父级下是否重名
+    # Check for a duplicate name under the destination parent.
     duplicate = await db[KNOWLEDGE_DIR_COLLECTION].find_one({
         "main_id": main_id,
         "parent_id": parent_id,
@@ -367,7 +367,7 @@ async def move_directory(
         }}
     )
     
-    # 级联更新子孙目录
+    # Cascade updates to descendants.
     await _update_descendant_paths(
         main_id=main_id,
         moved_id=directory_id,
@@ -412,7 +412,7 @@ async def delete_directory(
         if row_id:
             directory_ids.append(str(row_id))
 
-    # 校验该目录及子目录下是否存在未删除文档
+    # Check for active documents in this directory or its descendants.
     doc_count = await db[KNOWLEDGE_DOC_COLLECTION].count_documents({
         "main_id": main_id,
         "knowledge_base_id": {"$in": directory_ids},
@@ -425,7 +425,7 @@ async def delete_directory(
             detail="该目录或其子目录下存在知识文档，无法删除"
         )
 
-    # 保守删除策略：校验是否存在子目录
+    # Block deletion while child directories exist.
     child_count = await db[KNOWLEDGE_DIR_COLLECTION].count_documents({
         "main_id": main_id,
         "parent_id": directory_id,
@@ -437,7 +437,7 @@ async def delete_directory(
             detail="该目录存在子目录，无法删除"
         )
         
-    # 软删除目录
+    # Soft-delete the directory.
     await db[KNOWLEDGE_DIR_COLLECTION].update_one(
         {"_id": directory_id},
         {"$set": {
@@ -451,17 +451,17 @@ async def delete_directory(
 
 async def ensure_indexes() -> None:
     db = get_db()
-    # 1. 基础父级层级查询索引
+    # 1. Parent hierarchy lookup index.
     await db[KNOWLEDGE_DIR_COLLECTION].create_index(
         [("main_id", 1), ("parent_id", 1), ("deleted_at", 1)],
         name="idx_knowledge_dirs_parent"
     )
-    # 2. 路径树查询索引
+    # 2. Path tree lookup index.
     await db[KNOWLEDGE_DIR_COLLECTION].create_index(
         [("main_id", 1), ("path_ids", 1)],
         name="idx_knowledge_dirs_path"
     )
-    # 3. 局部唯一重名校验索引 (deleted_at: null)
+    # 3. Partial unique index for active sibling names.
     await db[KNOWLEDGE_DIR_COLLECTION].create_index(
         [("main_id", 1), ("parent_id", 1), ("name", 1)],
         unique=True,

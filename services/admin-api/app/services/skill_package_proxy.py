@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.core.legacy_error_messages import backend_unavailable
 
 
 def install_organization_skill_zip(*, main_id: str, filename: str, content: bytes, confirm_replace: bool = False) -> dict[str, Any]:
@@ -48,7 +49,7 @@ def install_organization_skill_zip(*, main_id: str, filename: str, content: byte
             detail = raw or str(exc)
         raise HTTPException(status_code=exc.code, detail=detail) from exc
     except urllib.error.URLError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"backend 不可用：{exc.reason}") from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=backend_unavailable(exc.reason)) from exc
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, dict):
         raise HTTPException(status_code=502, detail="ZIP 安装服务返回了无效结果")

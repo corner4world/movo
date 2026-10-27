@@ -15,6 +15,7 @@ from app.api.deps import get_current_admin_user
 from app.api.time_utils import utc_iso
 from app.api.tool_limits import validate_mcp_activation
 from app.core.config import settings
+from app.core.legacy_error_messages import backend_unavailable
 from app.core.db import get_db
 from app.product.resource_lifecycle import notify_resource_created, notify_resource_deleted
 from app.services.organization_tools import (
@@ -169,7 +170,7 @@ def _request_backend(method: str, path: str, main_id: str, body: Any | None = No
             message = detail or str(exc)
         raise HTTPException(status_code=exc.code, detail=message) from exc
     except urllib.error.URLError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"backend 不可用：{exc.reason}") from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=backend_unavailable(exc.reason)) from exc
     return json.loads(raw) if raw else {"code": 0, "data": None}
 
 

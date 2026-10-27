@@ -245,7 +245,7 @@ async def remove_account(
 
 
 # ==========================================
-# 组织订阅计费与后台升级 API 路由
+# Organization subscription billing and admin upgrade routes.
 # ==========================================
 
 @router.get("/billing")

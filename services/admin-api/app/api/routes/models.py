@@ -13,8 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 from starlette.responses import StreamingResponse
+from starlette.requests import Request
 
 from app.api.deps import get_current_admin_user
+from app.api.error_locale import localize_detail
 from app.api.time_utils import utc_iso
 from app.repositories.model_repository import (
     create_instance,
@@ -147,7 +149,7 @@ class ModelInstancePayload(BaseModel):
 
 
 class ModelTestPayload(BaseModel):
-    prompt: str = Field(default="请用一句话回复当前模型连接测试。", max_length=500)
+    prompt: str = Field(default="Reply in one sentence to test the current model connection.", max_length=500)
 
 
 def _validated_pricing(value: Any) -> dict[str, Any] | None:
@@ -389,6 +391,7 @@ async def make_default_model_instance(
 @router.post("/instances/{instance_id}/test")
 async def test_model_instance(
     instance_id: str,
+    request: Request,
     payload: ModelTestPayload | None = None,
     current_user: dict = Depends(get_current_admin_user),
 ) -> dict[str, object]:
@@ -399,7 +402,7 @@ async def test_model_instance(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="模型配置ID无效") from exc
     if instance is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="模型配置不存在")
-    prompt = (payload.prompt if payload else "") or "请用一句话回复当前模型连接测试。"
+    prompt = (payload.prompt if payload else "") or "Reply in one sentence to test the current model connection."
     result_text = ""
     error_text = ""
     for event in backend_model_test_events(instance_id, main_id, prompt):
@@ -410,17 +413,18 @@ async def test_model_instance(
             break
     if error_text:
         await update_instance_health(instance_id, main_id, "failed", error_text)
-        return {"success": False, "status": "failed", "message": error_text}
+        return {"success": False, "status": "failed", "message": localize_detail(error_text, 400, request.headers.get("accept-language"))}
     return {
         "success": True,
         "status": "healthy",
-        "message": result_text or "模型连接测试成功。",
+        "message": result_text or localize_detail("模型连接测试成功。", 200, request.headers.get("accept-language")),
     }
 
 
 @router.post("/instances/{instance_id}/test-image")
 async def test_image_model_instance(
     instance_id: str,
+    request: Request,
     payload: ModelTestPayload | None = None,
     current_user: dict = Depends(get_current_admin_user),
 ) -> dict[str, object]:
@@ -434,22 +438,22 @@ async def test_image_model_instance(
     capabilities = normalize_capabilities(instance.get("capabilities"))
     if "image_generation" not in capabilities:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前模型未启用图片生成能力")
-    prompt = (payload.prompt if payload else "") or "生成一张简洁的科技感演示文稿封面，不要文字。"
+    prompt = (payload.prompt if payload else "") or "Generate a clean, futuristic presentation cover without text."
     try:
         result = await run_saved_image_model_test(instance_id, main_id, prompt=prompt)
     except Exception as exc:
         message = str(exc)
         await update_instance_health(instance_id, main_id, "failed", message)
-        return {"success": False, "status": "failed", "message": message}
+        return {"success": False, "status": "failed", "message": localize_detail(message, 200, request.headers.get("accept-language"))}
     if not bool(result.get("success")):
         message = str(result.get("message") or "图片模型连接测试失败")
         await update_instance_health(instance_id, main_id, "failed", message)
-        return {"success": False, "status": "failed", "message": message}
+        return {"success": False, "status": "failed", "message": localize_detail(message, 200, request.headers.get("accept-language"))}
     await update_instance_health(instance_id, main_id, "healthy", "")
     return {
         "success": True,
         "status": "healthy",
-        "message": "图片生成测试成功。",
+        "message": localize_detail("图片生成测试成功。", 200, request.headers.get("accept-language")),
         "imageUrl": str(result.get("image_url") or ""),
         "providerType": str(result.get("provider_type") or ""),
         "runtimeKind": str(result.get("runtime_kind") or ""),
@@ -499,6 +503,7 @@ async def enable_vision_capability(
 async def stream_model_instance_test(
     instance_id: str,
     payload: ModelTestPayload,
+    request: Request,
     current_user: dict = Depends(get_current_admin_user),
 ) -> StreamingResponse:
     main_id = str(current_user.get("main_id", "default"))
@@ -511,7 +516,7 @@ async def stream_model_instance_test(
     async def event_stream():
         final_text = ""
         await update_instance_health(instance_id, main_id, "unknown", "")
-        yield _sse({"type": "start", "message": "正在连接 backend 模型运行时..."})
+        yield _sse({"type": "start", "message": localize_detail("正在连接 backend 模型运行时...", 200, request.headers.get("accept-language"))})
         iterator = backend_model_test_events(instance_id, main_id, payload.prompt)
         while True:
             has_event, event = await asyncio.to_thread(next_event, iterator)
@@ -521,11 +526,13 @@ async def stream_model_instance_test(
                 final_text += str(event.get("content") or "")
             if event["type"] == "error":
                 await update_instance_health(instance_id, main_id, "failed", str(event.get("message") or ""))
+                if isinstance(event.get("message"), str):
+                    event = {**event, "message": localize_detail(event["message"], 400, request.headers.get("accept-language"))}
                 yield _sse(event)
                 return
             yield _sse(event)
         await update_instance_health(instance_id, main_id, "healthy", "")
-        yield _sse({"type": "done", "message": final_text or "模型连接测试成功。"})
+        yield _sse({"type": "done", "message": final_text or localize_detail("模型连接测试成功。", 200, request.headers.get("accept-language"))})
 
     return StreamingResponse(
         event_stream(),
@@ -675,7 +682,7 @@ def _azure_openai_test_events(
     body = {
         "messages": [
             {"role": "system", "content": "You are a concise model connectivity test assistant."},
-            {"role": "user", "content": prompt or "请用一句话回复当前模型连接测试。"},
+            {"role": "user", "content": prompt or "Reply in one sentence to test the current model connection."},
         ],
         "stream": True,
         "temperature": 0,
@@ -725,7 +732,7 @@ def _openai_compatible_test_events(
         "model": model_name,
         "messages": [
             {"role": "system", "content": "You are a concise model connectivity test assistant."},
-            {"role": "user", "content": prompt or "请用一句话回复当前模型连接测试。"},
+            {"role": "user", "content": prompt or "Reply in one sentence to test the current model connection."},
         ],
         "stream": True,
         "temperature": 0,

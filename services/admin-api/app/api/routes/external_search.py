@@ -5,9 +5,10 @@ import urllib.error
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from app.api.error_locale import localize_detail
 from app.api.deps import get_current_admin_user
 from app.api.time_utils import utc_iso
 from app.core.db import get_db
@@ -198,6 +199,7 @@ async def set_default_external_search_provider(
 async def test_external_search_provider(
     provider: str,
     payload: SearchProviderTestPayload,
+    request: Request,
     current_user: dict[str, Any] = Depends(get_current_admin_user),
 ) -> dict[str, Any]:
     provider = _provider_or_404(provider)
@@ -237,7 +239,7 @@ async def test_external_search_provider(
         "provider": provider,
         "resultCount": len(results),
         "sampleResults": results,
-        "message": "连接成功" if status_text == "healthy" else error,
+        "message": localize_detail("连接成功" if status_text == "healthy" else error, 200, request.headers.get("accept-language")),
     }
 
 

@@ -33,7 +33,7 @@ def _request_image_test(instance_id: str, main_id: str, prompt: str) -> dict[str
         data=json.dumps(
             {
                 "main_id": main_id,
-                "prompt": prompt or "生成一张简洁的科技感演示文稿封面，不要文字。",
+                "prompt": prompt or "Generate a clean, futuristic presentation cover without text.",
             },
             ensure_ascii=False,
         ).encode("utf-8"),

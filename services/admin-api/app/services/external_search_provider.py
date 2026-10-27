@@ -236,7 +236,7 @@ async def test_provider(provider: str, config: dict[str, str], query: str) -> li
             {
                 "model": config["model"],
                 "messages": [
-                    {"role": "system", "content": "你是一个联网搜索助手，请根据用户问题搜索互联网并返回引用。"},
+                    {"role": "system", "content": "You are a web search assistant. Search the internet for the user's question and return citations."},
                     {"role": "user", "content": search_query},
                 ],
             },

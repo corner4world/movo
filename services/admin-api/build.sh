@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 获取脚本所在目录，即 admin/api 目录
+# Resolve the script directory (admin/api).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 REGISTRY="${REGISTRY:-ghcr.io}"
@@ -31,18 +31,18 @@ if [[ "${NO_CACHE}" == "true" ]]; then
   build_args+=(--no-cache)
 fi
 
-# 在 admin/api 目录下构建镜像
+# Build the image from admin/api.
 docker build \
   "${build_args[@]}" \
   -f Dockerfile \
   -t "${LOCAL_IMAGE}:latest" \
   .
 
-# 标记镜像
+# Tag the image.
 echo "Tagging image as ${IMAGE_REF}..."
 docker tag "${LOCAL_IMAGE}:latest" "${IMAGE_REF}"
 
-# 推送到远程镜像仓库
+# Push to the remote image registry.
 if [[ "${PUSH}" == "true" ]]; then
   echo "Pushing image to ${IMAGE_REF}..."
   docker push "${IMAGE_REF}"

@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.deps import get_current_admin_user
 from app.core.db import get_db
@@ -32,7 +32,7 @@ def _resolve_main_scope(current_user: dict[str, Any], requested_main_id: str) ->
     own_main_id = str(current_user.get("main_id") or "default")
     request_main_id = str(requested_main_id or "").strip()
 
-    # Token 统计固定按当前登录企业隔离，禁止跨企业读取。
+    # Scope token statistics to the signed-in organization.
     if request_main_id and request_main_id != own_main_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权限查看其他企业数据")
 
@@ -143,7 +143,7 @@ async def list_token_usage(
                 "else": "$user_request_id"
             }
         }
-        # 1. 统计分组后的总条数
+        # 1. Count grouped rows.
         count_pipeline = [
             {"$match": match},
             {"$group": {"_id": group_id_expr}},
@@ -152,7 +152,7 @@ async def list_token_usage(
         count_res = await usage_coll.aggregate(count_pipeline).to_list(length=1)
         total = count_res[0]["count"] if count_res else 0
 
-        # 2. 查询分页数据
+        # 2. Fetch the requested page.
         data_pipeline = [
             {"$match": match},
             {"$sort": {"created_at": 1}},
@@ -429,6 +429,7 @@ async def get_token_usage_detail(
 @router.get("/token-usage/{request_id}/chat-history")
 async def get_session_chat_history(
     request_id: str,
+    request: Request,
     current_user: dict[str, Any] = Depends(get_current_admin_user),
 ) -> dict[str, Any]:
     db = get_db()
@@ -440,4 +441,6 @@ async def get_session_chat_history(
         raise HTTPException(status_code=403, detail="无权查看该记录")
 
     # Resolve messages only from this authorized usage record.
-    return await load_visible_turn(db, row, own_main_id)
+    return await load_visible_turn(
+        db, row, own_main_id, language=request.headers.get("accept-language") or "zh",
+    )
