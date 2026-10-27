@@ -70,3 +70,17 @@ def test_execution_evidence_projection_returns_openable_sources() -> None:
     assert event["item_kind"] == "evidence"
     assert event["item_id"] == "evidence-message-1"
     assert event["payload"]["sources"][0]["chunk_id"] == "chunk-7"
+
+
+def test_english_knowledge_source_label_uses_scope_metadata() -> None:
+    bundle = build_knowledge_evidence_bundle(
+        query="What is the policy?",
+        items=[{
+            "documentId": "document-1", "chunkId": "chunk-1", "text": "Policy text",
+            "metadata": {"document_title": "Policy", "knowledge_scope": "personal", "knowledge_label": "个人知识"},
+        }],
+        language="en-US",
+    )
+    source = public_capability_evidence(bundle)["sources"][0]
+    assert source["source_name"] == "Personal knowledge"
+    assert source["title"] == "Personal knowledge: Policy"

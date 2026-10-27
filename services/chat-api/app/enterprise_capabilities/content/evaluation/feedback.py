@@ -20,9 +20,9 @@ def issues_summary(issues: Sequence[Issue]) -> str:
 def issues_as_writer_feedback(issues: Sequence[Issue]) -> str:
     if not issues:
         return ""
-    lines = ["上一版产物存在以下问题，本次重写时请避免："]
+    lines = ["The previous draft had these issues; avoid them in this rewrite:"]
     for index, issue in enumerate(issues, start=1):
         lines.append(f"{index}. [{issue.severity}] {issue.location} — {issue.finding}")
         if issue.fix_suggestion:
-            lines.append(f"   建议: {issue.fix_suggestion}")
+            lines.append(f"   Suggested fix: {issue.fix_suggestion}")
     return "\n".join(lines)

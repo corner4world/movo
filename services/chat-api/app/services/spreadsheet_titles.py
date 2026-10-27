@@ -73,10 +73,10 @@ async def _llm_title_from_spreadsheet_context(
     language = "zh" if re.search(r"[\u4e00-\u9fff]", text_for_language) else "en"
     if language == "zh":
         system = (
-            "请为这个 Excel 工作簿生成一个简短、贴切的中文文件标题。"
-            "如果用户请求里明确指定了文件名或标题，优先使用该名称；否则根据工作簿用途、sheet 名和列名命名。"
-            "不要包含 .xlsx，不要加引号、书名号或解释，不要输出泛称如 spreadsheet、Excel表格、工作簿。"
-            "标题不超过 18 个字，直接输出标题文字。"
+            "Generate a short, descriptive Chinese filename for this Excel workbook. "
+            "If the user explicitly requested a filename or title, prefer it; otherwise derive one from the workbook purpose, sheet names, and column names. "
+            "Do not include .xlsx, quotation marks, book-title brackets, or explanations. Avoid generic labels such as spreadsheet, Excel table, or workbook. "
+            "Use at most 18 Chinese characters and return only the title."
         )
     else:
         system = (

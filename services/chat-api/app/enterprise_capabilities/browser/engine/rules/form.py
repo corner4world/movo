@@ -23,7 +23,7 @@ def find_form_fields(
 ) -> List[Dict[str, Any]]:
     """Return every field element in order. When required_only=True,
     keep only those whose name / description carries a required marker
-    (* / "required" / "必填" / pinyin)."""
+    (* / "required" / the Chinese required marker / pinyin)."""
     out: List[Dict[str, Any]] = []
     for el in elements:
         if not isinstance(el, dict) or not M.is_field(el):

@@ -10,7 +10,7 @@ skill after a small UI change.
 
 The schema is deliberately a *signal bag*, not a CSS selector. Every
 field is optional and combined with AND. Callers pass in a variable
-map (e.g. ``{"row_target": "张三"}``) so row-anchored locators can be
+map (e.g. ``{"row_target": "Jane Doe"}``) so row-anchored locators can be
 reused across rows.
 """
 from __future__ import annotations

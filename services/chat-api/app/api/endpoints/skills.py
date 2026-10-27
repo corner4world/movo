@@ -11,7 +11,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query, Header
 from pydantic import AliasChoices, BaseModel, Field
 
 from app.api.time_utils import utc_iso
@@ -26,6 +26,9 @@ from app.utils.oss_uploader import AliyunOSSUploader
 from app.utils.uploads import read_upload_with_limit
 from app.product.resource_access import filter_allowed_resource_ids
 from app.api.principal import require_api_principal
+from app.api.workflow_messages import localized_workflow_message
+from app.api.script_validation_messages import localize_script_check
+from app.api.workflow_check_messages import workflow_check_fallback, workflow_check_language_instruction
 
 import yaml as _yaml
 
@@ -810,7 +813,7 @@ def _normalize_bool(value: Any) -> bool:
     return text in {"true", "1", "yes", "y", "是", "已覆盖", "可解析", "通过"}
 
 
-def _normalize_workflow_check_result(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_workflow_check_result(payload: Dict[str, Any], accept_language: str | None = None) -> Dict[str, Any]:
     logic = payload.get("logic") if isinstance(payload.get("logic"), dict) else {}
     coverage = payload.get("coverage") if isinstance(payload.get("coverage"), list) else []
     readiness = payload.get("readiness") if isinstance(payload.get("readiness"), list) else []
@@ -836,14 +839,14 @@ def _normalize_workflow_check_result(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "pass": _normalize_bool(payload.get("pass")),
         "logic": {
-            "label": str(logic.get("label") or "需要澄清")[:40],
+            "label": str(logic.get("label") or workflow_check_fallback("logic_label", accept_language))[:40],
             "level": "success" if str(logic.get("level") or "").lower() == "success" else "warning",
-            "summary": str(logic.get("summary") or "模型未返回明确的逻辑说明。")[:320],
+            "summary": str(logic.get("summary") or workflow_check_fallback("logic_summary", accept_language))[:320],
         },
         "coverage": normalized_coverage[:8],
         "readiness": normalized_readiness[:8],
         "suggestions": [str(item or "").strip()[:220] for item in suggestions if str(item or "").strip()][:5],
-        "conclusion": str(payload.get("conclusion") or "当前业务逻辑仍需进一步澄清。")[:320],
+        "conclusion": str(payload.get("conclusion") or workflow_check_fallback("conclusion", accept_language))[:320],
     }
 
 
@@ -1026,13 +1029,13 @@ def _validate_script_plugin_static(code: str) -> Dict[str, Any]:
     return {"pass": not errors, "rulePass": not errors, "errors": errors[:50], "warnings": warnings[:50], "llm": None}
 
 
-def _normalize_script_llm_review(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_script_llm_review(payload: Dict[str, Any], accept_language: str | None = None) -> Dict[str, Any]:
     risks = payload.get("risks") if isinstance(payload.get("risks"), list) else []
     suggestions = payload.get("suggestions") if isinstance(payload.get("suggestions"), list) else []
     return {
         "pass": _normalize_bool(payload.get("pass")),
         "level": str(payload.get("level") or "warning")[:20],
-        "summary": str(payload.get("summary") or "LLM 未返回明确审查结论。")[:320],
+        "summary": str(payload.get("summary") or workflow_check_fallback("script_review_summary", accept_language))[:320],
         "risks": [str(item or "").strip()[:220] for item in risks if str(item or "").strip()][:8],
         "suggestions": [str(item or "").strip()[:220] for item in suggestions if str(item or "").strip()][:8],
     }
@@ -1073,53 +1076,54 @@ def _generated_code_hardcode_warnings(code: str, instruction: str) -> List[Dict[
     return warnings
 
 
-async def _review_script_plugin_with_llm(payload: ScriptPluginCheckRequest, static_result: Dict[str, Any]) -> Dict[str, Any]:
+async def _review_script_plugin_with_llm(payload: ScriptPluginCheckRequest, static_result: Dict[str, Any], accept_language: str | None = None) -> Dict[str, Any]:
     system_prompt = (
-        "你是脚本插件审查助手。只做代码规范和业务风险审查，不执行代码。"
-        "插件必须定义 run(inputs, context)，优先读取 inputs['selected'] 中的 files/documents/images/urls/texts/tables/data，输出写入 context['output_dir']，返回 dict。"
-        "请重点检查：是否可能丢文件/图片，是否没有返回 artifacts，是否异常处理不足，是否业务意图与脚本逻辑不匹配。"
-        "不要提出需要联网或外部依赖的建议。只输出 JSON。"
+        "You review script plugins for code standards and business risks only; do not execute the code."
+        "The plugin must define run(inputs, context), prefer files/documents/images/urls/texts/tables/data from inputs['selected'], write output to context['output_dir'], and return a dict."
+        "Focus on possible file or image loss, missing returned artifacts, inadequate exception handling, and mismatches between business intent and script logic."
+        "Do not suggest networking or external dependencies. Return JSON only."
+        + workflow_check_language_instruction(accept_language)
     )
     user_prompt = (
-        f"节点标题：{payload.node_title or '（无）'}\n"
-        f"节点描述：{payload.node_description or '（无）'}\n"
-        f"规则检测结果：{json.dumps(static_result, ensure_ascii=False)}\n"
-        f"脚本代码：\n{payload.code[:12000]}\n\n"
-        "返回 JSON 格式：{\"pass\": true, \"level\": \"success|warning\", \"summary\": \"一句话结论\", \"risks\": [], \"suggestions\": []}"
+        f"Node title: {payload.node_title or '(none)'}\n"
+        f"Node description: {payload.node_description or '(none)'}\n"
+        f"Rule check result: {json.dumps(static_result, ensure_ascii=False)}\n"
+        f"Script code:\n{payload.code[:12000]}\n\n"
+        "Return JSON: {\"pass\": true, \"level\": \"success|warning\", \"summary\": \"one-sentence conclusion\", \"risks\": [], \"suggestions\": []}"
     )
     llm = get_llm_client(streaming=False, stage="script_plugin_check", intent="classification")
     resp = await llm.ainvoke([
         Message(role=Role.SYSTEM, content=system_prompt),
         Message(role=Role.USER, content=user_prompt),
     ])
-    return _normalize_script_llm_review(_extract_json_object(str((resp.content if resp else "") or "")))
+    return _normalize_script_llm_review(_extract_json_object(str((resp.content if resp else "") or "")), accept_language)
 
 
 async def _fix_script_plugin_with_llm(payload: ScriptPluginFixRequest, static_result: Dict[str, Any]) -> Dict[str, Any]:
     system_prompt = (
-        "你是 Python 脚本插件修复助手。任务是对用户脚本做最小修改，使其符合平台脚本插件规范。"
-        "必须保留原业务逻辑，不要重写成完全不同的程序。"
-        "规范：必须定义 def run(inputs, context)；优先从 inputs['selected'] 读取 files/documents/images/urls/texts/tables/data；"
-        "输出文件只能写入 context['output_dir']；返回 dict，可返回 files/data/logs 或 artifacts/data/logs；"
-        "禁止联网、子进程、eval/exec、固定本机路径、os.remove/os.unlink/shutil.rmtree 等危险操作。"
-        "允许 python-docx 的 XML 操作，例如 parent.remove(element)。"
-        "可选依赖请优先在 run 内部导入，或只使用顶层 try/except ImportError 包裹 import，不得在顶层执行数据处理。"
-        "输出路径变量必须直接或间接来源于 context['output_dir']，例如 output_dir = context.get('output_dir'); out_path = os.path.join(output_dir, filename)。"
-        "只输出 JSON，格式为 {\"code\":\"修复后的完整代码\", \"notes\":[\"修改说明\"]}。"
+        "You repair Python script plugins. Make the smallest changes needed to satisfy platform script-plugin rules."
+        "Preserve the original business logic; do not rewrite it as a different program."
+        "Rules: define def run(inputs, context); prefer files/documents/images/urls/texts/tables/data from inputs['selected'];"
+        "write output files only to context['output_dir']; return a dict containing files/data/logs or artifacts/data/logs."
+        "Do not use networking, subprocesses, eval/exec, fixed local paths, or dangerous operations such as os.remove/os.unlink/shutil.rmtree."
+        "python-docx XML operations such as parent.remove(element) are allowed."
+        "Prefer importing optional dependencies inside run, or wrap only imports in top-level try/except ImportError; never process data at module scope."
+        "Output path variables must derive directly or indirectly from context['output_dir'], for example output_dir = context.get('output_dir'); out_path = os.path.join(output_dir, filename)."
+        "Return only JSON: {\"code\":\"complete repaired code\", \"notes\":[\"change description\"]}."
     )
     issues = payload.issues or []
     user_prompt = (
-        f"节点标题：{payload.node_title or '（无）'}\n"
-        f"节点描述：{payload.node_description or '（无）'}\n"
-        f"当前规则检测结果：{json.dumps(static_result, ensure_ascii=False)}\n"
-        f"用户看到的问题：{json.dumps(issues, ensure_ascii=False)}\n"
-        f"原代码：\n{payload.code[:20000]}\n\n"
-        "请修复代码。要求：\n"
-        "1. 尽量只修改违规点和明显不符合 I/O 契约的地方。\n"
-        "2. 不要删除正常的 parent.remove(element) 这类 docx XML 操作。\n"
-        "3. 如果顶层有 try/except 导入依赖，优先改为 run 内局部导入，或保持为只含 import/赋值的 ImportError 兜底。\n"
-        "4. 如果输出路径使用变量但实际来源是 context['output_dir']，可以保持或轻微改写得更清楚。\n"
-        "5. 返回完整可粘贴代码，不要 Markdown。"
+        f"Node title: {payload.node_title or '(none)'}\n"
+        f"Node description: {payload.node_description or '(none)'}\n"
+        f"Current rule check result: {json.dumps(static_result, ensure_ascii=False)}\n"
+        f"Issues shown to the user: {json.dumps(issues, ensure_ascii=False)}\n"
+        f"Original code:\n{payload.code[:20000]}\n\n"
+        "Repair the code under these requirements:\n"
+        "1. Change only violations and clear I/O contract mismatches where possible.\n"
+        "2. Do not remove valid python-docx XML operations such as parent.remove(element).\n"
+        "3. If top-level try/except imports dependencies, prefer moving them inside run or keep an ImportError fallback containing only imports and assignments.\n"
+        "4. Keep an output-path variable if it derives from context['output_dir'], or rewrite it slightly for clarity.\n"
+        "5. Return complete paste-ready code, without Markdown."
     )
     llm = get_llm_client(streaming=False, stage="script_plugin_fix", intent="generation")
     resp = await llm.ainvoke([
@@ -1150,32 +1154,32 @@ async def _generate_script_plugin_with_llm(payload: ScriptPluginGenerateRequest)
             }
         )
     system_prompt = (
-        "你是平台“数据处理”节点的 Python 代码生成助手。"
-        "你的任务是根据业务描述生成完整可粘贴的脚本插件代码，只输出 JSON。"
-        "脚本必须定义 def run(inputs, context):，不得在顶层执行业务逻辑。"
-        "运行时只允许从 inputs、context 取数；优先读取 inputs.get('selected') 中的 files/documents/images/urls/texts/tables/data。"
-        "输出文件只能写入 context['output_dir']，路径必须使用 os.path.join(context['output_dir'], filename)。"
-        "返回 dict，优先返回 {\"files\": [{\"path\": 文件名或完整路径, \"type\": 扩展名}], \"data\": {}, \"logs\": []}。"
-        "禁止联网、子进程、eval/exec、固定本机路径、删除系统文件、修改输入文件。"
-        "只允许依据用户的处理要求生成业务逻辑；禁止引用处理要求之外的具体客户名、项目名、标题、日期、案例名。"
-        "如果需求不明确，生成稳健的通用处理代码和清晰 logs，不要编造外部数据。"
-        "可使用常见标准库以及 python-docx/openpyxl/python-pptx/pypdf 这类平台文档处理库。"
-        "不要在顶层写 try/if/for/with 等业务执行代码；可选依赖优先在 run 内部导入并兜底。"
-        "只输出 JSON：{\"code\":\"完整 Python 代码\", \"notes\":[\"说明\"]}。"
+        "You generate Python code for the platform's data-processing node."
+        "Produce complete paste-ready script-plugin code from the business description and return JSON only."
+        "The script must define def run(inputs, context): and must not execute business logic at module scope."
+        "At runtime, read data only from inputs and context; prefer files/documents/images/urls/texts/tables/data from inputs.get('selected')."
+        "Write output files only to context['output_dir'], using os.path.join(context['output_dir'], filename) for paths."
+        "Return a dict, preferably {\"files\": [{\"path\": filename_or_full_path, \"type\": extension}], \"data\": {}, \"logs\": []}."
+        "Do not use networking, subprocesses, eval/exec, fixed local paths, delete system files, or modify input files."
+        "Generate business logic only from the user's processing requirements; do not introduce specific customer names, project names, titles, dates, or case names absent from them."
+        "If requirements are unclear, generate robust general-purpose processing code with clear logs; do not invent external data."
+        "You may use common standard libraries and platform document libraries such as python-docx, openpyxl, python-pptx, and pypdf."
+        "Do not put business execution code such as try/if/for/with at module scope; import optional dependencies inside run with a fallback."
+        "Return only JSON: {\"code\":\"complete Python code\", \"notes\":[\"explanation\"]}."
     )
     user_prompt = (
-        f"处理要求：{payload.processing_instruction.strip()}\n"
-        f"当前节点标题：{payload.node_title or '（无）'}\n"
-        f"输入来源配置：{payload.selected_input_source or 'all'}\n"
-        f"输入类型配置：{json.dumps(input_types or ['files', 'documents', 'images', 'urls', 'texts', 'data'], ensure_ascii=False)}\n"
-        f"简化工作流上下文：{json.dumps(nodes, ensure_ascii=False)[:4000]}\n\n"
-        "请生成数据处理节点代码。要求：\n"
-        "1. 代码要以 inputs['selected'] 作为主要输入适配层，不要求用户知道上游文件名。\n"
-        "2. 对 files/images/texts/urls/documents/data 做空值保护。\n"
-        "3. 如果生成文件，文件名使用安全的固定业务名，不使用用户本机绝对路径。\n"
-        "4. 如果是 DOCX 处理，要保留图片并尽量使用 python-docx 操作，不经过 Markdown 中转。\n"
-        "5. 不得把处理要求里没有出现的客户名、项目名、正式标题、日期写死到代码或输出文件名中。\n"
-        "6. 返回完整 Python 代码，不要 Markdown 代码块。"
+        f"Processing requirement: {payload.processing_instruction.strip()}\n"
+        f"Current node title: {payload.node_title or '(none)'}\n"
+        f"Input source configuration: {payload.selected_input_source or 'all'}\n"
+        f"Input type configuration: {json.dumps(input_types or ['files', 'documents', 'images', 'urls', 'texts', 'data'], ensure_ascii=False)}\n"
+        f"Simplified workflow context: {json.dumps(nodes, ensure_ascii=False)[:4000]}\n\n"
+        "Generate code for the data-processing node under these requirements:\n"
+        "1. Use inputs['selected'] as the main input adapter; do not require the user to know upstream filenames.\n"
+        "2. Guard against empty files/images/texts/urls/documents/data.\n"
+        "3. If generating files, use safe fixed business filenames, not absolute paths from the user's machine.\n"
+        "4. For DOCX processing, preserve images and prefer python-docx rather than converting through Markdown.\n"
+        "5. Do not hard-code customer names, project names, official titles, or dates absent from the requirements into code or output filenames.\n"
+        "6. Return complete Python code without Markdown fences."
     )
     llm = get_llm_client(streaming=False, stage="script_plugin_generate", intent="generation")
     resp = await llm.ainvoke([
@@ -1202,60 +1206,60 @@ async def _generate_workflow_steps_with_llm(payload: WorkflowStepsGenerateReques
     node_catalog = _normalize_workflow_node_catalog(payload.node_catalog)
     if mode == "supplement_step":
         existing_instruction = (
-            "本次不是重写整套流程，而是补充当前输入框里的这一条新业务步骤。"
-            f"请基于用户新增业务点，把它扩写成 1 条更完整、更清楚、适合直接加入步骤列表的业务步骤；新增业务点：{supplement or '（未提供）'}。"
-            "不要改写已有步骤，不要返回多条步骤，不要生成完整流程。"
+            "Do not rewrite the entire workflow. Supplement only the new business step in the current input field."
+            f"Expand the user's new business point into one clearer, more complete business step ready to add to the list. New business point: {supplement or '(not provided)'}."
+            "Do not rewrite existing steps, return multiple steps, or generate a full workflow."
         )
     elif mode == "supplement":
         existing_instruction = (
-            "本次是补充业务步骤：如果已有步骤存在，请保留其中的核心业务意图和大体顺序，"
-            f"把用户新增的业务点融入到最合适的位置，必要时可改写相邻步骤或新增一步；用户新增业务点：{supplement or '（未提供）'}。"
-            "如果没有已有步骤，请围绕这个新增业务点生成一套完整的业务逻辑草稿。最终返回完整的更新后步骤列表，而不是只返回新增步骤。"
+            "Supplement the business steps. If existing steps are present, preserve their core business intent and approximate order."
+            f"Insert the user's new business point at the most suitable place; rewrite adjacent steps or add one if needed. New business point: {supplement or '(not provided)'}."
+            "If there are no existing steps, generate a complete business-logic draft around the new point. Return the full updated step list, not only the added steps."
         )
     elif mode == "optimize" and existing_steps:
         existing_instruction = (
-            "本次是优化已有步骤：请保留现有步骤中的核心业务意图和顺序，只在表达不清、缺少判断依据、缺少异常处理或缺少输出要求时进行重写、合并或补充；"
-            "不要完全另起一套无关流程。最终返回完整的优化后步骤列表。"
+            "Optimize the existing steps. Preserve their core business intent and order. Rewrite, merge, or add detail only where wording is unclear or judgment criteria, exception handling, or output requirements are missing."
+            "Do not invent an unrelated workflow. Return the complete optimized step list."
         )
     elif existing_steps:
         existing_instruction = (
-            "本次有现有步骤作为参考：请结合 Skill 信息和现有步骤生成一套完整步骤，优先保留合理业务意图，补齐明显缺口。"
+            "Use the existing steps as a reference together with the Skill information to generate a complete step list. Preserve valid business intent and fill obvious gaps."
         )
     else:
-        existing_instruction = "本次是从 Skill 信息生成初始业务步骤：请根据名称、描述和使用场景直接生成一套完整的业务逻辑草稿。"
+        existing_instruction = "Generate initial business steps from the Skill name, description, and scenario as a complete business-logic draft."
 
     system_prompt = (
-        "你是资深业务分析师，负责帮助非技术用户把一个 Skill 的业务逻辑说清楚。"
-        "当前阶段不是生成可执行技术工作流，而是产出后续可被解析成结构化工作流的业务逻辑草稿。"
-        "步骤必须使用自然语言表达业务目标、输入边界、默认规则、判断标准、异常处理和输出要求。"
-        "不要把步骤拆成变量、字段、表单或节点配置，也不要要求用户理解技术概念。"
-        "每一步都应尽量在一句业务语言中交代：需要关注的业务信息、依据什么标准判断、得到什么中间结论；"
-        "涉及默认值、缺失信息、不确定结果或异常波动时，要说明采用什么业务处理方式。"
-        "涉及内部规定、历史口径、知识库、经营标准、会议结论等外部依据时，只能表达为优先查找或确认该依据；"
-        "如果无法获取该依据，必须说明要求用户补充、标注未知或基于已确认信息给出有限结论，不能直接假设该依据一定存在或一定可用。"
-        "不要描述底层工具、接口、API、数据库、MCP、HTTP、字段名、节点连线或技术实现。"
-        "每一步都要能被业务人员理解，并且能为后续结构化解析提供清晰依据。"
-        "只输出 JSON，格式为 {\"steps\":[\"步骤1\", \"步骤2\"]}。"
+        "You are a senior business analyst helping nontechnical users articulate a Skill's business logic."
+        "At this stage, produce a business-logic draft that can later be parsed into a structured workflow, not an executable technical workflow."
+        "Use natural language to express the business goal, input boundaries, default rules, decision criteria, exception handling, and output requirements."
+        "Do not decompose steps into variables, fields, forms, or node configurations or require technical knowledge from the user."
+        "Each step should, ideally in one business-language sentence, state the information to examine, the decision criteria, and the intermediate conclusion."
+        "For defaults, missing information, uncertain results, or abnormal changes, specify the business handling approach."
+        "For dependencies on internal rules, historical standards, knowledge bases, operating standards, or meeting conclusions, say to find or confirm that source first."
+        "If the source cannot be obtained, require additional user input, mark the fact unknown, or give a limited conclusion from confirmed information. Never assume the source exists or is usable."
+        "Do not describe underlying tools, interfaces, APIs, databases, MCP, HTTP, field names, node links, or technical implementation."
+        "Every step must be understandable to business staff and clear enough for later structured parsing."
+        "Return only JSON in the form {\"steps\":[\"step 1\", \"step 2\"]}."
     )
     user_prompt = (
-        f"Skill 名称：{name}\n"
-        f"技能描述：{description or '（无）'}\n"
-        f"使用场景：{scenario or '（无）'}\n"
-        f"建议步骤数上限：{max_steps}\n"
-        f"生成模式：{mode}\n"
-        f"可用节点能力目录：{json.dumps(node_catalog, ensure_ascii=False) if node_catalog else '（未提供）'}\n"
-        f"现有步骤参考：{json.dumps(existing_steps, ensure_ascii=False) if existing_steps else '（无）'}\n\n"
+        f"Skill name: {name}\n"
+        f"Skill description: {description or '(none)'}\n"
+        f"Applicable scenario: {scenario or '(none)'}\n"
+        f"Suggested maximum step count: {max_steps}\n"
+        f"Generation mode: {mode}\n"
+        f"Available node capability catalog: {json.dumps(node_catalog, ensure_ascii=False) if node_catalog else '(not provided)'}\n"
+        f"Existing steps for reference: {json.dumps(existing_steps, ensure_ascii=False) if existing_steps else '(none)'}\n\n"
         f"{existing_instruction}\n\n"
-        "请生成用于“业务逻辑澄清”的自然语言步骤，要求：\n"
-        "1. 如果生成模式是 supplement_step，只返回 1 条补充后的步骤；否则步骤数应按 Skill 复杂度决定：简单场景 4-5 步即可，常规场景 5-7 步，复杂场景 7-9 步；最多不超过建议步骤数上限。\n"
-        "2. 从确认用户目标和输入边界开始，到定义输出结果结束。\n"
-        "3. 必须覆盖范围确认、默认规则、业务判断标准、异常/缺失处理、结论与建议。\n"
-        "4. 尽量让每一步都自然包含四类信息中的至少两类：要看的业务信息、判断依据或阈值、异常/缺失时的处理、该步形成的中间结论。\n"
-        "5. 如果 Skill 描述较宽泛，可以用“先明确/如果未提供/根据业务目标选择”等业务表达保留弹性，不要编造固定字段名。\n"
-        "6. 如需依赖内部规定、历史口径、知识库、经营标准或会议结论，只能写成“优先查找/确认；无法获取时要求补充或给出有限结论”，不能默认这些依据必然存在。\n"
-        "7. 用业务语言描述“应该怎么判断和处理”，不要出现任何具体工具、接口、系统调用、参数字段、JSON Schema、节点或技术名词。\n"
-        "8. 每步是一句话，直接可放入配置页面；允许稍长，但不要写成多段解释。\n"
-        "9. 可用节点能力目录只用于理解平台能做什么，不要在步骤中照抄目录示例，也不要输出英文节点类型。"
+        "Generate natural-language steps for business-logic clarification with these requirements:\n"
+        "1. For supplement_step, return exactly one expanded step. Otherwise choose the count by Skill complexity: 4-5 for simple, 5-7 for ordinary, 7-9 for complex, never above the suggested maximum.\n"
+        "2. Start by confirming the user's goal and input boundaries; end by defining the output.\n"
+        "3. Cover scope confirmation, default rules, business decision criteria, exception or missing-information handling, conclusions, and recommendations.\n"
+        "4. Where natural, each step should include at least two of: business information to examine, decision basis or threshold, handling for exceptions or gaps, and the intermediate conclusion.\n"
+        "5. If the Skill description is broad, retain flexibility with business wording such as 'first clarify,' 'if not provided,' or 'choose according to the business goal.' Do not invent fixed field names.\n"
+        "6. For internal rules, historical standards, knowledge bases, operating standards, or meeting conclusions, say to find or confirm them first. If unavailable, request more input or give a limited conclusion; never assume they exist.\n"
+        "7. Describe how to judge and handle matters in business language. Do not mention specific tools, interfaces, system calls, parameter fields, JSON Schema, nodes, or technical terms.\n"
+        "8. Make each step one sentence ready for the configuration page; it may be somewhat long, but not a multi-paragraph explanation.\n"
+        "9. Use the node capability catalog only to understand platform capabilities. Do not copy catalog examples or output English node type names."
     )
     llm = get_llm_client(streaming=False, stage="admin_workflow_steps", intent="generation")
     resp = await llm.ainvoke(
@@ -1294,61 +1298,61 @@ async def _generate_workflow_nodes_with_llm(payload: WorkflowNodesGenerateReques
     supplement = str(payload.supplement or "").strip()
     node_catalog = _normalize_workflow_node_catalog(payload.node_catalog)
     system_prompt = (
-        "你是业务流程 Skill 配置助手。你的任务是把非技术用户的业务意图整理成语义化业务步骤节点。"
-        "这些节点是图规划的强指导，不是固定执行图；不要生成字段 Schema、入参出参、循环、条件分支、工具参数或代码逻辑。"
-        "节点类型只能使用以下英文枚举：read_material, extract_resources, understand_image, extract_info, compute_metric, data_collect, browser_automation, internal_search, external_search, call_tool, "
-        "script_plugin, generate_content, translate_rewrite, fill_table, review_check, export_delivery。"
-        "每个节点只表达业务步骤：type,title,description,businessConfig,outputAlias,boundWritingSkillId。"
-        "businessConfig 只能放业务级短语，例如 input, target, method, format, source, failurePolicy；"
-        "browser_automation 可使用 targetName 和 targetUrl；不要放其他技术参数。"
-        "如果需要从文档/材料中拿出图片、URL、附件等可继续处理的资源，使用 extract_resources，并在 businessConfig.resourceTypes 中写 images/urls/attachments。"
-        "如果需要理解图片、截图、图表或文档内嵌图片的视觉内容，使用 understand_image；通常它应跟在 extract_resources 之后。"
-        "如果需要从文本、表格、文档解析结果或图片理解结果中抽取公司名、金额、日期、字段值等语义信息，使用 extract_info。"
-        "如果需要按已有依据逐项检查上游结果或交付内容，使用 review_check；它是给 Agent 的复核指导，不是固定循环。"
-        "如果需要从已知 URL 或上游抽取出的链接采集网页正文，使用 data_collect；如果需要搜索未知公开资料，使用 external_search。"
-        "如果需要 MCP、企业系统或第三方工具，使用 call_tool；内部知识库使用 internal_search。"
-        "如果需要在网页或企业后台中查询、填写、保存、提交、上传或发布，使用 browser_automation；"
-        "目标名称放在 businessConfig.targetName（如 OA），对应网址放在 businessConfig.targetUrl，未知时可留空。"
-        "页面会提供完整的节点能力目录，其中的使用场景用于判断节点边界，示例只用于理解写法，禁止把示例中的文件名、日期、地区或业务数据带入结果。"
-        "只输出 JSON，格式为 {\"nodes\":[...]}。"
+        "You are a business-process Skill configuration assistant. Turn a nontechnical user's business intent into semantic business-step nodes."
+        "These nodes strongly guide graph planning but are not a fixed execution graph. Do not generate field schemas, input/output contracts, loops, conditional branches, tool parameters, or code logic."
+        "Node types may use only these English enum values: read_material, extract_resources, understand_image, extract_info, compute_metric, data_collect, browser_automation, internal_search, external_search, call_tool, "
+        "script_plugin, generate_content, translate_rewrite, fill_table, review_check, export_delivery."
+        "Each node describes only a business step using type, title, description, businessConfig, outputAlias, and boundWritingSkillId."
+        "businessConfig may contain only business-level phrases such as input, target, method, format, source, and failurePolicy."
+        "browser_automation may use targetName and targetUrl; do not add other technical parameters."
+        "To extract reusable images, URLs, or attachments from documents or materials, use extract_resources and put images/urls/attachments in businessConfig.resourceTypes."
+        "To understand visual content in images, screenshots, charts, or embedded document images, use understand_image, usually after extract_resources."
+        "To extract semantic facts such as company names, amounts, dates, or field values from text, tables, parsed documents, or image-understanding results, use extract_info."
+        "To check upstream results or deliverables item by item against existing evidence, use review_check. It guides Agent review, not a fixed loop."
+        "To collect page content from a known URL or an upstream link, use data_collect; to search for unknown public information, use external_search."
+        "Use call_tool for MCP, enterprise systems, or third-party tools; use internal_search for internal knowledge bases."
+        "Use browser_automation to query, fill, save, submit, upload, or publish through a website or enterprise console."
+        "Put the target name (for example OA) in businessConfig.targetName and its URL in businessConfig.targetUrl; leave unknown values empty."
+        "The page supplies the full node capability catalog. Use scenarios there to judge node boundaries and examples only to understand style. Never copy example filenames, dates, regions, or business data into the result."
+        "Return only JSON in the form {\"nodes\":[...]}."
     )
     if mode == "supplement_step":
         mode_instruction = (
-            "本次只补充用户输入的一条业务节点。请把新增业务点整理成 1 个语义节点，不要重写完整流程。"
-            f"新增业务点：{supplement or '（未提供）'}"
+            "Supplement only the single business node entered by the user. Turn the new business point into one semantic node; do not rewrite the full workflow."
+            f"New business point: {supplement or '(not provided)'}"
         )
     elif mode == "optimize" and existing_nodes:
         mode_instruction = (
-            "本次优化当前完整节点配置：逐项理解已有节点中用户填写的要求，并结合 Skill 目标检查流程是否完整。"
-            "可以重写节点要求、调整顺序、合并重复节点、删除无必要节点，也可以从能力目录中新增缺失节点。"
-            "不要机械保留原数量和顺序，也不要把用户的具体要求改成能力目录里的通用示例。"
-            "保留的节点必须沿用原 id；新增节点使用 new_node_1、new_node_2 这类唯一 id。"
+            "Optimize the complete current node configuration. Understand each user-entered requirement and check workflow completeness against the Skill goal."
+            "You may rewrite node requirements, reorder nodes, merge duplicates, remove unnecessary nodes, or add missing nodes from the capability catalog."
+            "Do not mechanically preserve the original count or order, and do not replace specific user requirements with generic catalog examples."
+            "Retained nodes must keep their original ids; new nodes need unique ids such as new_node_1 and new_node_2."
         )
     else:
         mode_instruction = (
-            "本次从零生成完整业务流程节点：根据 Skill 名称、描述和使用场景，从能力目录中选择真正需要的节点，"
-            "并为每个节点生成符合当前 Skill 的具体要求；不要为了覆盖目录而添加无关节点。"
+            "Generate the full business workflow from scratch. Select only necessary nodes from the capability catalog based on the Skill name, description, and scenario."
+            "Write specific requirements for this Skill on every node; do not add irrelevant nodes merely to cover the catalog."
         )
     user_prompt = (
-        f"Skill 名称：{name}\n"
-        f"技能描述：{description or '（无）'}\n"
-        f"使用场景：{scenario or '（无）'}\n"
-        f"建议节点数上限：{max_nodes}\n"
-        f"生成模式：{mode}\n"
-        f"可用节点能力目录：{json.dumps(node_catalog, ensure_ascii=False) if node_catalog else '（未提供）'}\n"
-        f"已有节点：{json.dumps(existing_nodes, ensure_ascii=False)}\n\n"
+        f"Skill name: {name}\n"
+        f"Skill description: {description or '(none)'}\n"
+        f"Applicable scenario: {scenario or '(none)'}\n"
+        f"Suggested maximum node count: {max_nodes}\n"
+        f"Generation mode: {mode}\n"
+        f"Available node capability catalog: {json.dumps(node_catalog, ensure_ascii=False) if node_catalog else '(not provided)'}\n"
+        f"Existing nodes: {json.dumps(existing_nodes, ensure_ascii=False)}\n\n"
         f"{mode_instruction}\n\n"
-        "要求：\n"
-        "1. 常规流程 4-7 个节点，复杂流程最多不超过上限。\n"
-        "2. 节点描述必须是一句话业务语言。\n"
-        "3. 对复杂写作，优先拆成读取/抽取/统计或检索/生成/审核/导出。\n"
-        "4. 生成内容节点如果未明确写作 Skill，boundWritingSkillId 留空。\n"
-        "5. 数据缺失、循环、条件、失败重试由系统规划处理，不要作为用户配置节点展开。\n"
-        "6. outputAlias 使用用户能理解的短名，例如“传播数据”“指标分析”“复盘稿”。\n"
-        "7. description 必须是针对当前 Skill 的可执行业务要求，优先保留用户已填写的具体文件、范围、字段、口径和输出要求。\n"
-        "8. 只选择完成该 Skill 所需的节点；允许优化模式新增、删除、合并和重排节点。\n"
-        "9. 能力目录中的示例不能作为当前业务事实，不得照抄其中的专名、日期、数字或文件名。\n"
-        "10. 优化时如果保留调用工具节点、生成内容节点或浏览器自动化节点，应保留仍然适用的 toolId、toolName、boundWritingSkillId、businessConfig.targetName 和 businessConfig.targetUrl 等已有绑定。"
+        "Requirements:\n"
+        "1. Ordinary workflows have 4-7 nodes; complex workflows must stay within the stated maximum.\n"
+        "2. Each node description must be one sentence in business language.\n"
+        "3. For complex writing, prefer stages such as read/extract/calculate or retrieve/generate/review/export.\n"
+        "4. Leave boundWritingSkillId empty on content generation nodes unless a writing Skill was explicitly specified.\n"
+        "5. System planning handles missing data, loops, conditions, and failure retries; do not expand them as user-configured nodes.\n"
+        "6. Use short, user-understandable outputAlias values, such as campaign data, metric analysis, or review draft.\n"
+        "7. description must be an executable business requirement for this Skill. Preserve user-specified files, scope, fields, standards, and outputs whenever possible.\n"
+        "8. Choose only nodes needed for this Skill. In optimize mode you may add, remove, merge, and reorder nodes.\n"
+        "9. Catalog examples are not current business facts. Never copy their proper names, dates, numbers, or filenames.\n"
+        "10. When optimizing retained call_tool, generate_content, or browser_automation nodes, preserve still-applicable bindings: toolId, toolName, boundWritingSkillId, businessConfig.targetName, and businessConfig.targetUrl."
     )
     llm = get_llm_client(streaming=False, stage="admin_workflow_nodes", intent="generation")
     resp = await llm.ainvoke(
@@ -1380,24 +1384,24 @@ async def _polish_workflow_node_with_llm(payload: WorkflowNodePolishRequest) -> 
     catalog_item = next((item for item in node_catalog if item.get("type") == node_type), {})
     current_text = str(node.get("description") or "").strip()
     system_prompt = (
-        "你是工作流 Skill 节点要求润色助手。"
-        "你只负责把单个节点的业务要求改写得更清楚、更可执行，不能改变业务事实、节点类型、工具绑定、写作 Skill 绑定或流程顺序。"
-        "不得新增用户没有提供的文件名、日期、数字、地区、系统名、指标口径或交付物。"
-        "输出必须是 JSON，不要 Markdown，不要解释。"
+        "You refine business requirements for workflow Skill nodes."
+        "Rewrite the business requirement of one node to be clearer and more actionable. Do not change business facts, node type, tool bindings, writing Skill bindings, or workflow order."
+        "Do not add filenames, dates, numbers, regions, system names, metric definitions, or deliverables that the user did not provide."
+        "Output JSON only, without Markdown or explanation."
     )
     user_prompt = (
-        f"Skill 名称：{name}\n"
-        f"Skill 描述：{description or '（无）'}\n"
-        f"使用场景：{scenario or '（无）'}\n"
-        f"当前节点：{json.dumps(node, ensure_ascii=False)}\n"
-        f"同一工作流其他节点：{json.dumps(existing_nodes, ensure_ascii=False)}\n"
-        f"该节点能力说明：{json.dumps(catalog_item, ensure_ascii=False) if catalog_item else '（无）'}\n\n"
-        "请仅润色当前节点 description，要求：\n"
-        "1. 保留原有业务事实、范围、对象、口径、异常处理和输出要求。\n"
-        "2. 如果原描述过短，可以结合 Skill 目标和节点能力说明补足可执行表达，但不能编造具体事实。\n"
-        "3. 不要输出技术实现、接口参数、代码、字段 schema、循环或分支 DSL。\n"
-        "4. 用一句中文业务要求表达，建议 40-160 字。\n"
-        "5. 返回 JSON：{\"text\":\"润色后的节点要求\"}。"
+        f"Skill name: {name}\n"
+        f"Skill description: {description or '(none)'}\n"
+        f"Applicable scenario: {scenario or '(none)'}\n"
+        f"Current node: {json.dumps(node, ensure_ascii=False)}\n"
+        f"Other nodes in this workflow: {json.dumps(existing_nodes, ensure_ascii=False)}\n"
+        f"Capability description for this node: {json.dumps(catalog_item, ensure_ascii=False) if catalog_item else '(none)'}\n\n"
+        "Refine only the current node's description, subject to these requirements:\n"
+        "1. Preserve all existing business facts, scope, entities, standards, exception handling, and output requirements.\n"
+        "2. If the description is too short, use the Skill goal and node capability description to make it actionable, without inventing facts.\n"
+        "3. Do not output technical implementation, interface parameters, code, field schemas, loops, or branch DSL.\n"
+        "4. Express the requirement in one Chinese business sentence, preferably 40-160 Chinese characters.\n"
+        "5. Return JSON: {\"text\":\"refined node requirement\"}."
     )
     llm = get_llm_client(streaming=False, stage="admin_workflow_node_polish", intent="generation")
     resp = await llm.ainvoke(
@@ -1411,7 +1415,7 @@ async def _polish_workflow_node_with_llm(payload: WorkflowNodePolishRequest) -> 
     return text or current_text
 
 
-async def _check_workflow_logic_with_llm(payload: WorkflowLogicCheckRequest) -> Dict[str, Any]:
+async def _check_workflow_logic_with_llm(payload: WorkflowLogicCheckRequest, accept_language: str | None = None) -> Dict[str, Any]:
     name = payload.name.strip()
     description = str(payload.description or "").strip()
     scenario = str(payload.scenario or "").strip()
@@ -1422,44 +1426,45 @@ async def _check_workflow_logic_with_llm(payload: WorkflowLogicCheckRequest) -> 
         if node
     ]
     system_prompt = (
-        "你是资深业务分析师，负责检查非技术用户编写的自然语言业务步骤是否已经足够清楚。"
-        "当前检查目标不是执行任务，也不是生成技术工作流，而是判断这些业务步骤是否适合作为后续结构化工作流解析的输入。"
-        "检查时必须基于 Skill 名称、描述、使用场景和当前步骤本身，不能编造用户没有提供的业务事实。"
-        "如果步骤依赖内部规定、历史口径、知识库、经营标准或会议结论，应检查它是否说明了优先查找/确认以及无法获取时的兜底处理。"
-        "不要输出工具、接口、API、数据库、HTTP、节点、字段映射等技术实现建议。"
-        "只输出 JSON，不要输出 Markdown 或解释性前后缀。"
+        "You are a senior business analyst evaluating whether natural-language business steps written by a nontechnical user are clear enough."
+        "Do not execute the task or generate a technical workflow. Judge whether the steps are suitable input for later structured workflow parsing."
+        "Base the evaluation only on the Skill name, description, scenario, and current steps. Do not invent business facts the user did not provide."
+        "If a step depends on internal rules, historical standards, a knowledge base, operating standards, or meeting conclusions, check whether it says to find or confirm the source first and what to do if the source is unavailable."
+        "Do not suggest technical implementations involving tools, interfaces, APIs, databases, HTTP, nodes, or field mappings."
+        "Return JSON only, without Markdown or surrounding explanation."
+        + workflow_check_language_instruction(accept_language)
     )
     user_prompt = (
-        f"Skill 名称：{name}\n"
-        f"技能描述：{description or '（无）'}\n"
-        f"使用场景：{scenario or '（无）'}\n"
-        f"当前业务步骤：{json.dumps(steps, ensure_ascii=False)}\n"
-        f"当前语义节点：{json.dumps(nodes, ensure_ascii=False)}\n\n"
-        "请返回检查结果 JSON，格式必须为：\n"
+        f"Skill name: {name}\n"
+        f"Skill description: {description or '(none)'}\n"
+        f"Applicable scenario: {scenario or '(none)'}\n"
+        f"Current business steps: {json.dumps(steps, ensure_ascii=False)}\n"
+        f"Current semantic nodes: {json.dumps(nodes, ensure_ascii=False)}\n\n"
+        "Return the evaluation as JSON in this exact structure:\n"
         "{\n"
         "  \"pass\": true,\n"
-        "  \"logic\": {\"label\": \"适合解析或需要澄清\", \"level\": \"success或warning\", \"summary\": \"一句话说明整体逻辑情况\"},\n"
+        "  \"logic\": {\"label\": \"ready to parse or needs clarification\", \"level\": \"success or warning\", \"summary\": \"one-sentence overall assessment\"},\n"
         "  \"coverage\": [\n"
-        "    {\"key\":\"goal\", \"label\":\"业务目标\", \"covered\":true},\n"
-        "    {\"key\":\"input_scope\", \"label\":\"输入边界\", \"covered\":true},\n"
-        "    {\"key\":\"default_rule\", \"label\":\"默认规则\", \"covered\":true},\n"
-        "    {\"key\":\"decision_rule\", \"label\":\"判断标准\", \"covered\":true},\n"
-        "    {\"key\":\"exception\", \"label\":\"异常处理\", \"covered\":true},\n"
-        "    {\"key\":\"output\", \"label\":\"输出要求\", \"covered\":true}\n"
+        "    {\"key\":\"goal\", \"label\":\"business goal\", \"covered\":true},\n"
+        "    {\"key\":\"input_scope\", \"label\":\"input boundary\", \"covered\":true},\n"
+        "    {\"key\":\"default_rule\", \"label\":\"default rule\", \"covered\":true},\n"
+        "    {\"key\":\"decision_rule\", \"label\":\"decision criterion\", \"covered\":true},\n"
+        "    {\"key\":\"exception\", \"label\":\"exception handling\", \"covered\":true},\n"
+        "    {\"key\":\"output\", \"label\":\"output requirement\", \"covered\":true}\n"
         "  ],\n"
         "  \"readiness\": [\n"
-        "    {\"key\":\"step_count\", \"label\":\"步骤数量足够\", \"ready\":true},\n"
-        "    {\"key\":\"branch_seed\", \"label\":\"可识别默认/异常分支\", \"ready\":true},\n"
-        "    {\"key\":\"rule_seed\", \"label\":\"可提取业务判断规则\", \"ready\":true},\n"
-        "    {\"key\":\"io_seed\", \"label\":\"可推导输入输出边界\", \"ready\":true}\n"
+        "    {\"key\":\"step_count\", \"label\":\"sufficient step count\", \"ready\":true},\n"
+        "    {\"key\":\"branch_seed\", \"label\":\"recognizable default and exception branches\", \"ready\":true},\n"
+        "    {\"key\":\"rule_seed\", \"label\":\"extractable business decision rules\", \"ready\":true},\n"
+        "    {\"key\":\"io_seed\", \"label\":\"derivable input and output boundaries\", \"ready\":true}\n"
         "  ],\n"
-        "  \"suggestions\": [\"最多5条具体补充建议\"],\n"
-        "  \"conclusion\": \"本次检查结论\"\n"
+        "  \"suggestions\": [\"up to five specific suggestions for missing details\"],\n"
+        "  \"conclusion\": \"evaluation conclusion\"\n"
         "}\n\n"
-        "判断标准：\n"
-        "1. 业务目标、输入边界、默认规则、判断标准、异常处理、输出要求都较清楚时，pass 才能为 true。\n"
-        "2. 如果步骤里引用外部依据但没有说明查找/确认失败时怎么办，异常处理或默认规则应判为不足。\n"
-        "3. 建议必须具体指出缺什么、应如何用业务语言补充，不要给技术实现建议。"
+        "Decision criteria:\n"
+        "1. Set pass=true only when the business goal, input boundaries, default rules, decision criteria, exception handling, and output requirements are sufficiently clear.\n"
+        "2. If a step cites an external source without explaining what to do when finding or confirming it fails, mark exception handling or default rules insufficient.\n"
+        "3. Suggestions must identify what is missing and how to add it in business language; do not give technical implementation advice."
     )
     llm = get_llm_client(streaming=False, stage="admin_workflow_check", intent="evaluation")
     resp = await llm.ainvoke(
@@ -1469,7 +1474,7 @@ async def _check_workflow_logic_with_llm(payload: WorkflowLogicCheckRequest) -> 
         ]
     )
     parsed = _extract_json_object(str((resp.content if resp else "") or ""))
-    return _normalize_workflow_check_result(parsed)
+    return _normalize_workflow_check_result(parsed, accept_language)
 
 
 @router.post("/skills/upload", response_model=ApiResponse)
@@ -1734,7 +1739,7 @@ async def enrich_writing_style(
 
 
 @router.post("/skills/generate-workflow-steps", response_model=ApiResponse)
-async def generate_workflow_steps(payload: WorkflowStepsGenerateRequest) -> ApiResponse:
+async def generate_workflow_steps(payload: WorkflowStepsGenerateRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
@@ -1751,6 +1756,7 @@ async def generate_workflow_steps(payload: WorkflowStepsGenerateRequest) -> ApiR
     if not steps and source != "error":
         source = "empty"
         message = "模型未返回可用步骤"
+    message = localized_workflow_message(message, accept_language, "Workflow generation failed")
     return ApiResponse(
         code=0,
         message=message,
@@ -1763,7 +1769,7 @@ async def generate_workflow_steps(payload: WorkflowStepsGenerateRequest) -> ApiR
 
 
 @router.post("/skills/generate-workflow-nodes", response_model=ApiResponse)
-async def generate_workflow_nodes(payload: WorkflowNodesGenerateRequest) -> ApiResponse:
+async def generate_workflow_nodes(payload: WorkflowNodesGenerateRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
@@ -1780,6 +1786,7 @@ async def generate_workflow_nodes(payload: WorkflowNodesGenerateRequest) -> ApiR
     if not nodes and source != "error":
         source = "empty"
         message = "模型未返回可用节点"
+    message = localized_workflow_message(message, accept_language, "Workflow generation failed")
     return ApiResponse(
         code=0,
         message=message,
@@ -1792,7 +1799,7 @@ async def generate_workflow_nodes(payload: WorkflowNodesGenerateRequest) -> ApiR
 
 
 @router.post("/skills/polish-workflow-node", response_model=ApiResponse)
-async def polish_workflow_node(payload: WorkflowNodePolishRequest) -> ApiResponse:
+async def polish_workflow_node(payload: WorkflowNodePolishRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
@@ -1808,6 +1815,7 @@ async def polish_workflow_node(payload: WorkflowNodePolishRequest) -> ApiRespons
     if not text and source != "error":
         source = "empty"
         message = "模型未返回可用节点要求"
+    message = localized_workflow_message(message, accept_language, "Failed to refine the node requirement")
     return ApiResponse(
         code=0,
         message=message,
@@ -1820,19 +1828,20 @@ async def polish_workflow_node(payload: WorkflowNodePolishRequest) -> ApiRespons
 
 
 @router.post("/skills/check-workflow-logic", response_model=ApiResponse)
-async def check_workflow_logic(payload: WorkflowLogicCheckRequest) -> ApiResponse:
+async def check_workflow_logic(payload: WorkflowLogicCheckRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
     source = "llm"
     message = "success"
     try:
-        result = await _check_workflow_logic_with_llm(payload)
+        result = await _check_workflow_logic_with_llm(payload, accept_language)
     except Exception as exc:
         log_print(f"[skills] check_workflow_logic failed: {exc}", flush=True)
         result = {}
         source = "error"
         message = str(exc) or "检查失败"
+    message = localized_workflow_message(message, accept_language, "Workflow check failed")
     return ApiResponse(
         code=0,
         message=message,
@@ -1845,7 +1854,7 @@ async def check_workflow_logic(payload: WorkflowLogicCheckRequest) -> ApiRespons
 
 
 @router.post("/skills/check-workflow-nodes", response_model=ApiResponse)
-async def check_workflow_nodes(payload: WorkflowLogicCheckRequest) -> ApiResponse:
+async def check_workflow_nodes(payload: WorkflowLogicCheckRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
@@ -1865,12 +1874,13 @@ async def check_workflow_nodes(payload: WorkflowLogicCheckRequest) -> ApiRespons
             "nodes": normalized_nodes,
             "steps": [str(item or "").strip() for item in (payload.steps or node_steps) if str(item or "").strip()],
         })
-        result = await _check_workflow_logic_with_llm(enriched_payload)
+        result = await _check_workflow_logic_with_llm(enriched_payload, accept_language)
     except Exception as exc:
         log_print(f"[skills] check_workflow_nodes failed: {exc}", flush=True)
         result = {}
         source = "error"
         message = str(exc) or "检查失败"
+    message = localized_workflow_message(message, accept_language, "Workflow check failed")
     return ApiResponse(
         code=0,
         message=message,
@@ -1883,7 +1893,7 @@ async def check_workflow_nodes(payload: WorkflowLogicCheckRequest) -> ApiRespons
 
 
 @router.post("/skills/check-script-plugin", response_model=ApiResponse)
-async def check_script_plugin(payload: ScriptPluginCheckRequest) -> ApiResponse:
+async def check_script_plugin(payload: ScriptPluginCheckRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     static_result = _validate_script_plugin_static(payload.code)
     source = "rules"
     message = "success"
@@ -1891,7 +1901,7 @@ async def check_script_plugin(payload: ScriptPluginCheckRequest) -> ApiResponse:
     if static_result.get("rulePass"):
         source = "rules+llm"
         try:
-            llm_result = await _review_script_plugin_with_llm(payload, static_result)
+            llm_result = await _review_script_plugin_with_llm(payload, static_result, accept_language)
         except Exception as exc:
             log_print(f"[skills] check_script_plugin llm review failed: {exc}", flush=True)
             source = "rules"
@@ -1905,11 +1915,16 @@ async def check_script_plugin(payload: ScriptPluginCheckRequest) -> ApiResponse:
             }
     else:
         message = "规则检测未通过"
+    message = localized_workflow_message(message, accept_language, "Script validation failed")
+    if llm_result is not None and source == "rules":
+        llm_result["summary"] = localized_workflow_message(
+            str(llm_result.get("summary") or ""), accept_language, "LLM review is unavailable"
+        )
     return ApiResponse(
         code=0,
         message=message,
         data={
-            **static_result,
+            **localize_script_check(static_result, accept_language),
             "pass": bool(static_result.get("rulePass")),
             "llm": llm_result,
             "source": source,
@@ -1919,7 +1934,7 @@ async def check_script_plugin(payload: ScriptPluginCheckRequest) -> ApiResponse:
 
 
 @router.post("/skills/fix-script-plugin", response_model=ApiResponse)
-async def fix_script_plugin(payload: ScriptPluginFixRequest) -> ApiResponse:
+async def fix_script_plugin(payload: ScriptPluginFixRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     static_result = _validate_script_plugin_static(payload.code)
     try:
         fixed = await _fix_script_plugin_with_llm(payload, static_result)
@@ -1936,13 +1951,13 @@ async def fix_script_plugin(payload: ScriptPluginFixRequest) -> ApiResponse:
         data={
             "code": fixed_code,
             "notes": fixed.get("notes") or [],
-            "check": recheck,
+            "check": localize_script_check(recheck, accept_language),
         },
     )
 
 
 @router.post("/skills/generate-script-plugin", response_model=ApiResponse)
-async def generate_script_plugin(payload: ScriptPluginGenerateRequest) -> ApiResponse:
+async def generate_script_plugin(payload: ScriptPluginGenerateRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     try:
         generated = await _generate_script_plugin_with_llm(payload)
     except Exception as exc:
@@ -1961,7 +1976,7 @@ async def generate_script_plugin(payload: ScriptPluginGenerateRequest) -> ApiRes
         data={
             "code": code,
             "notes": generated.get("notes") or [],
-            "check": check,
+            "check": localize_script_check(check, accept_language),
         },
     )
 

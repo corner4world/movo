@@ -18,6 +18,7 @@ def build_research_evidence_bundle(
     evidence_sufficient: bool | None = None,
     budget_exhausted: bool = False,
     stop_reason: str = "",
+    language: str = "zh",
 ) -> dict[str, Any]:
     """Project a DSH search result through the existing ASKAI evidence pipeline."""
 
@@ -45,6 +46,7 @@ def build_research_evidence_bundle(
             {"tool": tool_name, "result": raw_result}
         ]),
     )
+    bundle["language"] = language
     if evidence_sufficient is not None:
         bundle["evidence_sufficient"] = bool(evidence_sufficient)
         bundle["budget_exhausted"] = bool(budget_exhausted)

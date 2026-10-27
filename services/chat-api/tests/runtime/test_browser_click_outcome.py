@@ -30,7 +30,7 @@ def test_delivered_click_is_not_treated_as_progress_and_cannot_be_replayed():
     assert outcome.ok is False
     assert outcome.delivered is True
     assert outcome.progressed is False
-    assert "页面没有推进" in (policy.blocker(decision, _observation()) or "")
+    assert "the page did not advance" in (policy.blocker(decision, _observation()) or "")
 
 
 def test_progressed_click_clears_previous_replay_block():

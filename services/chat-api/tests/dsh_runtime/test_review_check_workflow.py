@@ -25,12 +25,12 @@ def test_review_check_is_accepted_and_compiled_as_agent_guidance():
     }]}}
     body, refs = compile_workflow_body(row, tools=(), style_refs={})
     assert refs == ("dsh.review_check@v1",)
-    assert "检查对象：合同事实" in body
-    assert "判定依据：审核规则" in body
-    assert "逐项审核并输出结论与简要依据" in body
+    assert "Review subject: 合同事实" in body
+    assert "Review criteria: 审核规则" in body
+    assert "Review each item and provide a conclusion" in body
     assert "evidenceRequirement" not in body
     assert "failurePolicy" not in body
-    assert "本步骤输出称为：审核结果" in body
+    assert "Output of this step: 审核结果" in body
 
 
 def test_ai_wording_rewrite_keeps_selected_knowledge_document():
@@ -67,9 +67,9 @@ def test_review_sources_resolve_current_upstream_aliases():
         {"name": "通用复核", "config": {"workflowNodes": _bound_review_nodes()}},
         tools=(), style_refs={},
     )
-    assert "检查对象：新对象" in body
-    assert "判定依据：新依据" in body
-    assert "检查对象：旧对象" not in body
+    assert "Review subject: 新对象" in body
+    assert "Review criteria: 新依据" in body
+    assert "Review subject: 旧对象" not in body
 
 
 def test_review_rejects_downstream_or_missing_source():
@@ -93,8 +93,8 @@ def test_review_accepts_inline_criteria_with_upstream_subject():
         {"name": "通用复核", "config": {"workflowNodes": nodes}},
         tools=(), style_refs={},
     )
-    assert "检查对象：新对象" in body
-    assert "判定依据：金额必须大于零" in body
+    assert "Review subject: 新对象" in body
+    assert "Review criteria: 金额必须大于零" in body
 
 
 def test_review_rejects_empty_inline_criteria():
@@ -145,8 +145,8 @@ def test_annotated_review_compiles_generic_verified_docx_tools():
     )
     assert "document.review_source@v1" in refs
     assert "document.annotate@v1" in refs
-    assert "唯一定位" in body
-    assert "其他格式生成独立审核报告" in body
+    assert "uniquely located in the original file" in body
+    assert "For other formats, create a separate review report" in body
 
     generated = [{"id": "review", "type": "review_check", "businessConfig": {}}]
     restored = restore_workflow_bindings([nodes[2]], generated)

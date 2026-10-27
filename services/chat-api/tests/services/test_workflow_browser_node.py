@@ -28,11 +28,11 @@ def test_browser_node_target_name_and_url_form_execution_context() -> None:
     config = {"targetName": "OA", "targetUrl": "https://oa.example.com/"}
 
     assert browser_node_target_name(config) == "OA"
-    assert browser_node_target_reference(config) == "[目标系统: OA (https://oa.example.com/)]"
+    assert browser_node_target_reference(config) == "[Target system: OA (https://oa.example.com/)]"
     assert browser_node_objective("查询待办流程", config) == (
-        "[目标系统: OA (https://oa.example.com/)]\n\n查询待办流程"
+        "[Target system: OA (https://oa.example.com/)]\n\n查询待办流程"
     )
 
 
 def test_browser_node_target_name_works_without_url() -> None:
-    assert browser_node_target_reference({"targetName": "OA"}) == "[目标系统: OA]"
+    assert browser_node_target_reference({"targetName": "OA"}) == "[Target system: OA]"

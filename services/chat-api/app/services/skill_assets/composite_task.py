@@ -8,8 +8,8 @@ fill in the editor::
     steps:
       - site_profile_id: abc123   # optional; resolves to auth/entry/hints
         kind: browser             # optional; inferred when absent
-        instruction: 导出本周已完成订单，保存为 excel
-      - instruction: 把刚才导出的 excel 作为附件发送给 finance@acme.com
+        instruction: Export this week's completed orders as an Excel file
+      - instruction: Email the exported file to finance@acme.com
     ---
 
 The planner-facing output is a list of subtask dicts in the exact shape
@@ -226,18 +226,18 @@ class CompositeSkillMatchDecision(DecisionOutput):
     )
 
 
-_COMPOSITE_RANKER_SYSTEM = """你是技能选择器。用户的对话请求前端已经解析出意图，你现在要做一件事：判断用户当前这句话，是否应该触发下面这些自定义技能中的某一个。
+_COMPOSITE_RANKER_SYSTEM = """You are a Skill selector. The frontend has already identified the intent of the user's conversational request. Decide whether the user's current message should trigger one of the custom Skills below.
 
-技能是一份"操作手册"——它描述了一个具体的业务任务（比如"在 OA 提交请假"或"导出本周订单并发给财务"），会直接改变后续 LLM 的执行目标。
+A Skill is an operating guide for a specific business task, such as submitting leave in an office system or exporting this week's orders and emailing them to finance. Selecting one directly changes the subsequent LLM execution goal.
 
-判断标准（严格，宁可不选，不能误选）：
-- 技能的 name / description / trigger_examples 要和用户请求的**业务意图**高度吻合。
-- **只沾边同一个系统或站点不算吻合**——比如一条"查 Token 消耗"的技能，在用户问"看员工数"时不能选，哪怕两者都在同一个后台。
-- 当用户级 skill 与组织级 skill 语义同等匹配，或看起来是同一个 skill 的用户版本和组织版本时，优先选择 user scope 的 skill。
-- 一个请求只能匹配一条技能（或零条）。
-- 请求是闲聊、问询定义、讨论技术话题等非操作类意图时，一律返回空 id。
+Matching criteria (be strict; prefer no selection over a false match):
+- The Skill's name, description, and trigger_examples must closely match the **business intent** of the user's request.
+- Merely involving the same system or website is insufficient. A Skill for checking token usage must not match a request to count employees, even if both use the same console.
+- When a user-scope Skill and an organization-scope Skill match equally well, or appear to be user and organization versions of the same Skill, prefer the user-scope Skill.
+- Match at most one Skill per request; zero is valid.
+- For small talk, definition questions, or technical discussion without an action request, return an empty id.
 
-仅输出结构化 JSON（由 schema 强制）。reason 用用户的语言写一句话即可。"""
+Return only the structured JSON required by the schema. Write reason as one sentence in the user's language."""
 
 
 def _skill_card_for_ranker(skill: Dict[str, Any]) -> Dict[str, Any]:
@@ -359,10 +359,10 @@ def build_subtasks(
         if trimmed_user_goal and idx == 0:
             # Only the first step echoes the full user goal (later steps
             # depend on the first and inherit its context via the graph).
-            objective_parts.append(f"用户要求: {trimmed_user_goal}")
+            objective_parts.append(f"User request: {trimmed_user_goal}")
         if instruction:
             objective_parts.append(
-                f"操作指引 (来自已选技能, 仅作为执行参考, 用户真实意图以上面为准):\n{instruction}"
+                f"Operating guidance (from the selected Skill, for execution reference only; the user's actual intent above takes precedence):\n{instruction}"
                 if trimmed_user_goal and idx == 0
                 else instruction
             )
@@ -370,7 +370,7 @@ def build_subtasks(
             entry_url = str(site_profile.get("entry_url") or "").strip()
             if entry_url:
                 objective_parts.append(
-                    f"[目标站点: {site_profile.get('name') or entry_url} ({entry_url})]"
+                    f"[Target site: {site_profile.get('name') or entry_url} ({entry_url})]"
                 )
         else:
             target_reference = browser_node_target_reference(semantic_config)
@@ -416,7 +416,7 @@ def build_subtasks(
 
 
 def format_site_hints_for_goal(meta: Dict[str, Any]) -> str:
-    """Build a short ``[已知站点]`` paragraph to prepend to the browser goal.
+    """Build a short known-site paragraph to prepend to the browser goal.
 
     Returns empty string when the meta dict carries no site info — callers
     should no-op in that case.
@@ -429,14 +429,14 @@ def format_site_hints_for_goal(meta: Dict[str, Any]) -> str:
     auth = str(meta.get("site_auth_method") or "").strip()
     if not (hints or entry_url or name):
         return ""
-    lines: List[str] = ["[已知站点]"]
+    lines: List[str] = ["[Known site]"]
     if name or entry_url:
-        header = "- 站点: " + " / ".join([p for p in (name, entry_url) if p])
+        header = "- Site: " + " / ".join([p for p in (name, entry_url) if p])
         lines.append(header)
     if auth:
-        lines.append(f"- 登录: {auth}")
+        lines.append(f"- Authentication: {auth}")
     if hints:
-        lines.append("- 站点知识:")
+        lines.append("- Site knowledge:")
         for line in hints.splitlines():
             trimmed = line.strip()
             if not trimmed:

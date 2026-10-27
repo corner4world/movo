@@ -109,7 +109,11 @@ def test_internal_bundle_delivery_checks_host_token_and_digest(monkeypatch):
 
     monkeypatch.setattr(dsh_skill_bundles, 'get_db', Database)
     monkeypatch.setattr(dsh_skill_bundles, 'AsyncIOMotorGridFSBucket', Bucket)
-    monkeypatch.setattr(dsh_skill_bundles, 'get_settings', lambda: type('Settings', (), {'DSH_RUNTIME_HOST_TOKEN': 'test-secret'})())
+    monkeypatch.setattr(dsh_skill_bundles, 'get_settings', lambda: type('Settings', (), {
+        'DSH_RUNTIME_HOST_TOKEN': 'test-secret',
+        'DSH_MODEL_GATEWAY_SIGNING_SECRET': '',
+        'ASKAI_ADMIN_JWT_SECRET': '',
+    })())
     request = Request({'type': 'http', 'client': ('127.0.0.1', 5000), 'method': 'GET', 'path': '/'})
     with pytest.raises(HTTPException) as denied:
         asyncio.run(dsh_skill_bundles.download(file_id, request, digest, 'Bearer wrong'))

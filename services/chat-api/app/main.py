@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
@@ -6,6 +7,10 @@ import os
 import sys
 import time
 import uuid
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
+
+from app.api.error_locale import localize_detail
 
 from app.core.db import close_db, get_db, init_db
 from app.core.config import get_settings
@@ -38,6 +43,16 @@ app = FastAPI(
     description="API for Multi-Agent Platform",
     version="0.1.0"
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def localized_http_error(request: Request, exc: StarletteHTTPException):
+    detail = localize_detail(exc.detail, exc.status_code, request.headers.get("accept-language"))
+    if detail == exc.detail:
+        return await http_exception_handler(request, exc)
+    translated = StarletteHTTPException(status_code=exc.status_code, detail=detail, headers=exc.headers)
+    return await http_exception_handler(request, translated)
+
 _receipt_gc_task: asyncio.Task | None = None
 
 origins = settings.allowed_origins_list()

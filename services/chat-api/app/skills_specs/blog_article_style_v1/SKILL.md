@@ -48,7 +48,7 @@ style_contract:
 ---
 
 # Purpose
-- Produce engaging, human-readable articles suitable for tech blogs and WeChat official accounts (微信公众号).
+- Produce engaging, human-readable articles suitable for tech blogs and WeChat official accounts.
 - Prioritize narrative flow and reader engagement over structural completeness.
 - Avoid the "template stacking" pattern common in AI-generated articles.
 
@@ -68,7 +68,7 @@ Structure each major point as: claim → explanation → evidence or analogy →
 
 ## Tone
 
-Write as a knowledgeable peer sharing insights, not as a textbook or encyclopedia. Use "我们" or "你" appropriately to engage the reader. Avoid overly formal or stiff academic phrasing.
+Write as a knowledgeable peer sharing insights, not as a textbook or encyclopedia. Use first- or second-person language appropriately to engage the reader. Avoid overly formal or stiff academic phrasing.
 
 ## Heading & Layout
 
@@ -94,38 +94,38 @@ Format rules:
 Example — comparison infographic:
 ```
 [VISUAL:comparison]
-Title: Skills 与 Tools 的核心差异
+Title: Core differences between Skills and Tools
 Style: professional two-column infographic card with icons, dark tech theme
-Left column - Skills（模型内建能力）:
+Left column - Skills (model-native capabilities):
   - Icon: brain/lightbulb
-  - 执行位置：模型内部推理空间
-  - 延迟：极低（毫秒级）
-  - 权限需求：无
-  - 典型任务：文本摘要、意图识别、逻辑推理
-  - 类比：人的"思考能力"
-Right column - Tools（外部执行能力）:
+  - Execution location: the model's internal reasoning space
+  - Latency: very low (milliseconds)
+  - Permissions: none
+  - Typical tasks: summarization, intent recognition, logical reasoning
+  - Analogy: a person's thinking ability
+Right column - Tools (external execution capabilities):
   - Icon: wrench/gear
-  - 执行位置：外部系统（API、数据库、文件系统）
-  - 延迟：较高（秒级）
-  - 权限需求：需要授权、审计、沙箱隔离
-  - 典型任务：查询数据库、调用支付接口、执行脚本
-  - 类比：人的"动手能力"
-Bottom: 协议统一管理两者的调用、上下文与安全治理
+  - Execution location: external systems (APIs, databases, filesystems)
+  - Latency: higher (seconds)
+  - Permissions: authorization, auditing, and sandboxing required
+  - Typical tasks: querying a database, calling a payment API, running a script
+  - Analogy: a person's ability to act
+Bottom: The protocol jointly governs invocation, context, and safety for both
 [/VISUAL]
 ```
 
 Example — flow infographic:
 ```
 [VISUAL:flow]
-Title: MCP 调用链：从用户请求到最终输出
+Title: MCP invocation chain, from user request to final output
 Style: horizontal flowchart with colored nodes, clean modern design
 Flow:
-  1. 用户发送任务请求 → [蓝色节点]
-  2. 协议层接收并解析意图 → [灰色节点]
-  3. 判断任务类型：
-     - 纯推理 → Skills（绿色分支）
-     - 需要外部操作 → Tools（橙色分支）
-  4. 结果汇聚，模型整合输出 → [蓝色节点]
+  1. User sends a task request → [blue node]
+  2. Protocol layer receives it and parses intent → [gray node]
+  3. Determine the task type:
+     - Reasoning only → Skills (green branch)
+     - External action required → Tools (orange branch)
+  4. Aggregate results and produce the final model output → [blue node]
 [/VISUAL]
 ```
 

@@ -3,13 +3,15 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
+from app.services.mcp_outcome_messages import mcp_outcome_message, safe_mcp_error_message
 
-def build_mcp_call_outcome(tool_name: str, result: Dict[str, Any]) -> Dict[str, Any]:
+
+def build_mcp_call_outcome(tool_name: str, result: Dict[str, Any], *, language: str = "zh") -> Dict[str, Any]:
     """Translate an MCP CallToolResult into MOVO's shared execution contract."""
     failed = result.get("isError") is True
     summary = _result_summary(result)
     if failed:
-        message = _error_message(result) or f"MCP tool {tool_name} 执行失败"
+        message = safe_mcp_error_message(_error_message(result), tool_name, language)
         return {
             "success": False,
             "status": "failed",
@@ -21,7 +23,7 @@ def build_mcp_call_outcome(tool_name: str, result: Dict[str, Any]) -> Dict[str, 
     return {
         "success": True,
         "status": "passed",
-        "message": f"MCP tool {tool_name} 调用成功",
+        "message": mcp_outcome_message(tool_name, failed=False, language=language),
         "responseSummary": summary,
         "raw": result,
     }

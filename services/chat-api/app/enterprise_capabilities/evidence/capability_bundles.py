@@ -6,6 +6,7 @@ from typing import Any
 
 from app.enterprise_capabilities.evidence.foundation import EvidenceNormalizer, build_user_evidence_payload
 from app.enterprise_capabilities.evidence.foundation.kb_qa_projection import sanitize_tool_results_for_evidence
+from app.knowledge.citations.evidence_messages import localized_knowledge_label
 
 
 def _bundle(
@@ -14,10 +15,11 @@ def _bundle(
     query: str,
     results: list[dict[str, Any]],
     raw_summary: dict[str, Any],
+    language: str = "zh",
 ) -> dict[str, Any]:
     if not results:
         return {}
-    return EvidenceNormalizer.build_research_bundle(
+    bundle = EvidenceNormalizer.build_research_bundle(
         query=query,
         tools_used=[tool_name],
         results=results,
@@ -25,12 +27,15 @@ def _bundle(
             {"tool": tool_name, "result": raw_summary}
         ]),
     )
+    bundle["language"] = language
+    return bundle
 
 
 def build_knowledge_evidence_bundle(
     *,
     query: str,
     items: list[dict[str, Any]],
+    language: str = "zh",
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     for index, item in enumerate(items[:20], start=1):
@@ -46,10 +51,13 @@ def build_knowledge_evidence_bundle(
             or metadata.get("filename")
             or metadata.get("title")
             or (" / ".join(title_path) if title_path else "")
-            or f"内部知识来源 {index}"
+            or (f"内部知识来源 {index}" if str(language).startswith("zh") else f"Internal knowledge source {index}")
         ).strip()
-        knowledge_label = str(metadata.get("knowledge_label") or "内部知识").strip()
-        title = f"{knowledge_label}：{document_title}"
+        knowledge_label = localized_knowledge_label(
+            str(metadata.get("knowledge_label") or ""), str(metadata.get("knowledge_scope") or ""), language,
+        )
+        separator = "：" if str(language).startswith("zh") else ": "
+        title = f"{knowledge_label}{separator}{document_title}"
         results.append({
             "tool": "knowledge_search",
             "title": title,
@@ -72,6 +80,7 @@ def build_knowledge_evidence_bundle(
         query=query,
         results=results,
         raw_summary={"query": query, "total": len(results)},
+        language=language,
     )
 
 

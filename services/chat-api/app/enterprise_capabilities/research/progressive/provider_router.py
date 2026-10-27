@@ -222,7 +222,7 @@ class VolcArkProvider:
             )
             completion = await client.ainvoke(
                 [
-                    Message(role=Role.SYSTEM, content="你是联网搜索助手。请搜索互联网并返回可核验来源。"),
+                    Message(role=Role.SYSTEM, content="You are a web research assistant. Search the internet and return verifiable sources."),
                     Message(role=Role.USER, content=query),
                 ],
             )

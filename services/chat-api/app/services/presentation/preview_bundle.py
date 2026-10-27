@@ -52,6 +52,7 @@ class PreviewBundleBuilder:
         compile_result: HtmlCompileResult,
         user_id: str,
         task_id: str,
+        language: str = "zh",
     ) -> tuple[PresentationPreviewBundle, FrontendPresentationDocument]:
         uploader = AliyunOSSUploader()
         safe_task_id = str(task_id or blueprint.get("deck_id") or "presentation").strip() or "presentation"
@@ -97,7 +98,7 @@ class PreviewBundleBuilder:
             },
         )
         document = FrontendPresentationDocument(
-            title="PPT HTML 预览",
+            title="Presentation HTML Preview" if str(language or "").lower().startswith("en") else "PPT HTML 预览",
             url=html_ref.url,
             object_path=html_ref.object_path,
             filename=html_ref.filename,

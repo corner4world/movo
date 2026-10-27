@@ -36,7 +36,7 @@ class ContractPromptAssembler:
             bp = "\n".join(f"- {p}" for p in forbidden_patterns)
             identity_lines.append(f"## Forbidden Patterns (🔴 CRITICAL: STRICTLY AVOID)\n{bp}\n")
         if bool(anti_patterns.get("meta_discourse_banned")):
-            identity_lines.append("## Meta Discourse Rule\n- Do not narrate writing process (e.g., '接下来我们将...').\n")
+            identity_lines.append("## Meta Discourse Rule\n- Do not narrate the writing process (for example, 'Next, we will...').\n")
             
         if format_rules:
             fr = "\n".join(f"- {k}: {v}" for k, v in format_rules.items())

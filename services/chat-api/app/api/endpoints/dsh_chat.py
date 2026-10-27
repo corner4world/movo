@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.endpoints.auth import _resolve_session_user
+from app.api.dsh_access_messages import code_capability_denied
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.quota_policy import QuotaExceededError, assert_quota_available
@@ -48,7 +49,7 @@ from app.governance.topic_admission import TopicAdmissionDenied
 router = APIRouter(tags=["dsh-chat"])
 
 
-async def _require_code_capability(tenant_id: str, user_id: str) -> None:
+async def _require_code_capability(tenant_id: str, user_id: str, accept_language: str | None = None) -> None:
     policy = await MongoEmployeePolicyResolver().resolve(tenant_id, user_id)
     if not policy.allows_capability("code_generation"):
         await record_position_policy_event(
@@ -56,7 +57,7 @@ async def _require_code_capability(tenant_id: str, user_id: str) -> None:
         )
         raise HTTPException(
             status_code=403,
-            detail={"code": "position_role_denied", "message": "当前岗位未开通代码生成能力，本次任务未执行"},
+            detail={"code": "position_role_denied", "message": code_capability_denied(accept_language)},
         )
 
 
@@ -311,10 +312,11 @@ async def chat_entry(
 async def desktop_runtime_profile(
     payload: DesktopRuntimeProfileRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     """Issue an authenticated, short-lived Runtime Profile for Electron main only."""
     tenant_id, user_id, user = await _identity(authorization)
-    await _require_code_capability(tenant_id, user_id)
+    await _require_code_capability(tenant_id, user_id, accept_language)
     await record_position_policy_event(
         tenant_id=tenant_id, user_id=user_id, action="capability.used", target="code_generation",
     )
@@ -343,9 +345,10 @@ async def desktop_runtime_profile(
 @router.post("/desktop/dsh/capability-check", response_model=ApiResponse)
 async def desktop_code_capability_check(
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     tenant_id, user_id, _ = await _identity(authorization)
-    await _require_code_capability(tenant_id, user_id)
+    await _require_code_capability(tenant_id, user_id, accept_language)
     return ApiResponse(code=0, message="ok", data={"allowed": True})
 
 
@@ -353,9 +356,10 @@ async def desktop_code_capability_check(
 async def desktop_session_commit(
     payload: DesktopSessionCommitRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     tenant_id, user_id, _ = await _identity(authorization)
-    await _require_code_capability(tenant_id, user_id)
+    await _require_code_capability(tenant_id, user_id, accept_language)
     try:
         binding = await dsh_runtime_application.require_desktop_bindings().commit(
             tenant_id=tenant_id,
@@ -415,9 +419,10 @@ async def desktop_turn_start(
     kernel_session_id: str,
     payload: DesktopTurnStartRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     tenant_id, user_id, _ = await _identity(authorization)
-    await _require_code_capability(tenant_id, user_id)
+    await _require_code_capability(tenant_id, user_id, accept_language)
     try:
         await dsh_runtime_application.require_topic_admission().require(
             main_id=tenant_id, user_id=user_id, text=payload.text,
@@ -507,9 +512,10 @@ async def desktop_turn_events(
     kernel_session_id: str,
     payload: DesktopTurnEventsRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     tenant_id, user_id, _ = await _identity(authorization)
-    await _require_code_capability(tenant_id, user_id)
+    await _require_code_capability(tenant_id, user_id, accept_language)
     try:
         data = await dsh_runtime_application.require_desktop_bindings().project_events(
             tenant_id=tenant_id, user_id=user_id, device_id=payload.device_id,

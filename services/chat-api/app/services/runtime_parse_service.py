@@ -501,6 +501,7 @@ class RuntimeParseService:
             return existing_payload
         parsed_documents: List[Dict[str, Any]] = []
         active_contexts: List[str] = []
+        parse_language = str(output_spec.get("language") or "zh")
 
         for idx, item in enumerate(sources[:8], start=1):
             local_path = str(item.get("local_path") or "").strip()
@@ -527,6 +528,7 @@ class RuntimeParseService:
                     filename=filename,
                     has_object_path=bool(resolved_object_path),
                     has_signed_url=bool(str(item.get("signed_url") or "").strip()),
+                    language=parse_language,
                 )
                 parsed_documents.append(
                     {
@@ -594,10 +596,17 @@ class RuntimeParseService:
         if successful:
             active_document_context = "\n".join(active_contexts[:3]).strip()
         else:
-            active_document_context = "\n".join(
-                f"- 文件《{str(item.get('filename') or item.get('asset_id') or 'document').strip()}》解析失败；错误：{str(item.get('user_parse_error') or item.get('parse_error') or '文件解析失败').strip()}"
-                for item in failed[:6]
-            ).strip()
+            if parse_language.lower().startswith("en"):
+                active_document_context = "\n".join(
+                    f"- File “{str(item.get('filename') or item.get('asset_id') or 'document').strip()}” could not be parsed; "
+                    f"reason: {str(item.get('user_parse_error') or 'Document parsing failed').strip()}"
+                    for item in failed[:6]
+                ).strip()
+            else:
+                active_document_context = "\n".join(
+                    f"- 文件《{str(item.get('filename') or item.get('asset_id') or 'document').strip()}》解析失败；错误：{str(item.get('user_parse_error') or item.get('parse_error') or '文件解析失败').strip()}"
+                    for item in failed[:6]
+                ).strip()
         active_document_markdown = str((successful[0] or {}).get("markdown") or "").strip() if successful else ""
         documents = {
             "enabled": True,

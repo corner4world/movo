@@ -189,7 +189,9 @@ class PresentationCreationCapability:
                 reasons=reasons,
             )
 
-        artifact = self._stable_document(document)
+        artifact = self._stable_document(
+            document, language=str(context.turn_context.get("language") or "zh"),
+        )
         story_plan = result.get("story_plan")
         deck_goal = str(getattr(story_plan, "deck_goal", "") or artifact.get("title") or "PPT").strip()
         artifact.update({
@@ -274,7 +276,7 @@ class PresentationCreationCapability:
         return dict(value or {}) if isinstance(value, dict) else {}
 
     @classmethod
-    def _stable_document(cls, document: dict[str, Any]) -> dict[str, Any]:
+    def _stable_document(cls, document: dict[str, Any], *, language: str = "zh") -> dict[str, Any]:
         """Return the small, durable artifact descriptor DSH and the UI need.
 
         The preview builder persists the full editable deck IR as JSON. Returning
@@ -311,7 +313,9 @@ class PresentationCreationCapability:
             "type": str(document.get("type") or "presentation_preview_bundle"),
             "object_path": str(document.get("object_path") or html_preview.get("object_path") or "").strip(),
             "filename": str(document.get("filename") or html_preview.get("filename") or "").strip(),
-            "title": str(document.get("title") or "PPT HTML 预览").strip(),
+            "title": str(document.get("title") or (
+                "PPT HTML Preview" if language.lower().startswith("en") else "PPT HTML 预览"
+            )).strip(),
             "bundle": compact_bundle,
             "summary": cls._dict(document.get("summary")),
         }

@@ -25,7 +25,7 @@ def build_user_source_section_excerpt(user_query: str) -> Dict[str, Any]:
     return {
         "source_type": "document",
         "kind": "user_source_section",
-        "title": "用户提供原文",
+        "title": "User-provided source text",
         "content": content,
     }
 
@@ -38,7 +38,7 @@ def build_special_document_excerpts(evidence_bundle: Dict[str, Any]) -> List[Dic
             {
                 "source_type": "document",
                 "kind": "agreement_template",
-                "title": "协议底稿",
+                "title": "Agreement draft",
                 "content": agreement,
             }
         )
@@ -48,7 +48,7 @@ def build_special_document_excerpts(evidence_bundle: Dict[str, Any]) -> List[Dic
             {
                 "source_type": "document",
                 "kind": "translation_source",
-                "title": text(evidence_bundle.get("translation_source_filename")) or "翻译源文档",
+                "title": text(evidence_bundle.get("translation_source_filename")) or "Translation source document",
                 "content": translation,
                 "source_url": text(evidence_bundle.get("translation_source_url")),
                 "object_path": text(evidence_bundle.get("translation_source_object_path")),

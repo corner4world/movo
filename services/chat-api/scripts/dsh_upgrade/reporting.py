@@ -8,7 +8,7 @@ from .models import EvaluationReport
 
 
 def _items(values: list[str]) -> str:
-    return "、".join(f"`{value}`" for value in values) if values else "无"
+    return ", ".join(f"`{value}`" for value in values) if values else "None"
 
 
 def write_report(report: EvaluationReport, output_dir: Path) -> tuple[Path, Path]:
@@ -20,7 +20,7 @@ def write_report(report: EvaluationReport, output_dir: Path) -> tuple[Path, Path
     json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     checks = "\n".join(
-        f"| {item['name']} | {'通过' if item['passed'] else '失败'} | {item['duration_seconds']:.3f}s |"
+        f"| {item['name']} | {'Passed' if item['passed'] else 'Failed'} | {item['duration_seconds']:.3f}s |"
         for item in payload["checks"]
     )
     dependencies = payload["dependency_delta"]
@@ -31,38 +31,38 @@ def write_report(report: EvaluationReport, output_dir: Path) -> tuple[Path, Path
         name: delta["removed"] for name, delta in payload["public_api_delta"].items()
         if delta.get("removed")
     }
-    markdown = f"""# DSH 候选升级评估
+    markdown = f"""# DSH Candidate Upgrade Evaluation
 
-- 基线版本：`{report.baseline_version}`
-- 候选版本：`{report.candidate_version}`
-- 生成时间：`{report.generated_at_utc}`
-- 候选结论：**{'通过契约评估' if payload['decision']['contract_ready'] else '未通过契约评估'}**
-- 发布结论：**尚未接纳**（必须在升级分支完成全栈和打包验证）
+- Baseline version: `{report.baseline_version}`
+- Candidate version: `{report.candidate_version}`
+- Generated at: `{report.generated_at_utc}`
+- Contract evaluation: **{'Passed' if payload['decision']['contract_ready'] else 'Failed'}**
+- Release decision: **Not accepted** (full stack and packaging verification is required on the upgrade branch)
 
-## 自动检查
+## Automated Checks
 
-| 检查 | 结果 | 耗时 |
+| Check | Result | Duration |
 |---|---:|---:|
 {checks}
 
-## 官方包能力差异
+## Official Package Capability Changes
 
-- 新增顶层依赖：{_items(dependencies['added'])}
-- 移除顶层依赖：{_items(dependencies['removed'])}
-- 核心包被移除的公开 Export：{json.dumps(api_removed, ensure_ascii=False) if api_removed else '无'}
-- 新增 Host 模块：{_items(enabled_modules['added'])}
-- 移除 Host 模块：{_items(enabled_modules['removed'])}
-- 新增 Code 工具：{_items(code_capabilities['added'])}
-- 移除 Code 工具：{_items(code_capabilities['removed'])}
-- 变更的普通会话模型工具契约：{_items(list(capabilities.get('ordinary_model_tool_contract_changes', {})))}
-- 变更的 Code 模型工具契约：{_items(list(capabilities.get('code_model_tool_contract_changes', {})))}
+- Added top-level dependencies: {_items(dependencies['added'])}
+- Removed top-level dependencies: {_items(dependencies['removed'])}
+- Removed public exports from core packages: {json.dumps(api_removed, ensure_ascii=False) if api_removed else 'None'}
+- Added Host modules: {_items(enabled_modules['added'])}
+- Removed Host modules: {_items(enabled_modules['removed'])}
+- Added Code tools: {_items(code_capabilities['added'])}
+- Removed Code tools: {_items(code_capabilities['removed'])}
+- Changed ordinary-session model tool contracts: {_items(list(capabilities.get('ordinary_model_tool_contract_changes', {})))}
+- Changed Code model tool contracts: {_items(list(capabilities.get('code_model_tool_contract_changes', {})))}
 
-## 旧会话恢复
+## Existing Session Recovery
 
-- 基线创建：{'通过' if payload['old_session_resume'].get('created') else '失败'}
-- 候选恢复：{'通过' if payload['old_session_resume'].get('resumed') else '失败'}
+- Baseline creation: {'Passed' if payload['old_session_resume'].get('created') else 'Failed'}
+- Candidate resume: {'Passed' if payload['old_session_resume'].get('resumed') else 'Failed'}
 
-## 发布前仍须完成
+## Remaining Release Requirements
 
 """ + "\n".join(f"- {reason}" for reason in payload["decision"]["release_requirements"]) + "\n"
     markdown_path.write_text(markdown, encoding="utf-8")

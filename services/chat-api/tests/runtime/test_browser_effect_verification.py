@@ -44,6 +44,19 @@ def test_route_and_form_close_leave_generic_commit_pending_without_result_eviden
     assert {item.kind for item in receipt.evidence} >= {"route_changed", "form_closed"}
 
 
+def test_english_verification_reason_does_not_use_chinese_fixed_text() -> None:
+    contract = EffectContract(action_name="Submit", operation_family="submit", is_commit=True, side_effect="write")
+    receipt = asyncio.run(verify_effect(
+        contract=contract,
+        before=_obs(url="https://example.test/edit", editable=3, action="Submit"),
+        after=_obs(url="https://example.test/list", editable=0),
+        lang="en",
+    ))
+
+    assert receipt.status == "pending"
+    assert receipt.reason.startswith("The page navigated and the edit form closed")
+
+
 def test_route_form_close_and_submitted_value_confirm_generic_commit() -> None:
     contract = EffectContract(
         action_name="提交",

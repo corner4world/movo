@@ -127,7 +127,7 @@ class PublishAssembler:
             if removed_image:
                 if not stripped:
                     continue
-                if stripped.startswith("*图注："):
+                if stripped.startswith(("*图注：", "*Caption: ")):
                     removed_image = False
                     continue
                 removed_image = False
@@ -180,6 +180,7 @@ class PublishAssembler:
                 slot_role=str(slot.role or ""),
                 slot_description=str(slot.description or ""),
                 fallback_index=idx,
+                language=language,
             )
 
             reused = reusable_assets.get(slot_id) or {}
@@ -237,6 +238,7 @@ class PublishAssembler:
             body_markdown=text,
             plan=plan,
             assets=assets,
+            language=language,
         )
         missing = [item.slot_id for item in assets if item.status != "generated"]
         return PublishAssemblySpec(
@@ -384,9 +386,9 @@ class PublishAssembler:
         description: str,
         language: str,
     ) -> str:
-        topic = strip_visual_or_production_clauses(section_title or role or user_query or "核心主题")
-        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "核心信息")
-        detail = PublishAssembler._sanitize_visual_brief(description or "突出该段核心概念与关系")
+        topic = strip_visual_or_production_clauses(section_title or role or user_query or "Core topic")
+        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "Core information", language=language)
+        detail = PublishAssembler._sanitize_visual_brief(description or "Highlight this section's core concepts and relationships", language=language)
         banned_tail = PublishAssembler._non_cta_visual_ban(role=role, section_title=section_title, language=language)
         return (
             f"Create a clear publishable infographic for: {topic}. "
@@ -408,8 +410,8 @@ class PublishAssembler:
         section_title: str,
         language: str,
     ) -> str:
-        topic = strip_visual_or_production_clauses(section_title or role or user_query or "核心主题")
-        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "核心信息")
+        topic = strip_visual_or_production_clauses(section_title or role or user_query or "Core topic")
+        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "Core information", language=language)
         banned_tail = PublishAssembler._non_cta_visual_ban(role=role, section_title=section_title, language=language)
         return (
             f"Create one technical infographic for {topic}. "
@@ -429,9 +431,9 @@ class PublishAssembler:
         description: str,
         language: str,
     ) -> str:
-        topic = strip_visual_or_production_clauses(section_title or role or user_query or "核心主题")
-        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "核心信息")
-        detail = PublishAssembler._sanitize_visual_brief(description or "突出核心关系、关键术语和结论")
+        topic = strip_visual_or_production_clauses(section_title or role or user_query or "Core topic")
+        focus = PublishAssembler._sanitize_visual_brief(section_title or role or "Core information", language=language)
+        detail = PublishAssembler._sanitize_visual_brief(description or "Highlight core relationships, key terms, and conclusions", language=language)
         banned_tail = PublishAssembler._non_cta_visual_ban(role=role, section_title=section_title, language=language)
         return (
             f"Create a minimal technical visual for {topic}. Focus: {focus}. "
@@ -443,12 +445,12 @@ class PublishAssembler:
         )
 
     @staticmethod
-    def _sanitize_visual_brief(value: str) -> str:
+    def _sanitize_visual_brief(value: str, *, language: str = "zh") -> str:
         text = strip_visual_or_production_clauses(str(value or "").strip())
         text = re.sub(r"(?:\+|/|｜|\|)\s*(结尾互动|结尾引导|cta|互动|标签|hashtags?)", "", text, flags=re.IGNORECASE)
         text = re.sub(r"(结尾互动|结尾引导|评论区互动|评论引导|标签墙|技术标签|hashtags?)", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s{2,}", " ", text).strip(" ，。；;、+|/｜")
-        return text or "核心信息"
+        return text or ("Core information" if str(language or "").lower().startswith("en") else "核心信息")
 
     @staticmethod
     def _non_cta_visual_ban(*, role: str, section_title: str, language: str) -> str:
@@ -458,8 +460,7 @@ class PublishAssembler:
             return ""
         if language == "zh":
             return (
-                " 这张图不要出现结尾引导、立即尝试、评论区互动、关注点赞、收藏转发、标签墙、"
-                "话题标签或任何促进行动的发布口号。只保留与当前主题直接相关的信息。"
+                " Do not put closing guidance, try-now copy, comment prompts, follow/like prompts, save/share prompts, tag walls, hashtags, or any promotional call to action in this image. Keep only information directly related to the current topic."
             )
         return (
             " Do not include closing guidance, try-now copy, comment prompts, follow/like/share prompts, "
@@ -669,15 +670,15 @@ class PublishAssembler:
             },
             "decision_policy": {
                 "allow_examples": [
-                    "大模型技术演进路径 / show key stages",
-                    "供应链协同流程 / show process",
-                    "客户流失原因分布 / show categories",
+                    "Evolution of large language model technology / show key stages",
+                    "Supply-chain collaboration process / show process",
+                    "Distribution of customer churn causes / show categories",
                 ],
                 "reject_examples": [
-                    "表格内容填写",
-                    "核心信息",
-                    "突出该段核心概念与关系",
-                    "保留原文件表格布局",
+                    "Fill in table contents",
+                    "Core information",
+                    "Highlight this section's core concepts and relationships",
+                    "Preserve the original file's table layout",
                 ],
             },
         }
@@ -827,6 +828,7 @@ class PublishAssembler:
         body_markdown: str,
         plan: ContentPlanSpec,
         assets: List[GeneratedVisualAssetSpec],
+        language: str = "zh",
     ) -> str:
         text = str(body_markdown or "")
         if not text.strip():
@@ -880,13 +882,15 @@ class PublishAssembler:
                 figure_index=figure_index,
                 asset=asset,
                 plan=plan,
+                language=language,
             )
+            caption_label = "Caption: " if str(language or "").lower().startswith("en") else "图注："
             insertions.append(
                 (
                     insert_line,
                     (
                         f"\n![{str(asset.alt_text or 'visual')}]({str(asset.image_url or '').strip()})\n"
-                        f"\n*图注：{caption}*\n"
+                        f"\n*{caption_label}{caption}*\n"
                     ),
                 )
             )
@@ -920,7 +924,7 @@ class PublishAssembler:
             stripped = str(lines[idx] or "").strip()
             if not stripped:
                 continue
-            if stripped.startswith("#") or stripped.startswith("![") or stripped.startswith("*图注："):
+            if stripped.startswith("#") or stripped.startswith("![") or stripped.startswith(("*图注：", "*Caption: ")):
                 continue
             if paragraph_starts and idx == paragraph_starts[-1] + 1:
                 continue
@@ -965,11 +969,11 @@ class PublishAssembler:
         return len(lines)
 
     @staticmethod
-    def _humanize_role(role: str) -> str:
+    def _humanize_role(role: str, *, language: str = "zh") -> str:
         raw = str(role or "").strip().replace("_", " ")
         raw = re.sub(r"\s+", " ", raw).strip()
         if not raw:
-            return "配图"
+            return "Visual" if str(language or "").lower().startswith("en") else "配图"
         zh_map = {
             "cover illustration": "头图",
             "framework diagram": "框架图",
@@ -982,6 +986,8 @@ class PublishAssembler:
             "visual requirement": "界面示意",
         }
         low = raw.lower()
+        if str(language or "").lower().startswith("en"):
+            return raw.title()
         return zh_map.get(low, raw)
 
     @classmethod
@@ -991,6 +997,7 @@ class PublishAssembler:
         figure_index: int,
         asset: GeneratedVisualAssetSpec,
         plan: ContentPlanSpec,
+        language: str = "zh",
     ) -> str:
         section_title = ""
         anchor = str(asset.anchor_section_id or "").strip()
@@ -998,7 +1005,11 @@ class PublishAssembler:
             if str(sec.section_id or "").strip() == anchor:
                 section_title = strip_visual_or_production_clauses(str(sec.title or "").strip())
                 break
-        role_text = cls._humanize_role(str(asset.role or ""))
+        role_text = cls._humanize_role(str(asset.role or ""), language=language)
+        if str(language or "").lower().startswith("en"):
+            if section_title:
+                return f"Figure {figure_index} {section_title}: {role_text}"
+            return f"Figure {figure_index} {role_text}"
         if section_title:
             return f"图{figure_index} {section_title}{role_text if role_text and role_text not in section_title else '示意'}"
         return f"图{figure_index} {role_text}示意"

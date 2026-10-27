@@ -50,16 +50,16 @@ def _instruction_for(event: Dict[str, Any]) -> str:
     target = event.get("target") or {}
     name = str(target.get("name") or target.get("text") or target.get("aria_label") or "").strip()
     if kind == "click":
-        return f"点击 {name}" if name else "点击目标控件"
+        return f"Click {name}" if name else "Click the target control"
     if kind == "fill":
         value = str(event.get("value") or "")
         preview = value if len(value) <= 40 else value[:40] + "…"
-        return f"在 {name or '输入框'} 输入 {preview}" if value else f"聚焦 {name or '输入框'}"
+        return f"Enter {preview} in {name or 'input field'}" if value else f"Focus {name or 'input field'}"
     if kind == "navigate":
-        return f"打开 {event.get('url') or '页面'}"
+        return f"Open {event.get('url') or 'page'}"
     if kind == "select":
-        return f"选择 {name}" if name else "选择下拉项"
-    return str(event.get("instruction") or kind or "操作")
+        return f"Select {name}" if name else "Select an option"
+    return str(event.get("instruction") or kind or "Action")
 
 
 def _coerce_variables(vars_in: Any) -> Dict[str, str]:

@@ -399,6 +399,7 @@ class EnterpriseToolService:
                     mcp_tool_name=tool.mcp_tool_name,
                     arguments=request.arguments,
                     actor_user_id=claims.user_id,
+                    language=str(dict(active_turn.get("turn_metadata") or {}).get("language") or dict(active_turn.get("turn_context") or {}).get("language") or "zh"),
                 )
             result = await execute_with_timeout(
                 execution,

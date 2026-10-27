@@ -18,12 +18,12 @@ def test_knowledge_qa_prompt_enforces_evidence_boundary() -> None:
     )
 
     system = messages[0]["content"]
-    assert "answer 只能使用内部知识候选 content 中明确出现的信息" in system
-    assert "一律不得写入 answer" in system
-    assert "不要用常识、行业经验、流程经验或你自己的推断补全信息" in system
-    assert "不得新增候选片段未支持的处理建议" in system
-    assert "只回答用户实际询问的事实与必要适用条件" in system
-    assert "不得移用该建议" in system
+    assert "only information explicitly present in the candidate content" in system
+    assert "unless they appear explicitly in a candidate excerpt" in system
+    assert "Do not fill gaps with common knowledge" in system
+    assert "do not add unsupported action recommendations" in system
+    assert "Answer only the facts the user asked for" in system
+    assert "Do not apply a recommendation to the user's scenario" in system
     assert "usedChunkIds" in system
     assert "supportChecks" not in system
 
@@ -46,7 +46,7 @@ def test_knowledge_qa_prompt_keeps_candidate_citation_and_content() -> None:
     user = messages[1]["content"]
     assert "citationId: doc-1:chunk_000001" in user
     assert "异常 A 出现时，处理方式是重新扫码。" in user
-    assert "请基于上述候选回答，并在 usedChunkIds 中列出实际使用的 chunkId" in user
+    assert "list the citationIds actually used in usedChunkIds" in user
 
 
 def test_missing_used_chunk_ids_do_not_fabricate_first_candidate_as_evidence() -> None:

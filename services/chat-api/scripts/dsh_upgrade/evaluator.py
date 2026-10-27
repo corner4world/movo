@@ -138,11 +138,11 @@ class DshCandidateEvaluator:
     @staticmethod
     def _decision(contract_ready: bool, blocker: str | None = None) -> dict[str, Any]:
         requirements = [
-            "在升级分支更新 versions.lock、兼容矩阵、完整性哈希、SBOM 和所有精确依赖",
-            "运行 Backend 全量回归、桌面端/Web/管理后台测试",
-            "生成桌面安装包并执行 packaged Runtime smoke",
-            "人工验证聊天、工具/MCP、Skill、审批、Browser、Code 与 Artifact 核心路径",
-            "保留上一稳定发布物，按整版本执行回滚演练",
+            "Update versions.lock, the compatibility matrix, integrity hashes, the SBOM, and exact dependencies on the upgrade branch",
+            "Run full backend regression and desktop, web, and admin console tests",
+            "Build the desktop installer and run packaged runtime smoke tests",
+            "Manually verify core chat, tools/MCP, Skill, approval, Browser, Code, and Artifact flows",
+            "Keep the previous stable release and rehearse a whole-version rollback",
         ]
         return {
             "contract_ready": contract_ready,

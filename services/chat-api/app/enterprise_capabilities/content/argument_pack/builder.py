@@ -36,8 +36,8 @@ class ArgumentPackBuilder:
                 definitions.append(ArgumentItem(label=query or "definition", summary=summary[:240], sources=sources))
                 use_cases.append(ArgumentItem(label=query or "use_case", summary=summary[:240], sources=sources))
             if query:
-                boundaries.append(ArgumentItem(label=query, summary=f"边界与限制：{summary[:180]}", sources=sources))
-                relationships.append(ArgumentItem(label=query, summary=f"关系线索：{summary[:180]}", sources=sources))
+                boundaries.append(ArgumentItem(label=query, summary=f"Boundaries and constraints: {summary[:180]}", sources=sources))
+                relationships.append(ArgumentItem(label=query, summary=f"Relationship clues: {summary[:180]}", sources=sources))
             for src in obs.get("sources") or []:
                 if isinstance(src, dict):
                     references.append(

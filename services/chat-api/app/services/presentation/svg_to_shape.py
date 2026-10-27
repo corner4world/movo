@@ -1,6 +1,6 @@
 """Convert Tabler SVG icons to OOXML custGeom shapes for PPTX embedding.
 
-Strategy (方案C): parse SVG ``<path d="...">`` into OOXML ``a:custGeom``
+Strategy: parse SVG ``<path d="...">`` into OOXML ``a:custGeom``
 path instructions.  PowerPoint renders these as native vector shapes —
 scalable, no rasterisation, no external library dependency.
 

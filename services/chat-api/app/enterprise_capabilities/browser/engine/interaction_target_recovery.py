@@ -55,12 +55,12 @@ class InteractionTargetRecovery:
             return None
         if target and target.get("editable"):
             return (
-                "这个可编辑目标已连续无法获得有效点击点。不要继续点击或改用旧坐标；"
-                "请直接对当前可编辑 ref 使用 browser_fill。"
+                "This editable target has repeatedly failed to provide a valid click point. Do not keep clicking or reuse old coordinates; "
+                "use browser_fill directly on the current editable ref."
             )
         return (
-            "这个目标在当前页面状态下已连续无法命中。不要重复使用同一 ref 或旧坐标；"
-            "请重新观察遮挡层并选择其他当前可命中的目标。"
+            "This target has repeatedly failed to be hit in the current page state. Do not reuse the same ref or old coordinates; "
+            "observe the obstruction again and choose another currently reachable target."
         )
 
     def record_failure(
@@ -199,8 +199,8 @@ def bind_coordinate_action(
                 decision=decision,
                 target=target,
                 reason=(
-                    "坐标没有命中当前 DOM 中的可编辑字段。请重新观察并使用最新字段 ref，"
-                    "不要把文本输入到未经确认的坐标。"
+                    "The coordinates did not hit an editable field in the current DOM. Observe again and use the latest field ref; "
+                    "do not enter text at unverified coordinates."
                 ),
                 blocked=True,
             )

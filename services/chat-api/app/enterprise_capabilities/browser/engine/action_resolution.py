@@ -146,9 +146,9 @@ def _selection_schema(refs: Sequence[str]) -> type[BaseModel]:
 def _selection_messages(*, goal: str, query: str, candidates: List[Dict[str, str]], lang: str) -> List[Message]:
     if lang == "zh":
         system = (
-            "你只负责判断一个浏览器文字定位结果。只能从用户消息提供的候选 ref 中选择，"
-            "不得生成其他 ref。如果查询文字表示需要点击的动作，选择最符合目标的候选并返回 click；"
-            "如果查询只是等待文字出现、候选语义不符或无法确定，返回 none。"
+            "Resolve only one browser text-location result. Choose only from candidate refs in the user message; "
+            "never invent another ref. If the query text names an action to click, choose the candidate that best fits the goal and return click. "
+            "If the query only waits for text to appear, candidates do not fit semantically, or the choice is uncertain, return none."
         )
     else:
         system = (

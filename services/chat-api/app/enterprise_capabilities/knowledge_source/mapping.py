@@ -6,6 +6,8 @@ import json
 from typing import Any
 from urllib.parse import urlparse
 
+from .external_messages import external_answer_message, external_failure_message, external_message, external_summary_message
+
 
 def value_at(value: Any, path: str) -> Any:
     if not path:
@@ -45,15 +47,15 @@ def _text(value: Any, limit: int) -> str:
     return str(value or "").strip()[:limit]
 
 
-def map_response(outcome: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+def map_response(outcome: dict[str, Any], config: dict[str, Any], *, language: str = "zh") -> dict[str, Any]:
     if not outcome.get("success"):
-        raise ValueError(_text(outcome.get("message") or "外部知识库调用失败", 500))
+        raise ValueError(external_failure_message(outcome.get("message"), language))
     mapping = dict(config.get("mapping") or {})
     body = response_body(outcome)
     answer = value_at(body, str(mapping.get("answerPath") or ""))
     if not isinstance(answer, str) or not answer.strip():
-        raise ValueError("外部知识库未返回映射的答案字段，请检查知识库配置")
-    label = _text(config.get("displayName") or "外部知识库", 120)
+        raise ValueError(external_message("answer_missing", language))
+    label = _text(config.get("displayName") or external_message("default_label", language), 120)
     rows = value_at(body, str(mapping.get("sourcesPath") or ""))
     rows = rows if isinstance(rows, list) else []
     sources: list[dict[str, Any]] = []
@@ -84,13 +86,13 @@ def map_response(outcome: dict[str, Any], config: dict[str, Any]) -> dict[str, A
         "ok": True,
         "provider": "external_knowledge_qa",
         "answer": answer.strip(),
-        "message": f"已从{label}获取答案。",
+        "message": external_answer_message(label, language),
         "retrieval_status": "completed",
         "retrieval_mode": "qa",
         "total": len(sources),
         "evidence_available": True,
         "evidence_bundle": {
-            "summary": f"答案由{label}提供；文档链接仅在该知识库提供时可打开。",
+            "summary": external_summary_message(label, language),
             "sources": sources,
             "confirmed_facts": [],
             "open_questions": [],

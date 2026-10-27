@@ -1,4 +1,4 @@
-from app.enterprise_capabilities.browser.engine.action_contracts import describe_for_agent, validate_data
+from app.enterprise_capabilities.browser.engine.action_contracts import describe_for_agent, describe_for_planner, validate_data
 from app.enterprise_capabilities.browser.engine.result_presenter import render_browser_result
 
 
@@ -25,11 +25,19 @@ def test_legacy_read_capability_uses_read_contract() -> None:
     hint = describe_for_agent("browser.navigate_and_extract", "zh")
 
     assert "browser.read" in hint
+    assert "STEP ACTION TYPE" in hint
+    assert not any("\u4e00" <= char <= "\u9fff" for char in hint)
     assert not validate_data("browser.navigate_and_extract", {}).ok
     assert validate_data(
         "browser.navigate_and_extract",
         {"result": {"name": "真实页面值"}},
     ).ok
+
+
+def test_planner_action_contract_is_english_for_chinese_sessions() -> None:
+    hint = describe_for_planner("zh")
+    assert "Available browser action types" in hint
+    assert not any("\u4e00" <= char <= "\u9fff" for char in hint)
 
 
 def test_operation_confirmation_is_included_in_answer() -> None:

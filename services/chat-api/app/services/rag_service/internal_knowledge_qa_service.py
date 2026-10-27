@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from app.knowledge.api.schemas import KnowledgeChunk, KnowledgeCitation, KnowledgeQARequest, KnowledgeQAResult
 from app.knowledge.citations.citation_resolver import build_evidence_bundle
+from app.knowledge.citations.evidence_messages import default_knowledge_label, evidence_summary
 
 
 def _model_dump(value: Any) -> Dict[str, Any]:
@@ -102,7 +103,7 @@ def _used_chunks(result: KnowledgeQAResult) -> List[Dict[str, Any]]:
     return output
 
 
-def _used_chunks_as_results(used_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _used_chunks_as_results(used_chunks: List[Dict[str, Any]], *, language: str = "zh") -> List[Dict[str, Any]]:
     """Compatibility shape for existing evidence extraction.
 
     This intentionally mirrors only the selected chunks, not the original
@@ -115,7 +116,7 @@ def _used_chunks_as_results(used_chunks: List[Dict[str, Any]]) -> List[Dict[str,
         rows.append(
             {
                 "source": f"kb://{citation_id or chunk_id or 'chunk'}",
-                "title": str(chunk.get("title") or chunk_id or "内部知识库").strip(),
+                "title": str(chunk.get("title") or chunk_id or default_knowledge_label(language)).strip(),
                 "content": str(chunk.get("text") or "").strip(),
                 "score": chunk.get("score"),
                 "meta": {
@@ -150,11 +151,12 @@ class InternalKnowledgeQAService:
         session_id: str = "",
         knowledge_ids: Any = None,
         top_k: int = 8,
+        language: str = "zh",
     ) -> Dict[str, Any]:
         q = str(query or "").strip()
         if not q:
             empty_evidence = {
-                "summary": "内部知识问答检索到 0 条引用来源",
+                "summary": evidence_summary(0, language),
                 "sources": [],
                 "confirmed_facts": [],
                 "open_questions": [],
@@ -188,7 +190,7 @@ class InternalKnowledgeQAService:
         result = await knowledge_qa_agent.answer(request)
         used_chunks = _used_chunks(result)
         citations = [_model_dump(item) for item in list(result.citations or [])]
-        evidence_bundle = build_evidence_bundle(q, list(result.citations or []))
+        evidence_bundle = build_evidence_bundle(q, list(result.citations or []), language=language)
         return {
             "ok": True,
             "mode": "qa",
@@ -205,7 +207,7 @@ class InternalKnowledgeQAService:
             "evidenceBundle": evidence_bundle,
             "retrievedCount": len(list(result.retrieved_chunks or [])),
             "usedCount": len(used_chunks),
-            "results": _used_chunks_as_results(used_chunks),
+            "results": _used_chunks_as_results(used_chunks, language=language),
         }
 
 

@@ -329,6 +329,16 @@ def test_internal_capability_results_project_knowledge_evidence_and_artifacts() 
     assert artifact["payload"]["artifacts"][0]["object_path"] == "tenant/report.docx"
 
 
+def test_english_knowledge_fallback_title_in_tool_projection() -> None:
+    projected = KernelEventProjector._tool_evidence(
+        "knowledge_search",
+        {"language": "en-US", "items": [{"chunkId": "chunk-1", "text": "Policy text"}]},
+        "call-1",
+    )
+    assert projected is not None
+    assert projected["sources"][0]["title"] == "Internal knowledge"
+
+
 def test_explicit_profile_publish_does_not_replace_tenant_default() -> None:
     async def scenario() -> None:
         store = InMemoryRuntimeProfileStore()

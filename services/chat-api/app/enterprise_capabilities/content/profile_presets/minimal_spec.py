@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 from app.enterprise_capabilities.content.body_projection import is_visual_or_production_requirement as shared_is_visual_or_production_requirement
 from app.enterprise_capabilities.content.compose_access import resolve_compose_policy
 from app.enterprise_capabilities.content.profile_presets.contracts import ComposeProfile, ProfilePreset, VisualContract
+from app.enterprise_capabilities.content.profile_presets.minimal_spec_messages import defaults as profile_defaults
 
 def _extract_compose_policy(output_spec: Dict[str, Any]) -> Dict[str, Any]:
     return resolve_compose_policy(output_spec)
@@ -75,8 +76,8 @@ def _build_style_description_by_priority(
     return str(preset_style_fallback or "").strip()
 
 
-def _default_required_blocks(*, channel: str, content_form: str, task_mode: str) -> List[str]:
-    return ["核心内容"]
+def _default_required_blocks(*, channel: str, content_form: str, task_mode: str, language: str = "zh") -> List[str]:
+    return [str(profile_defaults(language, content_form=content_form, audience="")["required_block"])]
 
 
 def _normalize_requirement_token(value: str) -> str:
@@ -402,7 +403,7 @@ def _infer_content_form(output_spec: Dict[str, Any], preset: ProfilePreset) -> s
     return intent_form or preset_form or "article"
 
 
-def _infer_required_blocks(preset: ProfilePreset, output_spec: Dict[str, Any], channel: str, content_form: str, task_mode: str) -> List[str]:
+def _infer_required_blocks(preset: ProfilePreset, output_spec: Dict[str, Any], channel: str, content_form: str, task_mode: str, language: str = "zh") -> List[str]:
     ob = [str(x).strip() for x in (output_spec.get("required_blocks") or []) if str(x).strip()]
     if not ob:
         gp = output_spec.get("generation_policy") if isinstance(output_spec.get("generation_policy"), dict) else {}
@@ -415,7 +416,7 @@ def _infer_required_blocks(preset: ProfilePreset, output_spec: Dict[str, Any], c
     # rest of this function looks at upstream signals (compose.required_sections,
     # content_schema, publish_narrative) that for dynamic deliverables are
     # either missing or stamped with a single deliverable-description string
-    # like ["撰写用于求职投递与面试评估的专业简历文档report"]. Letting those win
+    # like a sentence requesting a professional resume. Letting those win
     # collapses synth's 6-7 resume sections back into one bogus block.
     if str(getattr(preset, "source", "") or "").strip().lower() == "dynamic":
         synth_blocks = [
@@ -448,7 +449,7 @@ def _infer_required_blocks(preset: ProfilePreset, output_spec: Dict[str, Any], c
     rb = [str(x).strip() for x in (structure.get("required_blocks") or []) if str(x).strip()]
     if rb:
         return rb
-    return _default_required_blocks(channel=channel, content_form=content_form, task_mode=task_mode)
+    return _default_required_blocks(channel=channel, content_form=content_form, task_mode=task_mode, language=language)
 
 
 def _normalize_title_token(value: str) -> str:
@@ -508,6 +509,7 @@ def normalize_minimal_spec(
     content_schema = _extract_content_schema(output_spec)
     compose_policy = _extract_compose_policy(output_spec)
     task_mode = str((task_ir or {}).get("deliverable_mode") or "").strip().lower()
+    language = str(output_spec.get("language") or (task_ir or {}).get("language") or "zh")
     channel = _infer_channel(output_spec, p)
     content_form = _infer_content_form(output_spec, p)
     try:
@@ -554,9 +556,10 @@ def normalize_minimal_spec(
         or compose.get("audience")
         or cts_audience.get("primary")
         or compose_profile.audience_model
-        or "通用读者"
+        or profile_defaults(language, content_form=content_form, audience="")["audience"]
     ).strip()
-    identity = str(p.identity or "").strip() or f"面向{audience}的{(content_form or 'article')}写作者，强调清晰、准确、可执行。"
+    fallback_text = profile_defaults(language, content_form=content_form, audience=audience)
+    identity = str(p.identity or "").strip() or str(fallback_text["identity"])
     style_reference = dict(p.style_reference or {})
     style_desc = _build_style_description_by_priority(
         delivery_profile=delivery_profile,
@@ -566,10 +569,10 @@ def normalize_minimal_spec(
     style_reference["positive"] = _sanitize_reader_facing_text(str(
         style_desc
         or style_reference.get("positive")
-        or "先回答问题，再结构化展开，并给出可执行建议。"
+        or fallback_text["positive_style"]
     )).strip()
     if not str(style_reference.get("negative") or "").strip():
-        style_reference["negative"] = "避免空泛结论、术语堆砌和无依据判断。"
+        style_reference["negative"] = str(fallback_text["negative_style"])
 
     anti_patterns = dict(p.anti_patterns or {})
     fw = [str(x).strip() for x in (anti_patterns.get("forbidden_words") or []) if str(x).strip()]
@@ -593,7 +596,7 @@ def normalize_minimal_spec(
         formatting_rules["max_paragraph_sentences"] = min(3, int(formatting_rules.get("max_paragraph_sentences") or 3))
         formatting_rules["list_density"] = "high"
 
-    required_blocks = _infer_required_blocks(p, output_spec, channel, content_form, task_mode)
+    required_blocks = _infer_required_blocks(p, output_spec, channel, content_form, task_mode, language)
     structure["required_blocks"] = required_blocks
     structure["section_count"] = int(structure.get("section_count") or len(required_blocks))
     structure.setdefault("outline_depth", 2)
@@ -619,8 +622,7 @@ def normalize_minimal_spec(
         must_include_entries.extend({"value": item, "source": "writing_instruction"} for item in writing_instructions)
     if not must_include_entries:
         must_include_entries = [
-            {"value": "关键概念解释", "source": "fallback"},
-            {"value": "可执行建议", "source": "fallback"},
+            {"value": str(item), "source": "fallback"} for item in fallback_text["must_include"]
         ]
     must_include: List[str] = []
     seen_must_include = set()

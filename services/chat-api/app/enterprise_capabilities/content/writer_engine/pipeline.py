@@ -206,7 +206,7 @@ class WriterEnginePipeline:
                 "readable labels",
                 "no watermark",
                 "all visible text must be reader-facing final copy",
-                "no process labels like 强结论开头/导语/正文/结尾/section/introduction/conclusion",
+                "no process labels such as strong-conclusion opening, introduction, body, ending, section, or conclusion",
                 "no editorial or writing-instruction text inside the image",
             ],
         }
@@ -230,8 +230,8 @@ class WriterEnginePipeline:
         except Exception as e:
             self._log_stage("infographic_prompt_failed", {"error": str(e)[:260]})
         fallback_prompt = (
-            ("中文信息图，主题：%s。仅使用面向最终读者的标题、标签和图注文案。不要出现“强结论开头”“导语”“正文”“结尾”等过程性或结构性文字。突出关键结论、驱动因素、风险与建议，布局为标题+三栏要点+结论区，风格专业简洁，文字清晰可读。")
-            % (section_title or "章节分析")
+            ("Chinese-language infographic about %s. Use only reader-facing titles, labels, and captions. Avoid process or structural labels such as strong-conclusion opening, introduction, body, or ending. Highlight key conclusions, drivers, risks, and recommendations. Use a title, three columns of key points, and a conclusion area. Keep the style professional, concise, and legible.")
+            % (section_title or "Section analysis")
             if language == "zh"
             else (
                 f"Professional infographic about '{section_title}'. Use only reader-facing final labels and captions. "
@@ -347,7 +347,7 @@ class WriterEnginePipeline:
                 alt = f"{'信息图' if language == 'zh' else 'Infographic'} {idx}"
             if not prompt:
                 prompt = (
-                    f"生成一张与文章内容相关的信息图，主题：{user_query}。突出关键概念、流程、应用场景，文字清晰可读。"
+                    f"Create a Chinese-language infographic related to the article about {user_query}. Highlight key concepts, processes, and use cases; keep all text legible."
                     if language == "zh"
                     else f"Create one infographic for: {user_query}. Emphasize core concepts, workflow, and use cases."
                 )
@@ -1015,7 +1015,7 @@ class WriterEnginePipeline:
                 # sec_title already carries the section number (via
                 # format_display_title which returns "{number} {clean}"); the
                 # earlier "{sec_no} {sec_title}" form double-printed it as
-                # "1 1 核心架构".
+                # a duplicated section number.
                 activity_msg = (f"正在撰写第 {idx+1}/{total} 章：{sec_title}" if language == "zh" else f"Writing section {idx+1}/{total}: {sec_title}")
             yield {
                 "type": "activity",
@@ -1081,9 +1081,9 @@ class WriterEnginePipeline:
                         feedback = issues_as_writer_feedback(actionable)
                         original_objective = str(sec.get("objective") or "")
                         amended_objective = (
-                            f"{original_objective}\n\n[修订指引]\n{feedback}"
+                            f"{original_objective}\n\n[Revision guidance]\n{feedback}"
                             if original_objective
-                            else f"[修订指引]\n{feedback}"
+                            else f"[Revision guidance]\n{feedback}"
                         )
                         section_md = await self._writer.write_section(
                             title=sec_title,
@@ -1460,7 +1460,7 @@ class WriterEnginePipeline:
         source_object_path = str((evidence_bundle or {}).get("translation_source_object_path") or "").strip()
         source_signed_url = str((evidence_bundle or {}).get("translation_source_url") or "").strip()
 
-        # Validate: must have uploaded document (markdown 或原始二进制其一即可)
+        # Require either extracted Markdown or original uploaded bytes.
         if not source_markdown and not source_object_path and not source_signed_url:
             yield {"type": "answer", "content": i18n_get("translation_no_document", language) + "\n"}
             return
@@ -1470,7 +1470,7 @@ class WriterEnginePipeline:
             yield {"type": "answer", "content": i18n_get("translation_unsupported_format", language) + "\n"}
             return
 
-        # .docx 走原位翻译（保留样式、合并单元格、页眉页脚、表格结构）
+        # Translate .docx in place, preserving styles, merged cells, headers, footers, and tables.
         if source_ext == ".docx" and (source_object_path or source_signed_url):
             async for evt in self._generate_translation_docx_inplace(
                 user_query=user_query,
@@ -1483,7 +1483,7 @@ class WriterEnginePipeline:
                 yield evt
             return
 
-        # .xlsx 走原位翻译（保留 workbook 结构、样式、公式、数字/日期）
+        # Translate .xlsx in place, preserving workbook structure, styles, formulas, and values.
         if source_ext == ".xlsx" and (source_object_path or source_signed_url):
             async for evt in self._generate_translation_xlsx_inplace(
                 user_query=user_query,
@@ -1572,14 +1572,15 @@ class WriterEnginePipeline:
         user_id: str,
     ) -> AsyncIterator[Dict[str, Any]]:
         """In-place .docx translation.
-        下载原始 .docx → 原位翻译（保留样式/合并单元格/页眉页脚） → 上传 OSS → 发布 document event。
+        Download the original .docx, translate it while preserving formatting,
+        upload to OSS, then publish a document event.
         """
         import os as _os
         from app.utils.i18n import get as i18n_get
         from app.utils.oss_uploader import AliyunOSSUploader
         from app.services.translation.docx_inplace import extract_segments, translate_docx_inplace
 
-        # 1) 获取原始 .docx 二进制
+        # 1) Fetch the original .docx bytes.
         yield {
             "type": "activity",
             "content": {
@@ -1614,7 +1615,7 @@ class WriterEnginePipeline:
                 yield {"type": "answer", "content": i18n_get("translation_no_document", language) + "\n"}
                 return
 
-        # 2) 推断源/目标语言（先看文件内容少量字节，解不准就用中文兜底）
+        # 2) Infer source and target languages from a small byte sample; default to Chinese if uncertain.
         try:
             from docx import Document as _Doc
             import io as _io
@@ -1640,7 +1641,7 @@ class WriterEnginePipeline:
             },
         }
 
-        # 3) 执行原位翻译
+        # 3) Translate in place.
         try:
             result = await translate_docx_inplace(
                 source_bytes=source_bytes,
@@ -1653,7 +1654,7 @@ class WriterEnginePipeline:
             yield {"type": "answer", "content": f"{i18n_get('translation_complete', language)} (fallback: see markdown output)\n"}
             return
 
-        # 4) 上传到 OSS
+        # 4) Upload to OSS.
         base = _os.path.splitext(source_filename or "translated_document")[0]
         out_filename = f"{base}_{target_lang}.docx"
         try:
@@ -1674,7 +1675,7 @@ class WriterEnginePipeline:
             "filename": out_filename,
         })
 
-        # 5) 发布 document event（前端据此展示下载卡片）
+        # 5) Emit a document event for the download card.
         yield {
             "type": "document",
             "content": {
@@ -1686,7 +1687,7 @@ class WriterEnginePipeline:
                 "render_stats": result.stats,
             },
         }
-        # 给个简短的 answer 作为完成标志，避免空 content 让上游卡死
+        # Emit a short answer to signal completion and avoid empty content upstream.
         yield {"type": "answer", "content": f"{i18n_get('translation_complete', language)}\n"}
 
     async def _generate_translation_xlsx_inplace(
@@ -1700,7 +1701,8 @@ class WriterEnginePipeline:
         user_id: str,
     ) -> AsyncIterator[Dict[str, Any]]:
         """In-place .xlsx translation.
-        下载原始 .xlsx → 翻译文本单元格 → 上传 OSS → 发布 document event。
+        Download the original .xlsx, translate text cells, upload to OSS,
+        then publish a document event.
         """
         import os as _os
         from app.utils.i18n import get as i18n_get

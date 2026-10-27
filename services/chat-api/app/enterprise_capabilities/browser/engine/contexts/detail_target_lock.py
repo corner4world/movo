@@ -115,8 +115,8 @@ class DetailTargetLock:
             reason = str(item.get("reason") or "").strip()
             if identity:
                 constraints.append(
-                    f"候选“{identity}”已淘汰，不要再次选择"
-                    + (f"：{reason}" if reason else "。")
+                    f"Candidate '{identity}' was excluded; do not select it again"
+                    + (f": {reason}" if reason else ".")
                 )
         return constraints
 

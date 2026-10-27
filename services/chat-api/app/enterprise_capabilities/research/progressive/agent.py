@@ -22,6 +22,7 @@ from app.enterprise_capabilities.research.progressive.decision_guard import (
     recovery_queries,
 )
 from app.enterprise_capabilities.research.progressive.evidence_store import ResearchEvidenceStore
+from app.enterprise_capabilities.research.progressive.summary_messages import research_summary
 from app.infrastructure.execution_events.operation import operation_event
 from app.enterprise_capabilities.research.progressive.temporal_context import (
     build_research_temporal_context,
@@ -311,7 +312,7 @@ class ProgressiveResearchAgent:
             results=[self._evidence_to_result(item) for item in evidence_store.output()],
             rejected_sources=[item.model_dump() for item in rejected[:40]],
             search_trace=trace,
-            summary=self._summary(accepted, trace, budget_exhausted=result_budget_exhausted),
+            summary=self._summary(accepted, trace, budget_exhausted=result_budget_exhausted, language=language),
             error="" if accepted else "no_accepted_evidence",
             evidence_sufficient=evidence_sufficient,
             budget_exhausted=result_budget_exhausted,
@@ -382,9 +383,9 @@ class ProgressiveResearchAgent:
             "Plan from the request semantics rather than fixed entity rules. Queries may cover languages, "
             "competitors, time periods, prices, documents, benchmarks, and official sources, but every query "
             "must serve the user's goal.\n"
-            f"输出严格 JSON，形如：{schema}\n"
-            f"用户语言：{language}\n"
-            f"用户需求：{query[:3000]}"
+            f"Output strict JSON in this form: {schema}\n"
+            f"User language: {language}\n"
+            f"User request: {query[:3000]}"
         )
         try:
             data = await invoke_json_decision(
@@ -433,15 +434,15 @@ class ProgressiveResearchAgent:
         system = (
             "You are a progressive research agent. Evaluate whether search results can support the final output and decide whether another search round is required.\n"
             f"{evidence_judging_temporal_guidance(self.temporal_context)}\n"
-            "不要靠代码规则过滤；请基于用户需求、来源标题、URL、摘要内容判断相关性、可用性、覆盖缺口和可信度。\n"
-            "只接受和用户需求直接相关、信息足够具体、可作为事实依据的证据。拒绝泛泛营销页、内容缺失、主题跑偏、摘要不足以支撑结论的来源。\n"
-            "如果证据覆盖还不够，请给出下一轮 query；如果足够，请 done=true。\n"
-            "输出严格 JSON：{\n"
+            "Do not filter by hard-coded rules; judge relevance, usefulness, coverage gaps, and credibility from the user request, source title, URL, and summary.\n"
+            "Accept only evidence directly relevant to the request, specific enough to support factual claims. Reject generic marketing pages, missing content, off-topic sources, and summaries insufficient to support conclusions.\n"
+            "If evidence coverage is insufficient, provide queries for the next round; otherwise set done=true.\n"
+            "Output strict JSON: {\n"
             '  "accepted_evidence":[{"title":"","url":"","content":"","provider":"","query":"","confidence":0.0,"rationale":""}],\n'
             '  "rejected_sources":[{"title":"","url":"","reason":""}],\n'
             '  "next_queries":[""], "done":false, "rationale":""\n'
             "}\n"
-            "accepted_evidence.content 必须是你从候选摘要中整理出的可引用证据文字，不要编造候选里没有的信息。"
+            "accepted_evidence.content must be citable evidence drawn from candidate summaries. Do not invent information absent from candidates."
         )
         try:
             data = await invoke_json_decision(
@@ -561,10 +562,10 @@ class ProgressiveResearchAgent:
         return bool(done and next_queries and round_index < max_rounds and not budget_exhausted)
 
     @staticmethod
-    def _summary(accepted: list[EvidenceItem], trace: list[dict[str, Any]], *, budget_exhausted: bool = False) -> str:
-        suffix = " 已达到最大研究轮次，仍有未继续执行的候选查询。" if budget_exhausted else ""
-        return (
-            f"渐进式研究完成：采纳 {len(accepted)} 条证据，"
-            f"执行 {len([x for x in trace if x.get('event') != 'no_provider'])} 次 provider 搜索。"
-            f"{suffix}"
+    def _summary(accepted: list[EvidenceItem], trace: list[dict[str, Any]], *, budget_exhausted: bool = False, language: str = "zh") -> str:
+        return research_summary(
+            accepted_count=len(accepted),
+            provider_searches=len([x for x in trace if x.get("event") != "no_provider"]),
+            budget_exhausted=budget_exhausted,
+            language=language,
         )

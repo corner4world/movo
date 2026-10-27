@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from app.enterprise_capabilities.evidence.foundation.source_labels import evidence_source_label
+
 
 def _text(value: Any, *, limit: int = 0) -> str:
     text = str(value or "").strip()
@@ -24,7 +26,7 @@ def _title_from_path(value: Any) -> str:
     return ""
 
 
-def _normalize_document_source(source: Dict[str, Any], *, fallback_id: str) -> Dict[str, Any]:
+def _normalize_document_source(source: Dict[str, Any], *, fallback_id: str, language: str) -> Dict[str, Any]:
     document_id = _first_text(source.get("document_id"), source.get("documentId"), limit=160)
     chunk_id = _first_text(source.get("chunk_id"), source.get("chunkId"), limit=180)
     if not document_id or not chunk_id:
@@ -47,8 +49,8 @@ def _normalize_document_source(source: Dict[str, Any], *, fallback_id: str) -> D
     content = _first_text(source.get("content"), source.get("text"), source.get("snippet"), limit=8000)
     row: Dict[str, Any] = {
         "id": citation_id or fallback_id,
-        "title": title or "文档片段",
-        "source_name": _first_text(source.get("source_name"), source.get("sourceName"), "内部知识库", limit=120),
+        "title": title or evidence_source_label("document_fragment", language),
+        "source_name": _first_text(source.get("source_name"), source.get("sourceName"), evidence_source_label("internal_knowledge", language), limit=120),
         "snippet": snippet,
         "source_type": "document",
         "citation_id": citation_id,
@@ -78,40 +80,40 @@ def _normalize_document_source(source: Dict[str, Any], *, fallback_id: str) -> D
     return row
 
 
-def _sources_from_evidence_bundle(meta: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _sources_from_evidence_bundle(meta: Dict[str, Any], language: str) -> List[Dict[str, Any]]:
     evidence_bundle = meta.get("evidenceBundle") or meta.get("evidence_bundle")
     if not isinstance(evidence_bundle, dict):
         return []
     output: List[Dict[str, Any]] = []
     for idx, source in enumerate(list(evidence_bundle.get("sources") or [])[:12], start=1):
         if isinstance(source, dict):
-            row = _normalize_document_source(source, fallback_id=f"kb_doc_{idx}")
+            row = _normalize_document_source(source, fallback_id=f"kb_doc_{idx}", language=language)
             if row:
                 output.append(row)
     return output
 
 
-def _sources_from_used_chunks(meta: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _sources_from_used_chunks(meta: Dict[str, Any], language: str) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     for idx, chunk in enumerate(list(meta.get("usedChunks") or meta.get("used_chunks") or [])[:12], start=1):
         if isinstance(chunk, dict):
-            row = _normalize_document_source(chunk, fallback_id=f"kb_chunk_{idx}")
+            row = _normalize_document_source(chunk, fallback_id=f"kb_chunk_{idx}", language=language)
             if row:
                 output.append(row)
     return output
 
 
-def _sources_from_citations(meta: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _sources_from_citations(meta: Dict[str, Any], language: str) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     for idx, citation in enumerate(list(meta.get("citations") or [])[:12], start=1):
         if isinstance(citation, dict):
-            row = _normalize_document_source(citation, fallback_id=f"kb_citation_{idx}")
+            row = _normalize_document_source(citation, fallback_id=f"kb_citation_{idx}", language=language)
             if row:
                 output.append(row)
     return output
 
 
-def extract_kb_document_sources(item: Dict[str, Any]) -> List[Dict[str, Any]]:
+def extract_kb_document_sources(item: Dict[str, Any], *, language: str = "zh") -> List[Dict[str, Any]]:
     """Project graph-time kb_search evidence rows into openable document sources.
 
     This function is intentionally scoped to runtime evidence projection. It does
@@ -129,12 +131,13 @@ def extract_kb_document_sources(item: Dict[str, Any]) -> List[Dict[str, Any]]:
     direct_source = _normalize_document_source(
         {**item, **meta},
         fallback_id="kb_direct",
+        language=language,
     )
     if direct_source:
         candidates.append(direct_source)
-    candidates.extend(_sources_from_evidence_bundle(meta))
-    candidates.extend(_sources_from_used_chunks(meta))
-    candidates.extend(_sources_from_citations(meta))
+    candidates.extend(_sources_from_evidence_bundle(meta, language))
+    candidates.extend(_sources_from_used_chunks(meta, language))
+    candidates.extend(_sources_from_citations(meta, language))
 
     output: List[Dict[str, Any]] = []
     seen: set[str] = set()

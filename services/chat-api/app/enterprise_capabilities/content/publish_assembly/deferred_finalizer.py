@@ -54,7 +54,7 @@ class DeferredVisualFinalizer:
         if bool(output_spec.get("deferred_visuals_disabled")):
             return PublishAssemblySpec(body_markdown=body, final_markdown=body)
 
-        sections = self._sections_from_final_markdown(body)
+        sections = self._sections_from_final_markdown(body, language=language)
         minimum, maximum = self._visual_bounds(output_spec=output_spec, section_count=len(sections))
         if maximum <= 0:
             return PublishAssemblySpec(body_markdown=body, final_markdown=body)
@@ -87,10 +87,10 @@ class DeferredVisualFinalizer:
         )
 
     @staticmethod
-    def _sections_from_final_markdown(markdown: str) -> List[PlanSectionSpec]:
-        sections = locate_final_body_sections(markdown)
+    def _sections_from_final_markdown(markdown: str, *, language: str = "zh") -> List[PlanSectionSpec]:
+        sections = locate_final_body_sections(markdown, language=language)
         if not sections:
-            return [PlanSectionSpec(section_id="final_s1", title="正文", purpose=str(markdown or "")[:500])]
+            return [PlanSectionSpec(section_id="final_s1", title="Body" if str(language or "").lower().startswith("en") else "正文", purpose=str(markdown or "")[:500])]
         return [
             PlanSectionSpec(
                 section_id=section.section_id,
@@ -215,7 +215,7 @@ class DeferredVisualFinalizer:
         slots: List[VisualSlotSpec] = []
         for idx in range(1, count + 1):
             section = candidates[(idx - 1) % len(candidates)]
-            title = str(section.title or "正文").strip()
+            title = str(section.title or ("Body" if str(language or "").lower().startswith("en") else "正文")).strip()
             excerpt = str(section.purpose or "").strip()[:260]
             if language == "zh":
                 description = f"围绕最终正文《{title}》制作解释性信息图，准确呈现以下内容及其关系：{excerpt}"

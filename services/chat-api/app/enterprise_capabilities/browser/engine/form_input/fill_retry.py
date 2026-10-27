@@ -75,7 +75,7 @@ class FillRetryPolicy:
             return Decision("browser_observe", {}, f"{FILL_RECONCILIATION_TAG} fresh field evidence required")
         if pending.origin_url and observation.url != pending.origin_url:
             self._pending = None
-            return _unresolved("页面已经切换，无法确认上一页面的输入结果；不会把原内容填入新页面。")
+            return _unresolved("The page changed, so the previous page's input result cannot be verified. Do not fill the original content into the new page.")
         original_args = dict(pending.decision.args or {})
         target = find_field(
             observation.elements,
@@ -95,19 +95,19 @@ class FillRetryPolicy:
                 pending.missing_reads += 1
                 return Decision(
                     "browser_observe", {"with_screenshot": True},
-                    f"{FILL_RECONCILIATION_TAG} 原输入框已消失，获取当前画面和控件以确认替换状态；尚未确认填写，不能提交。",
+                    f"{FILL_RECONCILIATION_TAG} The original input disappeared. Read the current screen and controls to verify its replacement state; filling is unconfirmed, so do not submit.",
                 )
             self._pending = None
-            return _unresolved("填写后原输入框已消失，重新观察仍无法确认对应控件和内容。请确认输入结果后继续。")
+            return _unresolved("The original input disappeared after filling, and re-observation could not confirm the corresponding control or content. Verify the input result before continuing.")
         # A non-empty mismatch proves that the previous mutation changed the
         # field without replacing its old value. Retrying would append the
         # same text again and make recovery progressively harder.
         if _normalize(target.get("value")):
             self._pending = None
-            return _unresolved("输入框当前内容与要求不一致，已停止重复输入和提交，请确认需要保留的内容。")
+            return _unresolved("The input's current content differs from the requested value. Repeated entry and submission have stopped; confirm what content should be kept.")
         if target.get("disabled") or target.get("visible") is False or not target.get("editable"):
             self._pending = None
-            return _unresolved("原输入框当前不可编辑，无法继续填写；请检查页面限制或控件状态。")
+            return _unresolved("The original input is no longer editable. Check page restrictions or control state before continuing.")
         original_args["ref"] = str(target.get("ref") or original_args.get("ref") or "")
         self._pending = None
         return Decision(

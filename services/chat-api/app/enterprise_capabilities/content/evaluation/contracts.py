@@ -36,7 +36,7 @@ class Issue(BaseModel):
 
     standard_id: str  # references Standard.id
     severity: Severity  # carries the standard's severity for quick triage
-    location: str  # section name / paragraph hint / "全文" if span-wide
+    location: str  # Section name, paragraph hint, or the full-text marker.
     finding: str  # what's wrong, concretely
     fix_suggestion: str  # how to fix, concretely
 

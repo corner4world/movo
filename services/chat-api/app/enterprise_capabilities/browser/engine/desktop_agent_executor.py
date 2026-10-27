@@ -239,7 +239,7 @@ _XHS_LANDING_URLS: frozenset[str] = frozenset(
 )
 
 # Matches an explicit publish-page URL the user embedded in their goal
-# (e.g. "打开 https://creator.xiaohongshu.com/publish/publish?target=video").
+# (for example, a request to open the platform's video publishing URL).
 # Such a URL overrides the yaml default for this task only.
 _XHS_USER_PUBLISH_URL_RE = re.compile(
     r"https?://creator\.xiaohongshu\.com/publish/[^\s'\"<>)，。；]+",
@@ -327,13 +327,13 @@ def _build_enterprise_sites_map(profiles: List[Dict[str, Any]]) -> Dict[str, str
         if host:
             parts.append(host)
         if entry_url and entry_url != host:
-            parts.append(f"入口 {entry_url}")
+            parts.append(f"Entry URL: {entry_url}")
         if auth:
-            parts.append(f"登陆 {auth}")
+            parts.append(f"Authentication: {auth}")
         if hints:
             flat = " ".join(line.strip() for line in hints.splitlines() if line.strip())
             if flat:
-                parts.append(f"说明 {flat[:220]}")
+                parts.append(f"Notes: {flat[:220]}")
         out[name] = " | ".join(parts) or name
     return out
 
@@ -545,7 +545,7 @@ def _format_upstream_artifacts(node: CapabilityTask, inputs: CapabilityInputs, l
             pieces.append(f"# {dep_id}\n{json.dumps(cleaned, ensure_ascii=False, indent=2)}")
     if not pieces:
         return ""
-    header = ("【上游节点产出（可作为本次任务输入）】" if str(lang).startswith("zh")
+    header = ("UPSTREAM ARTIFACTS (inputs from prior nodes):" if str(lang).startswith("zh")
               else "UPSTREAM ARTIFACTS (inputs from prior nodes):")
     return header + "\n" + "\n\n".join(pieces)
 
@@ -555,32 +555,22 @@ def _format_candidate_entries(
 ) -> str:
     if not candidates:
         return ""
-    is_zh = str(lang or "").startswith("zh")
     lines: List[str] = []
     for idx, c in enumerate(candidates, 1):
         url = c.get("url") or ""
         src = c.get("source") or ""
         name = c.get("name") or ""
         if src == "user_request":
-            tag = "用户原文给出" if is_zh else "from user request"
+            tag = "from user request"
         elif src == "site_scope":
-            tag = "来自任务目标站点" if is_zh else "from task site scope"
+            tag = "from task site scope"
         else:
-            tag = (f"来自站点设置「{name}」" if is_zh
-                   else f"from site profile '{name}'")
+            tag = f"from site profile '{name}'"
         lines.append(f"  {idx}. {url}  ({tag})")
-    header = (
-        "【候选入口 URL（来自用户原文 + 站点设置）】"
-        if is_zh else
-        "CANDIDATE ENTRY URLS (from user request + site profiles):"
-    )
+    header = "CANDIDATE ENTRY URLS (from user request + site profiles):"
     rule = (
-        "⛔ 禁止调用 browser_ask_user 索要 URL —— 必须先从上面列表里挑一个 browser_navigate 过去。"
-        "\n多条候选时按用户原文的语义/顺序选（例如「在 A 查询、到 B 上传」→查询步用 A、上传步用 B）。"
-        if is_zh else
-        "⛔ Do NOT call browser_ask_user for a URL — pick one from the list above and browser_navigate to it."
-        "\nWith multiple candidates, match by semantic role/order in the user request "
-        "(e.g. 'query on A, upload to B' → read step uses A, upload step uses B)."
+        "⛔ Do not call browser_ask_user for a URL. First choose one of the candidates above and browser_navigate to it."
+        "\nWith multiple candidates, follow the semantic roles and order in the user request (for example, query on A and upload to B means use A for reading and B for uploading)."
     )
     return f"{header}\n" + "\n".join(lines) + "\n" + rule
 
@@ -634,20 +624,13 @@ def _format_downstream_expectations(node: CapabilityTask, lang: str) -> str:
         header = "- " + (" ".join(header_parts) if header_parts else "consumer")
         lines.append(header)
         if objective:
-            lines.append(f"  目标: {objective}" if str(lang).startswith("zh") else f"  goal: {objective}")
+            lines.append(f"  goal: {objective}")
         if required_inputs:
             keys = ", ".join(required_inputs[:8])
-            lines.append(
-                (f"  需要你提供的 artifact 键: {keys}" if str(lang).startswith("zh")
-                 else f"  expects artifact keys from you: {keys}")
-            )
+            lines.append(f"  expects artifact keys from you: {keys}")
     if not lines:
         return ""
-    header_text = (
-        "【下游节点在等你交付的东西】(影响你的 browser_done.data 应该放什么)"
-        if str(lang).startswith("zh")
-        else "DOWNSTREAM CONSUMERS (shape your browser_done.data to serve them):"
-    )
+    header_text = "DOWNSTREAM CONSUMERS (shape your browser_done.data to serve them):"
     return header_text + "\n" + "\n".join(lines)
 
 
@@ -886,7 +869,7 @@ class DesktopAgentBrowserExecutor:
 
         goal_sections: List[str] = []
         if original_user_request and original_user_request != goal:
-            header = "【用户最终要的（所有节点共享的原始请求）】" if lang == "zh" \
+            header = "USER'S ORIGINAL REQUEST (shared by all graph nodes):" if lang == "zh" \
                      else "USER'S ORIGINAL REQUEST (shared by all graph nodes):"
             goal_sections.append(f"{header}\n{original_user_request}")
         if candidate_block:
@@ -897,7 +880,7 @@ class DesktopAgentBrowserExecutor:
             # Plan-A soft fallback: upstream declared deps but left no data.
             # Tell the LLM honestly so it re-fetches instead of assuming
             # the work was already done.
-            warn = ("⚠ 上游节点没有给你留下具体数据 —— 不要假装已有，需要从头抓取。"
+            warn = ("⚠ Upstream nodes produced no concrete data. Do not assume the work is done; fetch from scratch."
                     if lang == "zh"
                     else "⚠ Upstream nodes produced no concrete data — don't assume it's done; fetch from scratch.")
             goal_sections.append(warn)
@@ -912,7 +895,7 @@ class DesktopAgentBrowserExecutor:
             # The step goal goes last so the LLM sees context first, then
             # the specific action it should take now.
             goal_sections.append(
-                ("【你这一步要做的】\n" + goal) if lang == "zh" else ("THIS STEP:\n" + goal)
+                ("THIS STEP:\n" + goal) if lang == "zh" else ("THIS STEP:\n" + goal)
             )
             goal = "\n\n".join(goal_sections)
 
@@ -2121,17 +2104,20 @@ class DesktopAgentBrowserExecutor:
                 if target_history.excludes_completed else None
             )
             if completed_recovery_decision is not None:
+                model_history_hint = (
+                    "The current page already has the requested business action; "
+                    "returning through a grounded candidate entry to choose another target."
+                )
                 history_hint = (
                     "当前页面已完成本次要求的业务操作，正在返回可信候选入口并改选其他目标。"
                     if lang == "zh" else
-                    "The current page already has the requested business action; "
-                    "returning through a grounded candidate entry to choose another target."
+                    model_history_hint
                 )
                 history.append(StepRecord(
                     observation=current_obs,
                     decision=decision,
                     ok=False,
-                    error=history_hint,
+                    error=model_history_hint,
                     result_digest="completed current target recovered before dispatch",
                 ))
                 yield {"type": "activity", "content": {
@@ -2156,16 +2142,17 @@ class DesktopAgentBrowserExecutor:
                 alternative_target_recovery,
             )
             if blocked_target_ref:
+                model_history_hint = "This candidate already has the requested business action; it was excluded before navigation."
                 history_hint = (
                     "该候选已完成当前要求的业务操作，已在选择阶段排除并改选其他目标。"
                     if lang == "zh" else
-                    "This candidate already has the requested business action; it was excluded before navigation."
+                    model_history_hint
                 )
                 history.append(StepRecord(
                     observation=current_obs,
                     decision=decision,
                     ok=False,
-                    error=history_hint,
+                    error=model_history_hint,
                     result_digest=f"excluded_ref={blocked_target_ref}",
                 ))
                 yield {"type": "activity", "content": {
@@ -2253,16 +2240,17 @@ class DesktopAgentBrowserExecutor:
                         },
                     )
                 if not provenance.allowed:
+                    model_hint = "The target URL is not grounded: do not invent a site route from button text; click an observed link or use an explicit user/site URL."
                     hint = (
                         "目标 URL 没有可靠来源：不要根据按钮文字猜站内路径；请点击页面中已观察到的链接，或使用用户/站点设置给出的完整 URL。"
                         if lang == "zh" else
-                        "The target URL is not grounded: do not invent a site route from button text; click an observed link or use an explicit user/site URL."
+                        model_hint
                     )
                     history.append(StepRecord(
                         observation=current_obs,
                         decision=decision,
                         ok=False,
-                        error=f"{hint} ({provenance.reason})",
+                        error=f"{model_hint} ({provenance.reason})",
                         result_digest="",
                     ))
                     notify_driver_rejection(
@@ -2457,14 +2445,13 @@ class DesktopAgentBrowserExecutor:
                 _post_action_check = post_action_observation_check(history)
                 if _post_action_check.required:
                     _hint = (
-                        "⛔ 不允许在动作之后不重观察就 browser_done。"
-                        "\n你最近一次动作（fill/click/select/press/upload）之后还没有任何"
-                        " browser_observe / browser_read_text / browser_navigate / "
-                        "browser_scroll 等产生新快照的步骤 —— 当前 observation 是"
-                        "**动作之前**的旧快照，任何结论（成功/失败/bug）都是基于陈旧信息。"
-                        "\n下一步必须先做一次 browser_observe（或 read_text / scroll）"
-                        "拿到动作后的真实页面状态，再决定是不是 browser_done。"
-                        "\n注意：browser_wait_for 不算重观察 —— 它不返回 DOM 快照。"
+                        "⛔ Do not call browser_done without observing again after an action."
+                        "\nYour latest action (fill/click/select/press/upload) has no subsequent"
+                        " snapshot-producing step such as browser_observe, browser_read_text,"
+                        " browser_navigate, or browser_scroll. The current observation is from"
+                        " **before the action**, so any success, failure, or bug conclusion would rely on stale information."
+                        "\nNext, use browser_observe (or read_text / scroll) to obtain the actual post-action page state before deciding whether to call browser_done."
+                        "\nNote: browser_wait_for does not count as re-observation because it returns no DOM snapshot."
                         if lang == "zh" else
                         "⛔ browser_done not allowed without a post-action observation."
                         "\nYour most recent mutation (fill/click/select/press/upload) has"
@@ -2558,8 +2545,7 @@ class DesktopAgentBrowserExecutor:
                 pending_effects = effect_tracker.pending_receipts()
                 if pending_effects:
                     pending_hint = (
-                        "提交动作已经发生，但业务结果尚未核验。请读取结果页或根据业务对象回查，"
-                        "不要重复提交，也不要直接结束任务。"
+                        "The commit occurred, but its business result is still unverified. Inspect the result page or look up the business object; do not resubmit or finish yet."
                         if lang == "zh" else
                         "The commit occurred, but its business result is still unverified. "
                         "Inspect or look up the resulting object; do not resubmit or finish yet."
@@ -2615,7 +2601,11 @@ class DesktopAgentBrowserExecutor:
                         observation=current_obs,
                         decision=decision,
                         ok=False,
-                        error=effect_completion.reason,
+                        error=assess_effect_completion(
+                            action_capability_id,
+                            effect_tracker.receipts(),
+                            lang="en",
+                        ).reason,
                         result_digest=json.dumps(effect_tracker.receipts(), ensure_ascii=False)[:6000],
                     ))
                     yield {"type": "activity", "content": {
@@ -3027,14 +3017,15 @@ class DesktopAgentBrowserExecutor:
                 nav_url = str(decision.args.get("url") or "").strip()
                 cur_url = str(getattr(current_obs, "url", "") or "").strip()
                 if nav_url and cur_url and nav_url == cur_url:
+                    model_hint = f"Already on {cur_url}; do not browser_navigate to the same URL again."
                     hint = (
                         f"已在当前页面 {cur_url}，不要重复 browser_navigate 到同一 URL。"
                         if lang == "zh" else
-                        f"Already on {cur_url}; do not browser_navigate to the same URL again."
+                        model_hint
                     )
                     history.append(StepRecord(
                         observation=current_obs, decision=decision, ok=False,
-                        error=hint, result_digest="",
+                        error=model_hint, result_digest="",
                     ))
                     yield {"type": "activity", "content": {
                         "kind": "warning",
@@ -3100,14 +3091,6 @@ class DesktopAgentBrowserExecutor:
                     # Fall through to normal dispatch with the rewritten decision.
                 elif _per_text_tripped or _cross_text_tripped:
                     hint = (
-                        f"⚠ `browser_wait_for text=\"{_wait_text}\"` 已调用 "
-                        f"{_per_text_calls} 次 —— 该 API 在 ok=True 时已返回匹配元素的"
-                        " `matched_ref` 和 `clickable_ref`，直接用那个 ref 做 browser_click/"
-                        "fill 即可，不要再 wait_for 相同文字。若历次返回里没见到 ref，"
-                        "说明该文字不在可点击元素上，换 browser_observe 扫 elements 或"
-                        " browser_read_text 找 <a href=...>。"
-                        if lang == "zh"
-                        else
                         f"⚠ `browser_wait_for text=\"{_wait_text}\"` invoked "
                         f"{_per_text_calls} times. Successful wait_for returns `matched_ref`"
                         " and `clickable_ref` — use that ref directly with browser_click/fill."
@@ -3298,18 +3281,21 @@ class DesktopAgentBrowserExecutor:
                 current_obs,
             )
             if scope_blocker is not None:
+                model_scope_hint = (
+                    "Cross-form interaction blocked while the current form is still active. "
+                    "Continue inside that form; the lock is released after submit, close, or navigation."
+                )
                 scope_hint = (
                     "已阻止跨表单操作：当前正在编辑的表单尚未完成。"
                     "请继续操作当前表单内的字段或按钮；表单提交、关闭或页面切换后会自动解除限制。"
                     if lang == "zh" else
-                    "Cross-form interaction blocked while the current form is still active. "
-                    "Continue inside that form; the lock is released after submit, close, or navigation."
+                    model_scope_hint
                 )
                 history.append(StepRecord(
                     observation=current_obs,
                     decision=decision,
                     ok=False,
-                    error=scope_hint,
+                    error=model_scope_hint,
                     result_digest=json.dumps({
                         "active_scope": scope_blocker.active_scope,
                         "target_scope": scope_blocker.target_scope,
@@ -3374,18 +3360,21 @@ class DesktopAgentBrowserExecutor:
             )
             if dependency_blocker is not None:
                 blocked_fields = "、".join(dependency_blocker.fields)
+                model_dependency_hint = (
+                    f"Dependent action blocked: fields {', '.join(dependency_blocker.fields)} "
+                    "are not confirmed. Refill and verify them before clicking a button or pressing Enter."
+                )
                 dependency_hint = (
                     f"已阻止继续操作：字段“{blocked_fields}”尚未确认写入。"
                     "必须先重新填写并确认该字段，再点击按钮或按回车。"
                     if lang == "zh" else
-                    f"Dependent action blocked: fields {', '.join(dependency_blocker.fields)} "
-                    "are not confirmed. Refill and verify them before clicking a button or pressing Enter."
+                    model_dependency_hint
                 )
                 history.append(StepRecord(
                     observation=current_obs,
                     decision=decision,
                     ok=False,
-                    error=dependency_hint,
+                    error=model_dependency_hint,
                     result_digest="",
                 ))
                 yield {"type": "activity", "content": {
@@ -3438,22 +3427,25 @@ class DesktopAgentBrowserExecutor:
                         )
                     except SemanticActionRejected as exc:
                         alignment = exc.alignment
+                        model_semantic_hint = (
+                            "Blocked a click whose business object conflicts with the task: "
+                            f"expected {alignment.intended.entity or alignment.intended.operation!r}, "
+                            f"target represents {alignment.observed.entity or alignment.observed.operation!r}. "
+                            "Observe again and select a semantically compatible element."
+                        )
                         semantic_hint = (
                             "已阻止与任务业务对象不一致的点击："
                             f"目标需要“{alignment.intended.entity or alignment.intended.operation}”，"
                             f"当前元素表示“{alignment.observed.entity or alignment.observed.operation}”。"
                             "请重新观察并选择与目标一致的元素。"
                             if lang == "zh" else
-                            "Blocked a click whose business object conflicts with the task: "
-                            f"expected {alignment.intended.entity or alignment.intended.operation!r}, "
-                            f"target represents {alignment.observed.entity or alignment.observed.operation!r}. "
-                            "Observe again and select a semantically compatible element."
+                            model_semantic_hint
                         )
                         history.append(StepRecord(
                             observation=current_obs,
                             decision=decision,
                             ok=False,
-                            error=semantic_hint,
+                            error=model_semantic_hint,
                             result_digest=json.dumps(
                                 alignment.model_dump(mode="json"),
                                 ensure_ascii=False,
@@ -3567,18 +3559,21 @@ class DesktopAgentBrowserExecutor:
                         )
                         if prepared_effect is not None and commit_blocker is not None:
                             blocked_fields = "、".join(commit_blocker.fields)
+                            model_commit_hint = (
+                                f"Commit blocked: fill results for {', '.join(commit_blocker.fields)} "
+                                "are not confirmed. Observe and verify or refill before committing."
+                            )
                             commit_hint = (
                                 f"已阻止提交：字段“{blocked_fields}”的填写结果尚未确认。"
                                 "请重新观察并确认字段值，必要时重新填写，再执行提交。"
                                 if lang == "zh" else
-                                f"Commit blocked: fill results for {', '.join(commit_blocker.fields)} "
-                                "are not confirmed. Observe and verify or refill before committing."
+                                model_commit_hint
                             )
                             history.append(StepRecord(
                                 observation=current_obs,
                                 decision=decision,
                                 ok=False,
-                                error=commit_hint,
+                                error=model_commit_hint,
                                 result_digest=json.dumps(
                                     form_transaction.summaries(),
                                     ensure_ascii=False,
@@ -3606,18 +3601,21 @@ class DesktopAgentBrowserExecutor:
                             if prepared_effect is not None else None
                         )
                         if replay_blocker is None and business_replay is not None:
+                            model_replay_hint = (
+                                "The same operation on this business object is already executed or pending verification; "
+                                "the re-rendered control will not be submitted again. Verify the result only."
+                            )
                             replay_hint = (
                                 "同一业务对象上的相同操作已经执行或正在验收，"
                                 "已阻止因页面重渲染产生的重复提交；请只验证结果。"
                                 if lang == "zh" else
-                                "The same operation on this business object is already executed or pending verification; "
-                                "the re-rendered control will not be submitted again."
+                                model_replay_hint
                             )
                             history.append(StepRecord(
                                 observation=current_obs,
                                 decision=decision,
                                 ok=False,
-                                error=replay_hint,
+                                error=model_replay_hint,
                                 result_digest=business_replay.identity.business_action_id,
                             ))
                             yield {"type": "activity", "content": {
@@ -3631,18 +3629,21 @@ class DesktopAgentBrowserExecutor:
                             consecutive_failures += 1
                             continue
                         if replay_blocker is not None:
+                            model_replay_hint = (
+                                f"Action {replay_blocker.action_name!r} already has status "
+                                f"{replay_blocker.status}; replay blocked. Verify the result instead."
+                            )
                             replay_hint = (
                                 f"操作“{replay_blocker.action_name}”已有状态 {replay_blocker.status}，"
                                 "已阻止重复提交；请只验证结果，不要再次执行该操作。"
                                 if lang == "zh" else
-                                f"Action {replay_blocker.action_name!r} already has status "
-                                f"{replay_blocker.status}; replay blocked. Verify the result instead."
+                                model_replay_hint
                             )
                             history.append(StepRecord(
                                 observation=current_obs,
                                 decision=decision,
                                 ok=False,
-                                error=replay_hint,
+                                error=model_replay_hint,
                                 result_digest=json.dumps(
                                     replay_blocker.model_dump(mode="json"),
                                     ensure_ascii=False,
@@ -3744,18 +3745,21 @@ class DesktopAgentBrowserExecutor:
                     dict(decision.args or {}),
                 )
                 if not fill_preflight.ok:
+                    model_stale_fill_hint = (
+                        "The fill target is not an editable field in the latest page state. "
+                        "The stale element ref was rejected; observing again before resolving the field."
+                    )
                     stale_fill_hint = (
                         "填写目标已不属于当前页面中的可编辑字段，已停止使用旧元素编号；"
                         "正在重新读取页面并定位输入框。"
                         if lang == "zh" else
-                        "The fill target is not an editable field in the latest page state. "
-                        "The stale element ref was rejected; observing again before resolving the field."
+                        model_stale_fill_hint
                     )
                     history.append(StepRecord(
                         observation=current_obs,
                         decision=decision,
                         ok=False,
-                        error=stale_fill_hint,
+                        error=model_stale_fill_hint,
                         result_digest=fill_preflight.reason,
                     ))
                     pending_resolved_decision = Decision(
@@ -4418,17 +4422,6 @@ class DesktopAgentBrowserExecutor:
                     stagnation_notices = 0
                 if no_progress_streak >= NO_PROGRESS_STREAK_LIMIT:
                     hint = (
-                            "⚠ 已连续 {n} 步操作返回 ok=True，但页面 URL / 元素数 / 文本 "
-                            "都没有任何变化 —— 说明操作没有真正推进业务状态。"
-                        "\n可能原因（按常见度）："
-                        "\n  1. 必填字段（带 * 的 textbox）还没填 —— 检查 elements 里所有 role=textbox 的 name 含 '*' 或 '必填'，先 browser_fill"
-                        "\n  2. 目标按钮被禁用（disabled / aria-disabled） —— 事件虽已分发，但业务不会响应"
-                        "\n  3. 点到了装饰性 div / span，不是真正可交互控件"
-                        "\n立即换策略："
-                        "\n  - 先 browser_observe 重新扫一遍当前 elements（含 attributes），看谁是 disabled"
-                        "\n  - 找齐所有必填项 browser_fill 之后再点提交"
-                        "\n  - 如果按钮真的被禁用就 browser_fail 说明哪个前置条件没满足"
-                    ).format(n=no_progress_streak + 1) if lang == "zh" else (
                         "⚠ {n} consecutive ok=True actions but page URL / element "
                         "count / text have not changed at all — the operations are "
                         "not actually advancing the business state."

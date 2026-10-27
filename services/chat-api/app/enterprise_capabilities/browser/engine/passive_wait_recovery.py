@@ -18,7 +18,7 @@ def recover_passive_wait(decision: Decision, observation: Observation, history: 
         return decision
     return Decision(
         "browser_observe", {"with_screenshot": True},
-        "连续等待未推进任务，改为读取当前状态。局部加载提示不等于整页不可用；"
-        "请使用已经可操作的控件、滚动到目标区域或处理已观察到的覆盖层，"
-        "不要再次无条件等待。若确实无法推进，说明具体阻碍。",
+        "Repeated waiting did not advance the task. Read the current state instead. A local loading indicator does not make the whole page unavailable; "
+        "use controls that are already actionable, scroll to the target area, or handle an observed overlay. "
+        "Do not wait again without a condition. If progress is impossible, explain the specific obstacle.",
     )

@@ -61,7 +61,7 @@ class TokenUsageDispatcher:
                 repo = TokenUsageRepository(get_db())
                 await repo.insert(record)
                 
-                # 异步累计扣减组织点数
+                # Accumulate organization point deductions asynchronously.
                 try:
                     from app.core.billing import deduct_points_after_request
                     await deduct_points_after_request(record.main_id, record.total_tokens)

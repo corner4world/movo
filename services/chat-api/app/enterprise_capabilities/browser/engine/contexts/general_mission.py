@@ -56,7 +56,7 @@ class GeneralMissionLedger:
         if current and current.state in {"submitted", "results_ready"} and value and value != current.query:
             return (
                 "reject",
-                f"关键词“{current.query}”的结果尚未打开并完成目标操作，不能切换到“{value}”。请先消费当前搜索结果。",
+                f"Results for query '{current.query}' have not been opened and processed for the goal. Do not switch to '{value}' yet; process the current results first.",
             )
         return "allow", ""
 

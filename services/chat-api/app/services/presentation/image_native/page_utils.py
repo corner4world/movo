@@ -5,17 +5,18 @@ import re
 from app.services.presentation.contracts import FreeformDeckBlueprint, PageBrief
 
 
-def progress_page_label(page: PageBrief, index: int) -> str:
+def progress_page_label(page: PageBrief, index: int, *, language: str = "zh") -> str:
+    english = str(language or "").lower().startswith("en")
     page_type = str(page.page_type or "").strip().lower()
     if page_type == "cover":
-        return "封面"
+        return "Cover" if english else "封面"
     if page_type in {"closing", "thank_you", "thankyou", "back_cover"}:
-        return "结束页"
+        return "Closing slide" if english else "结束页"
     for value in (page.key_takeaway, page.source_outline_section, page.visual_center):
         label = _normalize_label(str(value or ""))
         if label:
             return label.rstrip("：:，,。.;；")
-    return f"第{index}页"
+    return f"Page {index}" if english else f"第{index}页"
 
 
 def renumber_pages(blueprint: FreeformDeckBlueprint) -> FreeformDeckBlueprint:

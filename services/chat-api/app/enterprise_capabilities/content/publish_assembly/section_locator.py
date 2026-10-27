@@ -29,7 +29,7 @@ def normalize_heading_token(value: str) -> str:
     return re.sub(r"[^\w\u4e00-\u9fff]+", "", raw)
 
 
-def locate_final_body_sections(markdown: str, *, max_sections: int = 24) -> List[LocatedSection]:
+def locate_final_body_sections(markdown: str, *, max_sections: int = 24, language: str = "zh") -> List[LocatedSection]:
     text = str(markdown or "")
     lines = text.splitlines()
     if not lines:
@@ -42,10 +42,10 @@ def locate_final_body_sections(markdown: str, *, max_sections: int = 24) -> List
             heading_candidates.append({"line_idx": idx, "title": title, "kind": _heading_kind(line)})
 
     heading_candidates = _drop_document_title_heading(candidates=heading_candidates)
-    sections = _sections_from_heading_candidates(lines=lines, candidates=heading_candidates)
+    sections = _sections_from_heading_candidates(lines=lines, candidates=heading_candidates, language=language)
     if sections:
         return sections[:max_sections]
-    return _paragraph_chunk_sections(lines=lines, max_sections=max_sections)
+    return _paragraph_chunk_sections(lines=lines, max_sections=max_sections, language=language)
 
 
 def final_markdown_section_ranges(markdown: str) -> List[Dict[str, Any]]:
@@ -155,7 +155,7 @@ def _drop_document_title_heading(*, candidates: List[Dict[str, Any]]) -> List[Di
     return candidates
 
 
-def _sections_from_heading_candidates(*, lines: List[str], candidates: List[Dict[str, Any]]) -> List[LocatedSection]:
+def _sections_from_heading_candidates(*, lines: List[str], candidates: List[Dict[str, Any]], language: str = "zh") -> List[LocatedSection]:
     if not candidates:
         return []
     sections: List[LocatedSection] = []
@@ -169,7 +169,7 @@ def _sections_from_heading_candidates(*, lines: List[str], candidates: List[Dict
         sections.append(
             LocatedSection(
                 section_id=f"final_s{len(sections) + 1}",
-                title=str(candidate.get("title") or f"正文 {len(sections) + 1}").strip(),
+                title=str(candidate.get("title") or (f"Body {len(sections) + 1}" if str(language or "").lower().startswith("en") else f"正文 {len(sections) + 1}")).strip(),
                 start_line=start_idx + 1,
                 end_line=end_idx + 1,
                 purpose=excerpt,
@@ -178,7 +178,7 @@ def _sections_from_heading_candidates(*, lines: List[str], candidates: List[Dict
     return sections
 
 
-def _paragraph_chunk_sections(*, lines: List[str], max_sections: int) -> List[LocatedSection]:
+def _paragraph_chunk_sections(*, lines: List[str], max_sections: int, language: str = "zh") -> List[LocatedSection]:
     paragraphs: List[tuple[int, int]] = []
     start: int | None = None
     for idx, line in enumerate(lines):
@@ -205,7 +205,7 @@ def _paragraph_chunk_sections(*, lines: List[str], max_sections: int) -> List[Lo
         sections.append(
             LocatedSection(
                 section_id=f"final_s{len(sections) + 1}",
-                title=f"正文 {len(sections) + 1}",
+                title=f"Body {len(sections) + 1}" if str(language or "").lower().startswith("en") else f"正文 {len(sections) + 1}",
                 start_line=start_idx + 1,
                 end_line=end_idx + 1,
                 purpose=_excerpt(lines=lines, start_idx=start_idx, end_idx=end_idx),

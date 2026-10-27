@@ -186,8 +186,8 @@ def strip_visual_placeholder_directives(value: str) -> str:
     """Remove visual placeholder instructions from reader-facing body contracts.
 
     This intentionally does not remove ordinary visual intent. A phrase like
-    "少量配图" may still drive the production-side visual pipeline; phrases like
-    "含少量配图标记" or "image placeholders" must not reach body generation.
+    "a few illustrations" may still drive the production-side visual pipeline;
+    instructions to insert image placeholders must not reach body generation.
     """
     text = str(value or "")
     if not text:
@@ -209,7 +209,7 @@ def body_only_formatting_rules(formatting_rules: Dict[str, Any]) -> Dict[str, An
     """Project preset formatting rules to reader-facing body constraints.
 
     Visual placeholders are production instructions. They can make the writer
-    emit literal "[配图：...]" text, so they must stay out of body prompts.
+    emit literal image-placeholder markers, so they must stay out of body prompts.
     """
     out: Dict[str, Any] = {}
     for raw_key, raw_value in dict(formatting_rules or {}).items():

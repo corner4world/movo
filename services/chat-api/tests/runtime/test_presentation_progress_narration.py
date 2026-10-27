@@ -65,3 +65,16 @@ def test_progress_narration_explains_decisions_instead_of_exposing_pipeline_labe
     assert "克制的科技商务风格" in messages[2]
     assert "第 1/2 页「封面」" in messages[3]
     assert "预览与导出使用同一套画面" in messages[4]
+
+    english = [
+        story_planning_introduction(language="en-US"),
+        story_plan_summary(story, language="en-US"),
+        visual_plan_summary(deck, concurrency=2, language="en-US"),
+        page_generation_summary(page, index=1, total=2, language="en-US"),
+        preview_assembly_summary(2, language="en-US"),
+        presentation_ready_summary(2, language="en-US"),
+    ]
+    assert "智能体从聊天走向执行" in english[1]  # Source text is preserved in its original language.
+    assert "Slide 1/2" in english[3]
+    assert "Cover" in english[3]
+    assert "same visuals for preview and export" in english[4]

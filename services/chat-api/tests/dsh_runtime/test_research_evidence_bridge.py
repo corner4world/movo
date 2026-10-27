@@ -51,6 +51,17 @@ def test_progressive_research_preserves_sufficiency_boundary() -> None:
     assert bundle["open_questions"]
 
 
+def test_evidence_fallback_label_follows_bundle_language() -> None:
+    bundle = build_research_evidence_bundle(
+        tool_name="kb_search",
+        query="question",
+        results=[{"tool": "kb_search", "title": "Example", "content": "Answer"}],
+        raw_result={},
+        language="en-US",
+    )
+    assert public_evidence_bundle(bundle)["sources"][0]["source_name"] == "Internal knowledge base"
+
+
 def test_execution_evidence_scope_is_durable_and_tenant_isolated(monkeypatch) -> None:
     from app.enterprise_capabilities.evidence import execution_scope as module
 

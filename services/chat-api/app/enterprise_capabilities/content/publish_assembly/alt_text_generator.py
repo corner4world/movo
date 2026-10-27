@@ -19,6 +19,7 @@ class AltTextGenerator:
         slot_role: str,
         slot_description: str,
         fallback_index: int,
+        language: str = "en",
     ) -> str:
         """
         Generate alt text with fallback chain:
@@ -51,15 +52,15 @@ class AltTextGenerator:
         # Convert "problem_statement" -> "Problem statement visual"
         role = str(slot_role or "").strip()
         if role:
-            readable = cls._humanize_role(role)
+            readable = cls._humanize_role(role, language=language)
             if readable:
                 return readable
 
         # Priority 4: Generic fallback
-        return f"Visual {fallback_index}"
+        return f"Visual {fallback_index}" if str(language or "").lower().startswith("en") else f"配图 {fallback_index}"
 
     @staticmethod
-    def _humanize_role(role: str) -> str:
+    def _humanize_role(role: str, *, language: str = "en") -> str:
         """
         Convert internal role identifier to readable text.
 
@@ -79,6 +80,6 @@ class AltTextGenerator:
 
         # Add "visual" suffix if not already descriptive enough
         if capitalized and len(capitalized) > 2:
-            return f"{capitalized} visual"
+            return f"{capitalized} visual" if str(language or "").lower().startswith("en") else f"{capitalized} 配图"
 
         return ""

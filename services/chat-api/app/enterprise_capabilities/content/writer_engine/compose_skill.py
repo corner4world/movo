@@ -167,22 +167,22 @@ class ToolWriterEngineComposeSkill(BaseSkill):
     def _body_base_instruction(cls, output_spec: Dict[str, Any], content_form: str) -> str:
         shape = cls._body_document_shape(output_spec, content_form=content_form)
         if shape == "manual":
-            return "写成一份可直接照着使用的说明书，重点是适用对象、基本概念、使用准备、操作步骤、注意事项和常见问题；不要写成背景分析报告"
+            return "Write a manual that readers can follow directly, covering audience, core concepts, preparation, steps, precautions, and FAQs; do not turn it into a background analysis report"
         if shape == "guide":
-            return "写成一份实用指南，重点是操作路径、示例、检查清单和注意事项；不要写成调研报告"
+            return "Write a practical guide focused on procedures, examples, checklists, and precautions; do not turn it into a research report"
         if shape == "faq":
-            return "写成一份问答式 FAQ，围绕用户真实问题逐条回答，避免报告式背景分析"
+            return "Write a question-and-answer FAQ addressing real user questions one by one; avoid report-style background analysis"
         if shape == "sop":
-            return "写成一份标准操作规程，重点是适用范围、职责、步骤、检查点和异常处理"
+            return "Write a standard operating procedure covering scope, responsibilities, steps, checkpoints, and exception handling"
         if shape == "prd":
-            return "写成一份产品需求文档，重点是目标、用户场景、功能需求、非功能需求和验收标准"
+            return "Write a product requirements document covering goals, user scenarios, functional and nonfunctional requirements, and acceptance criteria"
         if shape in {"report", "document_scale"}:
-            return "写成一份结构完整、面向协作和评审的正式报告"
+            return "Write a complete formal report suitable for collaboration and review"
         if shape == "plan":
-            return "写成一份可执行、可落地的方案文档"
+            return "Write an actionable, implementable plan document"
         if shape in {"document", "brief", "memo"}:
-            return "写成一份面向最终读者的结构化文档，直接进入主题，避免报告式背景铺垫"
-        return "写成一篇面向最终读者的可发布文章"
+            return "Write a structured document for the final reader; get straight to the topic and avoid report-style background buildup"
+        return "Write a publishable article for the final reader"
 
     @staticmethod
     def _merge_uploaded_assets(existing_assets: List[Dict[str, Any]], new_assets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -427,7 +427,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
         #   - For dynamic-source presets, the SYNTH's structure_contract wins.
         #     Upstream `compose.required_sections` is often a single sentence
         #     describing the deliverable (e.g.
-        #     ["撰写用于求职投递与面试评估的专业简历文档report"]) — meant as a
+        #     a sentence requesting a professional resume) — meant as a
         #     deliverable descriptor, not as a section list. Letting it win
         #     collapses synth's 6-7 resume blocks into a single bogus section.
         #   - For non-dynamic (builtin presets / catalog), compose policy stays
@@ -970,8 +970,10 @@ class ToolWriterEngineComposeSkill(BaseSkill):
                 or "uploaded_agreement"
             ).strip()
             # Insert as a high-priority "template" result at the front of the bundle.
+            language = str(output_spec.get("language") or "zh").lower()
+            template_label = "Agreement Draft" if language.startswith("en") else "协议底稿"
             template_result = {
-                "title": f"[协议底稿] {title}",
+                "title": f"[{template_label}] {title}",
                 "summary": markdown[:8000],
                 "url": str(item.get("source_url") or "").strip(),
                 "source": "agreement_template",
@@ -1003,8 +1005,8 @@ class ToolWriterEngineComposeSkill(BaseSkill):
             source_object_path = str(item.get("object_path") or "").strip()
             source_url = str(item.get("source_url") or item.get("signed_url") or item.get("url") or "").strip()
             binary_translatable = ext in {".docx", ".xlsx"}
-            # PDF/TXT/MD 这类文本翻译仍要求成功抽取 markdown；DOCX/XLSX 允许在
-            # 解析失败时直接回退到原始二进制下载地址，走原位翻译链路。
+            # Text translation for PDF/TXT/MD requires extracted Markdown; DOCX/XLSX can
+            # fall back to the original binary download URL for in-place translation.
             if binary_translatable:
                 if not source_object_path and not source_url:
                     continue
@@ -1016,7 +1018,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
             bundle["translation_source_markdown"] = markdown
             bundle["translation_source_filename"] = filename
             bundle["translation_source_ext"] = ext
-            # 保留 OSS object_path 与 signed url，原位翻译需要下载原始 .docx 字节。
+            # Keep the OSS object_path and signed URL to fetch original .docx bytes.
             bundle["translation_source_object_path"] = source_object_path
             bundle["translation_source_url"] = source_url
             bundle["translation_source_content_type"] = str(item.get("content_type") or "").strip()
@@ -1142,17 +1144,17 @@ class ToolWriterEngineComposeSkill(BaseSkill):
             return str(token[0] or "").strip()
         if fallback:
             return str(fallback or "").strip()
-        return "该主题"
+        return "the subject"
 
     @staticmethod
     def _build_disambiguation_goal(*, subject_label: str, candidate_subjects: List[str]) -> str:
-        label = str(subject_label or "该主题").strip()
+        label = str(subject_label or "the subject").strip()
         candidates = [str(item or "").strip() for item in list(candidate_subjects or []) if str(item or "").strip()]
-        candidate_text = "、".join(candidates[:4]) if candidates else "最相关的几个候选对象"
+        candidate_text = "; ".join(candidates[:4]) if candidates else "the most relevant candidate subjects"
         return (
-            f"不要把“{label}”写成唯一确定对象。先说明它在当前上下文里存在多种常见含义，"
-            f"重点解释这些候选：{candidate_text}。分别概括每个候选的核心概念、适用场景和区分线索，"
-            "最后明确告诉读者若要继续深入，需要补充哪些上下文。全文保持消歧说明写法，不要假装已经唯一识别。"
+            f"Do not present '{label}' as a uniquely identified subject. First explain that it has several common meanings in this context. "
+            f"Focus on these candidates: {candidate_text}. Summarize each candidate's core concept, use cases, and distinguishing clues. "
+            "Finally tell readers what context is needed to go deeper. Keep the whole piece in a disambiguating style; do not pretend the subject has been uniquely identified."
         )
 
     @staticmethod
@@ -1163,7 +1165,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
         candidate_subjects: List[str],
     ) -> str:
         zh = contains_cjk(user_query)
-        label = str(subject_label or "该主题").strip()
+        label = str(subject_label or ("该主题" if zh else "the subject")).strip()
         candidates = [str(item or "").strip() for item in list(candidate_subjects or []) if str(item or "").strip()]
         if zh:
             lines = [f"当前还不能唯一确定你说的“{label}”具体指哪一个对象。"]
@@ -1220,7 +1222,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
         # above didn't already quote it verbatim — avoids doubling the
         # same text into the prompt.
         if trimmed_query and trimmed_query not in (body_user_goal or ""):
-            lines.append(f"【用户最终要的（所有节点共享的原始请求）】\n{trimmed_query}")
+            lines.append(f"[User's final goal (original request shared by all nodes)]\n{trimmed_query}")
 
         upstream_pairs: List[Tuple[str, Any]] = []
         if isinstance(upstream_artifacts, dict):
@@ -1255,11 +1257,10 @@ class ToolWriterEngineComposeSkill(BaseSkill):
             all_empty = not cleaned_upstream_pairs or all(_value_looks_empty(v) for _k, v in cleaned_upstream_pairs)
             if all_empty:
                 lines.append(
-                    "【上游节点产出】\n"
-                    "⚠ 上游节点声明了这些产物键，但**值全是空的**。"
-                    "不要在空数据上编写内容 —— 要在正文里明确指出"
-                    "\"上游未成功抓取数据，无法给出具体数字\"，必要时让用户感知。\n"
-                    + "\n".join(f"  - {k}: （空）" for k, _ in upstream_pairs[:10])
+                    "[Upstream node output]\n"
+                    "The upstream node declared these artifact keys, but **all values are empty**. "
+                    "Do not write from empty data. State clearly in the body that upstream data collection failed and specific figures cannot be provided; make this visible to the user when needed.\n"
+                    + "\n".join(f"  - {k}: (empty)" for k, _ in upstream_pairs[:10])
                 )
             else:
                 rendered: List[str] = []
@@ -1274,7 +1275,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
                 if stripped_external_raw_count:
                     rendered.append(f"  - external_search_raw_filtered: {stripped_external_raw_count}")
                 lines.append(
-                    "【上游节点产出（含具体值，作为写作依据）】\n"
+                    "[Upstream node output (concrete values to ground the writing)]\n"
                     + "\n".join(rendered)
                 )
 
@@ -1291,14 +1292,14 @@ class ToolWriterEngineComposeSkill(BaseSkill):
                 if node_id:
                     bits.append(f"`{node_id}`")
                 if obj:
-                    bits.append(f"目标: {obj}")
+                    bits.append(f"Goal: {obj}")
                 if reqs:
-                    bits.append(f"需要的 artifact: {', '.join(reqs[:6])}")
+                    bits.append(f"Required artifacts: {', '.join(reqs[:6])}")
                 if bits:
                     consumer_lines.append("  - " + " | ".join(bits))
             if consumer_lines:
                 lines.append(
-                    "【下游节点在等你交的】(塑形你的产出，让下游能直接拿来用)\n"
+                    "[What downstream nodes need] (shape your output so they can use it directly)\n"
                     + "\n".join(consumer_lines)
                 )
 
@@ -1335,48 +1336,48 @@ class ToolWriterEngineComposeSkill(BaseSkill):
         if reader_problem or narrative_goal:
             parts = [base]
             if writing_mode == "evidence_bound":
-                parts.append("仅可基于已确认事实写作，证据不足时必须明确写为待确认或建议项")
+                parts.append("Write only from confirmed facts; clearly mark insufficient evidence as pending confirmation or a suggestion")
             elif writing_mode == "hybrid":
-                parts.append("正文以事实为主，允许有限建议补充，但不要把推断写成既定事实")
+                parts.append("Keep the body fact-led; limited suggestions are allowed, but never present inferences as established facts")
             if canonical_subject:
-                parts.append(f"全文围绕“{canonical_subject}”展开")
+                parts.append(f"Keep the entire piece focused on '{canonical_subject}'")
             if supporting_facts:
-                parts.append(f"优先锚定这些事实：{'；'.join(supporting_facts)}")
+                parts.append(f"Anchor the writing in these facts first: {'; '.join(supporting_facts)}")
             if reader_problem:
-                parts.append(f"围绕这个真实问题推进：{reader_problem}")
+                parts.append(f"Develop the piece around this real problem: {reader_problem}")
             if narrative_goal:
-                parts.append(f"文章目标：{narrative_goal}")
+                parts.append(f"Article goal: {narrative_goal}")
             if opening_intent:
-                parts.append(f"开头要求：{opening_intent}")
+                parts.append(f"Opening requirement: {opening_intent}")
             if closing_intent:
-                parts.append(f"结尾要求：{closing_intent}")
+                parts.append(f"Closing requirement: {closing_intent}")
             if required_blocks:
-                parts.append(f"正文覆盖这些内容块：{'、'.join(required_blocks[:8])}")
-            return "。".join([p for p in parts if p]).strip("。 ") + "。"
+                parts.append(f"Cover these content blocks in the body: {'; '.join(required_blocks[:8])}")
+            return ". ".join([p for p in parts if p]).strip(". ") + "."
         if canonical_subject and required_blocks:
-            base_parts = [f"围绕“{canonical_subject}”完成当前文档"]
+            base_parts = [f"Complete this document about '{canonical_subject}'"]
             if writing_mode == "evidence_bound":
-                base_parts.append("仅可基于已确认事实写作，证据不足时必须明确写为待确认或建议项")
+                base_parts.append("Write only from confirmed facts; clearly mark insufficient evidence as pending confirmation or a suggestion")
             if supporting_facts:
-                base_parts.append(f"优先锚定这些事实：{'；'.join(supporting_facts)}")
-            base_parts.append(f"正文覆盖这些内容块：{'、'.join(required_blocks[:8])}")
-            return "。".join(base_parts).strip("。 ") + "。"
+                base_parts.append(f"Anchor the writing in these facts first: {'; '.join(supporting_facts)}")
+            base_parts.append(f"Cover these content blocks in the body: {'; '.join(required_blocks[:8])}")
+            return ". ".join(base_parts).strip(". ") + "."
         if canonical_subject:
             if supporting_facts:
-                return f"围绕“{canonical_subject}”完成当前文档，并优先锚定这些事实：{'；'.join(supporting_facts)}。"
-            return f"围绕“{canonical_subject}”完成当前文档，保持所有章节和论证都服务于这个核心对象。"
+                return f"Complete this document about '{canonical_subject}' and anchor it in these facts first: {'; '.join(supporting_facts)}."
+            return f"Complete this document about '{canonical_subject}', ensuring all sections and arguments serve this central subject."
         if subject_hint and required_blocks:
-            return f"{subject_hint}。正文覆盖这些内容块：{'、'.join(required_blocks[:8])}。"
+            return f"{subject_hint}. Cover these content blocks in the body: {'; '.join(required_blocks[:8])}."
         if subject_hint:
             return subject_hint
         if outcome and required_blocks:
-            return f"{outcome}。正文覆盖这些内容块：{'、'.join(required_blocks[:8])}。"
+            return f"{outcome}. Cover these content blocks in the body: {'; '.join(required_blocks[:8])}."
         if outcome:
             return outcome
         compose_profile = output_spec.get("compose_profile") if isinstance(output_spec.get("compose_profile"), dict) else {}
         intent_statement = strip_visual_or_production_clauses(str(compose_profile.get("intent_statement") or ""))
         if intent_statement and required_blocks:
-            return f"{intent_statement}。正文覆盖这些内容块：{'、'.join(required_blocks[:8])}。"
+            return f"{intent_statement}. Cover these content blocks in the body: {'; '.join(required_blocks[:8])}."
         if intent_statement:
             return intent_statement
         return strip_visual_or_production_clauses(fallback)
@@ -2131,6 +2132,7 @@ class ToolWriterEngineComposeSkill(BaseSkill):
                 markdown=final_content,
                 user_goal=body_user_goal,
                 uploaded_assets=uploaded_assets,
+                language=language,
             )
             layout_hints = merge_image_layout_hints(
                 existing_layout_hints,

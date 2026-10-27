@@ -81,14 +81,12 @@ def validate_data(capability_id: str, data: Any) -> ContractResult:
 def describe_for_planner(lang: str = "zh") -> str:
     """Render a menu of capabilities + required produce shape — inject
     into the planner's prompt so it picks the right capability per step."""
-    is_zh = str(lang or "").startswith("zh")
     lines: List[str] = []
     for spec in _REGISTRY.values():
-        desc = spec.description_zh if is_zh else spec.description_en
-        hint = spec.data_schema_hint_zh if is_zh else spec.data_schema_hint_en
+        desc = spec.description_en
+        hint = spec.data_schema_hint_en
         lines.append(f"- `{spec.capability_id}`: {desc}\n  produces shape: {hint}")
-    header = "可选的浏览器动作类型（每个 browser step 选一个）:" if is_zh \
-             else "Available browser action types (pick one per browser step):"
+    header = "Available browser action types (pick one per browser step):"
     return header + "\n" + "\n".join(lines)
 
 
@@ -99,18 +97,9 @@ def describe_for_agent(capability_id: str, lang: str = "zh") -> str:
     spec = get_spec(capability_id)
     if spec is None:
         return ""
-    is_zh = str(lang or "").startswith("zh")
-    name = spec.name_zh if is_zh else spec.name_en
-    desc = spec.description_zh if is_zh else spec.description_en
-    hint = spec.data_schema_hint_zh if is_zh else spec.data_schema_hint_en
-    if is_zh:
-        return (
-            f"【本步骤动作类型】{name} (`{spec.capability_id}`)\n"
-            f"动作说明：{desc}\n"
-            f"browser_done 时 data 必须符合这个结构（字段名固定、值真实可观测，"
-            f"**不允许空/占位**；拿不到就继续扫页面、实在不行 browser_fail 说明）：\n"
-            f"{hint}"
-        )
+    name = spec.name_en
+    desc = spec.description_en
+    hint = spec.data_schema_hint_en
     return (
         f"STEP ACTION TYPE: {name} (`{spec.capability_id}`)\n"
         f"Description: {desc}\n"

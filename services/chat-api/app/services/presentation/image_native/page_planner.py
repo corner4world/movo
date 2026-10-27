@@ -79,6 +79,7 @@ class ImageNativePagePlanner:
     ) -> FreeformDeckBlueprint:
         messages = list((request_context or {}).get("messages") or [])
         output_spec = dict((request_context or {}).get("output_spec") or {})
+        progress_language = str(output_spec.get("language") or story_plan.language or "zh-CN")
         user_id = str(output_spec.get("user_id") or "anonymous").strip() or "anonymous"
         session_id = str(output_spec.get("session_id") or output_spec.get("task_id") or story_plan.deck_id or "").strip()
 
@@ -115,7 +116,7 @@ class ImageNativePagePlanner:
                 "stage": "deck_planning",
                 "status": "completed",
                 "kind": "analyze",
-                "message": visual_plan_summary(deck_brief, concurrency=page_concurrency),
+                "message": visual_plan_summary(deck_brief, concurrency=page_concurrency, language=progress_language),
             },
         )
 
@@ -149,7 +150,7 @@ class ImageNativePagePlanner:
                     continue
                 if execution_session is not None:
                     execution_session.raise_if_cancelled()
-                page_label = progress_page_label(page_brief, idx + 1)
+                page_label = progress_page_label(page_brief, idx + 1, language=progress_language)
                 await self._emit_progress(
                     progress_callback,
                     {
@@ -164,6 +165,7 @@ class ImageNativePagePlanner:
                             page_brief,
                             index=idx + 1,
                             total=page_count,
+                            language=progress_language,
                         ),
                     },
                 )
@@ -210,7 +212,7 @@ class ImageNativePagePlanner:
                     return
                 if execution_session is not None:
                     execution_session.raise_if_cancelled()
-                page_label = progress_page_label(page_brief, idx + 1)
+                page_label = progress_page_label(page_brief, idx + 1, language=progress_language)
                 await self._emit_progress(
                     progress_callback,
                     {
@@ -225,6 +227,7 @@ class ImageNativePagePlanner:
                             page_brief,
                             index=idx + 1,
                             total=page_count,
+                            language=progress_language,
                         ),
                     },
                 )

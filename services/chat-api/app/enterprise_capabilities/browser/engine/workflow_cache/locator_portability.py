@@ -20,7 +20,7 @@ def portable_locator(
         value = _text(result.get(key))
         # A locator is contaminated when it equals or contains the submitted
         # value.  The inverse is intentionally not true: a stable field label
-        # such as "正文" may legitimately be a substring of the entered value.
+        # such as a body-text field may legitimately be a substring of the input.
         if value and any(value == item or item in value for item in sensitive):
             result.pop(key, None)
     selector = str(result.get("selector") or "").strip()

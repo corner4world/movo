@@ -458,6 +458,7 @@ class ExternalToolService:
         mcp_tool_name: str = "",
         arguments: Dict[str, Any] | None = None,
         actor_user_id: str = "",
+        language: str = "zh",
     ) -> Dict[str, Any]:
         """Execute an enabled enterprise tool from the runtime path.
 
@@ -506,7 +507,7 @@ class ExternalToolService:
                     "X-AskAI-User-ID": str(actor_user_id or "").strip(),
                 },
             )
-            outcome = build_mcp_call_outcome(tool_name, result)
+            outcome = build_mcp_call_outcome(tool_name, result, language=language)
             outcome["durationMs"] = int((time.monotonic() - started) * 1000)
             logger.info(
                 "external_tool_runtime_execute_result main_id=%s tool_id=%s provider_type=mcp mcp_tool_name=%s success=%s duration_ms=%s",
@@ -540,15 +541,15 @@ class ExternalToolService:
         existing = str(existing_description or "").strip()
 
         system_prompt = (
-            "你是资深平台产品经理，负责为 AI Agent 工具编写高质量工具说明。"
-            "输出必须是简体中文，1 段话，60-120 字，重点说明该工具做什么、典型输入和输出、"
-            "以及 agent 何时优先调用。不要使用项目符号、不要添加标题、不要输出多段。"
+            "You are a senior platform product manager writing high-quality descriptions for AI Agent tools."
+            "Write in Simplified Chinese as one paragraph of 60-120 Chinese characters. Explain what the tool does,"
+            "its typical inputs and outputs, and when the agent should prefer it. Do not use bullets, headings, or multiple paragraphs."
         )
         user_prompt = (
-            f"工具名称：{normalized_name}\n"
-            f"工具类型：{'MCP 服务' if normalized_type == 'mcp' else 'HTTP 工具'}\n"
-            f"已有说明：{existing or '（无）'}\n"
-            "请直接生成可用于“工具说明”输入框的最终文案。"
+            f"Tool name: {normalized_name}\n"
+            f"Tool type: {'MCP service' if normalized_type == 'mcp' else 'HTTP tool'}\n"
+            f"Existing description: {existing or '(none)'}\n"
+            "Generate the final text ready for the tool description field."
         )
         try:
             llm = get_llm_client(streaming=False, stage="admin_tool_description", intent="generation")

@@ -23,8 +23,8 @@ def obstruction_evidence(error: object) -> dict[str, Any] | None:
 
 
 OBSTRUCTION_GUIDANCE = (
-    "目标节点仍存在，但点击点被其他页面层覆盖，不是编号失效。"
-    "先处理覆盖层内已观察到的关闭/返回入口，或使用已观察到的目标链接导航；"
-    "不要重复点击底层目标、盲目填入或只重复观察。不要凭空构造链接或关闭按钮；"
-    "关闭或离开前检查未提交内容，不能擅自丢弃用户输入。"
+    "The target node still exists, but another page layer covers its click point; its ref is not stale. "
+    "First handle an observed close/back control in the overlay or navigate through an observed target link. "
+    "Do not repeatedly click the covered target, fill blindly, or only observe repeatedly. Do not invent links or close buttons. "
+    "Check for unsubmitted content before closing or leaving; never discard user input without authorization."
 )

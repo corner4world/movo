@@ -40,5 +40,5 @@ def test_browser_workflow_node_survives_adapter_and_compiles_to_submit() -> None
     parsed = parse_composite_skill(markdown)
     subtasks = build_subtasks(steps=parsed["steps"], site_profile_lookup={})
     assert subtasks[0]["meta"]["entry_url"] == "https://mp.weixin.qq.com/"
-    assert "[目标系统: 微信公众号后台 (https://mp.weixin.qq.com/)]" in subtasks[0]["objective"]
+    assert "[Target system: 微信公众号后台 (https://mp.weixin.qq.com/)]" in subtasks[0]["objective"]
     assert subtasks[0]["meta"]["site_name"] == "微信公众号后台"

@@ -30,9 +30,9 @@ def build_kb_materials(records: List[Dict[str, Any]]) -> Dict[str, Any]:
             if summary:
                 item = {
                     "source_type": "kb",
-                    "title": text(row.get("title")) or "内部知识库",
+                    "title": text(row.get("title")) or "Internal knowledge base",
                     "summary": summary,
-                    "source": text(row.get("source")) or "内部知识库",
+                    "source": text(row.get("source")) or "Internal knowledge base",
                 }
                 token = fingerprint(item)
                 if token not in seen_excerpts:

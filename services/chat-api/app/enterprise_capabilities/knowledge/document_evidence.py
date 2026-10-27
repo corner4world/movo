@@ -7,15 +7,18 @@ from typing import Any
 from app.enterprise_capabilities.evidence.foundation import EvidenceNormalizer
 
 
-def build_knowledge_document_evidence(result: dict[str, Any]) -> dict[str, Any]:
+def build_knowledge_document_evidence(result: dict[str, Any], *, language: str = "zh") -> dict[str, Any]:
+    english = str(language or "").lower().startswith("en")
+    fallback_title = "Knowledge document" if english else "知识文档"
+    source_name = "Internal knowledge document" if english else "内部知识文档"
     results = []
     for segment in list(result.get("segments") or []):
         if not isinstance(segment, dict) or not str(segment.get("text") or "").strip():
             continue
         results.append({
             "tool": "knowledge_read_document",
-            "title": str(result.get("document_name") or result.get("document_id") or "知识文档"),
-            "source": "内部知识文档",
+            "title": str(result.get("document_name") or result.get("document_id") or fallback_title),
+            "source": source_name,
             "content": str(segment["text"]),
             "summary": str(segment["text"])[:1200],
             "meta": {
@@ -32,8 +35,11 @@ def build_knowledge_document_evidence(result: dict[str, Any]) -> dict[str, Any]:
         })
     if not results:
         return {}
-    return EvidenceNormalizer.build_research_bundle(
-        query=f"读取知识文档 {result.get('document_name') or result.get('document_id')}",
+    bundle = EvidenceNormalizer.build_research_bundle(
+        query=(
+            f"Read knowledge document {result.get('document_name') or result.get('document_id')}"
+            if english else f"读取知识文档 {result.get('document_name') or result.get('document_id')}"
+        ),
         tools_used=["knowledge_read_document"],
         results=results,
         raw_tool_results=[{
@@ -45,3 +51,5 @@ def build_knowledge_document_evidence(result: dict[str, Any]) -> dict[str, Any]:
             },
         }],
     )
+    bundle["language"] = language
+    return bundle

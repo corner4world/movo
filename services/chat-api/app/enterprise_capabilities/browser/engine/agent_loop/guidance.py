@@ -33,5 +33,5 @@ def build_guidance(elements: Iterable[Dict[str, Any]], *, lang: str) -> str:
     if any(purpose in {"send", "submit", "publish", "save", "create", "delete"} for purpose in purposes):
         sections.append("COMMIT: return the final commit as exactly one browser_click action so the outer safety gate can inspect it.")
     if str(lang).startswith("zh"):
-        sections.append("summary/question/reason 使用中文，工具名和参数名保持英文。")
+        sections.append("Write summary/question/reason in Chinese; keep tool and parameter names in English.")
     return "\n".join(sections)

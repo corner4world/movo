@@ -36,7 +36,7 @@ def minimum_business_effects(text: str, *, enabled: bool) -> int:
     """Return a safe minimum, not an unbounded execution count.
 
     Explicit repeat language keeps the established two-operation contract.
-    Vague words such as ``一些`` count only when the nearby phrase also binds
+Vague words such as "some" count only when the nearby phrase also binds
     business objects to a mutation, and not when it narrows back to one item.
     """
     if not enabled:

@@ -25,7 +25,7 @@ def test_resume_endpoint_passes_a_scoped_browser_context_to_dsh(monkeypatch):
         )
 
     async def fake_chat_completions(request, _authorization=None, *, trusted_turn_context=None):
-        observed.append(trusted_turn_context)
+        observed.append((trusted_turn_context, request))
 
         async def body():
             yield b"{}\n"
@@ -62,8 +62,10 @@ def test_resume_endpoint_passes_a_scoped_browser_context_to_dsh(monkeypatch):
 
     asyncio.run(exercise())
 
-    assert observed[0]["browser_resume"]["suspension_id"] == "suspension-1"
-    assert observed[0]["browser_resume"]["run_id"] == "run-1"
+    assert observed[0][0]["browser_resume"]["suspension_id"] == "suspension-1"
+    assert observed[0][0]["browser_resume"]["run_id"] == "run-1"
+    assert observed[0][1].messages[0].content == "Continue the browser task that was paused for human assistance."
+    assert observed[0][1].output_spec["language"] == "zh"
 
 
 def test_manual_browser_intervention_marks_only_browser_user_input_ready(monkeypatch):

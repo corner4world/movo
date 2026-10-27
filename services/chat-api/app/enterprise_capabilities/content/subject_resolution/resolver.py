@@ -322,8 +322,8 @@ class SubjectResolutionResolver:
             status="unresolved" if len(merged_candidates) <= 1 else "resolved_multi_candidate",
             canonical_subject="",
             article_goal_hint=(
-                f"先明确当前文档真正围绕的核心对象，再围绕“{subject or '该主题'}”写作，"
-                "说明当前信息中仍存在的歧义、可核验线索和边界条件。"
+                f"First identify the document's true central subject, then write about '{subject or 'the subject'}'. "
+                "Explain any remaining ambiguity, verifiable clues, and boundary conditions."
             ),
             rationale="fallback_ambiguous_subject",
             selection_confidence=0.0,
@@ -441,8 +441,8 @@ class SubjectResolutionResolver:
     def _compose_goal_hint(*, subject: str, supporting_facts: List[str]) -> str:
         facts = [str(x).strip() for x in list(supporting_facts or []) if str(x).strip()][:3]
         if facts:
-            return f"围绕“{subject}”完成当前文档，全文保持主题一致，并优先锚定这些事实：{'；'.join(facts)}。"
-        return f"围绕“{subject}”完成当前文档，保持所有章节和论证都服务于这个核心对象。"
+            return f"Complete the document about '{subject}', keep its subject consistent throughout, and anchor it in these facts first: {'; '.join(facts)}."
+        return f"Complete the document about '{subject}', ensuring every section and argument serves this central subject."
 
     @staticmethod
     def _compact_observations(tool_observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

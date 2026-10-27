@@ -64,7 +64,7 @@ def test_coordinate_typing_is_blocked_when_current_dom_editors_do_not_match_poin
 
     assert binding.blocked is True
     assert binding.decision.tool == "browser_type_at"
-    assert "最新字段 ref" in binding.reason
+    assert "latest field ref" in binding.reason
 
 
 def test_coordinate_typing_keeps_visual_fallback_when_dom_has_no_editable_target():

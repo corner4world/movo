@@ -48,7 +48,7 @@ class DynamicPresetSynthesizer:
             "(e.g. resume / cover letter ~ 300-700; FAQ / manual ~ 600-1500; long article 1500-3000). "
             "Never return 0, never return a string, never omit these fields.\n"
             "2. If `output_spec.task_contract.evidence_mode` is 'optional' or omitted, you MUST set `evidence_policy.citation_required` to false.\n"
-            "3. If `output_spec.required_blocks` exists, you MUST use them as the primary `structure_contract.required_blocks`. DO NOT add academic formats like '摘要' (Abstract) or '参考文献' (References) unless explicitly asked.\n"
+            "3. If `output_spec.required_blocks` exists, you MUST use them as the primary `structure_contract.required_blocks`. Do not add academic sections such as Abstract or References unless explicitly asked.\n"
             "4. `structure_contract.required_blocks` MUST be a JSON ARRAY of DISTINCT short strings (one section name per element). "
             "When `output_spec.required_blocks` exists, preserve that list exactly: do not add, remove, reorder, or pad sections. "
             "Example: [\"Header\", \"Summary\", \"Skills\", \"Experience\"]. "
@@ -58,11 +58,11 @@ class DynamicPresetSynthesizer:
             "Do NOT return identity as an object/dict; if you have multiple facets to capture, fold them into one sentence.\n"
             "6. `structure_contract.required_blocks` element language MUST match the user's writing language "
             "(infer from compose_profile.raw_request / intent_statement). When the user writes in Chinese, "
-            "produce Chinese section names like ['个人信息','专业总结','工作经验','项目经历','技能','教育背景']; "
+            "produce Chinese section names meaning Personal Information, Professional Summary, Work Experience, Projects, Skills, and Education; "
             "do NOT mix raw English tokens like 'header','summary','experience' into a Chinese deliverable.\n"
             "7. `structure_contract.required_blocks` ORDER is the reader-facing order. Put the most natural first "
-            "section first (e.g. for a resume: header/个人信息 → summary/专业总结 → experience/工作经验 → "
-            "projects/项目经历 → skills/技能 → education/教育背景). Downstream WILL preserve this order verbatim, "
+            "section first (e.g. for a resume: personal information → professional summary → work experience → "
+            "projects → skills → education, translated into the user's writing language). Downstream WILL preserve this order verbatim, "
             "so do not rely on later code to reorder.\n"
             "8. For short-form deliverables (resume / cover letter / email / JD / one-pager), set "
             "`structure_contract.numbering_style` to 'none' so section headings render without leading numbers. "
@@ -178,7 +178,7 @@ class DynamicPresetSynthesizer:
             "EXTREMELY IMPORTANT CONSTRAINTS:\n"
             "1. You MUST inherit `min_words` and `max_words` directly from `compose_profile.min_words`/`max_words` safely, DO NOT inflate them.\n"
             "2. If `output_spec.task_contract.evidence_mode` is 'optional' or omitted, you MUST set `evidence_policy.citation_required` to false.\n"
-            "3. If `output_spec.required_blocks` exists, you MUST preserve it exactly as `structure_contract.required_blocks`: do not add, remove, reorder, or pad sections. DO NOT add academic formats like '摘要' (Abstract) or '参考文献' (References) unless explicitly asked.\n"
+            "3. If `output_spec.required_blocks` exists, you MUST preserve it exactly as `structure_contract.required_blocks`: do not add, remove, reorder, or pad sections. Do not add academic sections such as Abstract or References unless explicitly asked.\n"
             "4. " + VISUAL_BODY_SEPARATION_CONSTRAINT
         )
         # Plan A diagnostic logging on the repair pass too — same rationale

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 
+from app.api.skill_package_messages import skill_package_message
 from app.api.principal import ApiPrincipal, require_api_principal, require_end_user_principal
 from app.services.skill_packages import SkillPackageError, SkillPackageInstaller, validate_skill_package
 from app.services.skill_packages.validator import MAX_ARCHIVE_BYTES
@@ -21,11 +22,11 @@ def _response(data: dict[str, Any]) -> dict[str, Any]:
     return {"code": 0, "message": "success", "data": data}
 
 
-async def _validated_upload(file: UploadFile):
+async def _validated_upload(file: UploadFile, accept_language: str | None = None):
     filename = str(file.filename or "").strip()
     if not filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail={
-            "code": "zip_required", "message": "请选择 ZIP 格式的 Skill 安装包", "file": filename,
+            "code": "zip_required", "message": skill_package_message("zip_required", accept_language), "file": filename,
         })
     content = await read_upload_with_limit(file, max_bytes=MAX_ARCHIVE_BYTES, label="Skill ZIP")
     try:
@@ -39,8 +40,9 @@ async def install_personal_skill_zip(
     file: UploadFile = File(...),
     confirm_replace: bool = Form(default=False, alias="confirmReplace"),
     principal: ApiPrincipal = Depends(require_end_user_principal),
+    accept_language: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    package = await _validated_upload(file)
+    package = await _validated_upload(file, accept_language)
     upgrade = await upgrade_inspector.inspect(
         package, scope="personal", main_id=principal.main_id, user_id=principal.user_id,
     )
@@ -72,13 +74,14 @@ async def install_organization_skill_zip(
     file: UploadFile = File(...),
     confirm_replace: bool = Form(default=False, alias="confirmReplace"),
     principal: ApiPrincipal = Depends(require_api_principal),
+    accept_language: str | None = Header(default=None),
 ) -> dict[str, Any]:
     if principal.kind != "admin_service":
         raise HTTPException(status_code=403, detail={
             "code": "organization_install_forbidden",
-            "message": "只有企业管理后台可以安装企业 Skill",
+            "message": skill_package_message("organization_install_forbidden", accept_language),
         })
-    package = await _validated_upload(file)
+    package = await _validated_upload(file, accept_language)
     upgrade = await upgrade_inspector.inspect(package, scope="organization", main_id=principal.main_id)
     if upgrade_inspector.requires_confirmation(upgrade) and not confirm_replace:
         raise HTTPException(status_code=409, detail={

@@ -449,12 +449,8 @@ class GeneralBrowserContext(BrowserTaskContext):
         return {
             "phase": f"general_{self.phase}",
             "phase_goal": (
-                f"完成并验证：{_SIGNAL_LABELS[remaining[0]]}"
-                if remaining and str(self.lang).startswith("zh")
-                else f"complete and verify: {_SIGNAL_LABELS[remaining[0]]}"
+                f"complete and verify: {_SIGNAL_LABELS[remaining[0]]}"
                 if remaining
-                else "目标证据已收集，可以整理结果并 browser_done"
-                if str(self.lang).startswith("zh")
                 else "required evidence is collected; return results with browser_done"
             ),
             "completed_signals": completed_signals,
@@ -474,8 +470,7 @@ class GeneralBrowserContext(BrowserTaskContext):
             "pending_confirmed_effects": self._pending_confirmed_effect_count(),
             "action_constraints": self.detail_target_lock.excluded_constraints() + (
                 [
-                    "已有足够数量的业务操作确认成功但尚待补齐页面证据；"
-                    "禁止执行新的提交、发布、发送或保存，只能观察和核验现有结果。"
+                    "Enough business operations are confirmed and await page evidence. Do not submit, publish, send, or save another mutation; only observe and verify the existing result."
                     if str(self.lang).startswith("zh")
                     else
                     "Enough business operations are already confirmed and await prerequisite evidence; "
@@ -484,8 +479,7 @@ class GeneralBrowserContext(BrowserTaskContext):
                 if self._pending_effect_quota_reached() else []
             ) + (
                 [
-                    "用户要求停在预览或草稿状态；可以打开创作入口、填写内容和上传文件，"
-                    "但禁止点击最终发布、提交、发送、保存或创建按钮。"
+                    "The user requested a preview or draft stop. You may open the editor, fill content, and upload files, but must not click a final publish, submit, send, save, or create control."
                     if str(self.lang).startswith("zh")
                     else
                     "The user requested a preview/draft stop. Opening the editor, filling content, "
@@ -494,7 +488,7 @@ class GeneralBrowserContext(BrowserTaskContext):
                 if self.stop_before_final_commit else []
             ),
             "notes": [
-                "页面里程碑是跨短期历史保存的事实；不要重复打开已经记录的页面。"
+                "Page milestones are facts retained across short-term history; do not reopen pages already recorded."
                 if str(self.lang).startswith("zh")
                 else "Page milestones survive short history; do not reopen pages already recorded."
             ],
@@ -836,11 +830,7 @@ class GeneralBrowserContext(BrowserTaskContext):
     def done_blocked_hint(self, current_obs: Observation) -> StepRecord:
         remaining = self._remaining_requirements()
         labels = [_SIGNAL_LABELS[name] for name in remaining]
-        reason = (
-            f"通用浏览任务还有未验证目标：{', '.join(labels)}"
-            if str(self.lang).startswith("zh")
-            else f"General browser task still has unverified goals: {', '.join(labels)}"
-        )
+        reason = f"General browser task still has unverified goals: {', '.join(labels)}"
         return StepRecord(
             observation=current_obs,
             decision=Decision(tool="__general_done_blocked__", args={}, rationale="generic ledger completion gate"),

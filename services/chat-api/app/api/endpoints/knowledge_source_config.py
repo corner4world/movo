@@ -9,8 +9,15 @@ router = APIRouter()
 
 
 @router.get("/knowledge/source/current")
-async def current_knowledge_source(authorization: str | None = Header(default=None)) -> dict[str, str]:
+async def current_knowledge_source(
+    authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
+) -> dict[str, str]:
     resolved = await _resolve_session_user(authorization)
     main_id = str(resolved.get("main_id") or resolved["user"].get("main_id") or "default")
     source = await get_knowledge_source(main_id)
-    return {"mode": str(source.get("mode") or "movo"), "displayName": str(source.get("displayName") or "MOVO 知识库")}
+    mode = str(source.get("mode") or "movo")
+    language = (accept_language or "zh").split(",", 1)[0].split(";", 1)[0].strip().lower()
+    default_name = "MOVO Knowledge Base" if language.startswith("en") else "MOVO 知识库"
+    display_name = default_name if mode == "movo" else str(source.get("displayName") or default_name)
+    return {"mode": mode, "displayName": display_name}

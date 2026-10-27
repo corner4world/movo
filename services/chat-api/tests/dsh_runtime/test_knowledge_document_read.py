@@ -191,7 +191,7 @@ def test_workflow_compiles_bound_document_tool_and_alias():
     assert refs == ("knowledge.read_document@v1",)
     assert "scope=organization" in body and "source_id=rule-doc" in body
     assert "source_role" not in body and "sourceRole" not in body
-    assert "本步骤输出称为：审核规则" in body
+    assert "Output of this step: 审核规则" in body
 
 
 def test_document_evidence_keeps_document_source_and_position():
@@ -206,6 +206,15 @@ def test_document_evidence_keeps_document_source_and_position():
     assert item["meta"]["document_id"] == "rule-doc"
     assert item["meta"]["provenance"] == "authorized_knowledge_document_read"
     assert item["meta"]["page_no"] == 1
+
+
+def test_english_document_evidence_uses_english_fallbacks():
+    bundle = build_knowledge_document_evidence({
+        "segments": [{"text": "Policy text", "chunk_id": "c1"}],
+    }, language="en-US")
+    assert bundle["language"] == "en-US"
+    assert bundle["results"][0]["title"] == "Knowledge document"
+    assert bundle["results"][0]["source"] == "Internal knowledge document"
 
 
 def test_document_read_uses_existing_internal_knowledge_position_permission():

@@ -191,7 +191,7 @@ def _markdown_to_html(markdown: str) -> str:
 
         # Structure Detection
         toc_tokens = i18n_get_list("toc_heading_variants", "zh") + i18n_get_list("toc_heading_variants", "en")
-        # Support "目录", "# 目录", "## 目录"
+        # Support table-of-contents headings with zero to two Markdown hashes.
         toc_pattern = r"^#{0,2}\s*(" + "|".join(re.escape(t) for t in toc_tokens) + r")\s*$"
         if state == 0 and re.match(toc_pattern, stripped, re.IGNORECASE):
              has_manual_toc = True
@@ -290,7 +290,7 @@ def _markdown_to_html(markdown: str) -> str:
             buf.append(f"<h1>{html.escape(stripped[2:])}</h1>")
             current_page_height += 100
         elif re.match(r"^\d+[.、]\s+", stripped):
-            # Numbered header like "1. 引言"
+            # Numbered section heading with either a period or ideographic comma.
             close_all(buf)
             title = re.sub(r"^\d+[.、]\s+", "", stripped)
             if state == 2:

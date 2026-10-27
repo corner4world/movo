@@ -88,8 +88,8 @@ class DetailWriteGate:
         if not unsafe:
             return ""
         return (
-            "当前详情页尚未确认是刚才选择的业务对象，禁止填写、上传或提交；"
-            "请先返回结果列表并按原对象身份重新定位。"
+            "The current detail page has not been confirmed as the business object just selected. Do not fill, upload, or submit. "
+            "Return to the results list and locate the object again by its original identity."
         )
 
     def suggest_recovery(self, observation: Observation) -> Optional[Decision]:

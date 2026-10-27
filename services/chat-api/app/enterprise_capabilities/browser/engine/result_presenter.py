@@ -122,7 +122,8 @@ def _render_mapping(data: Dict[str, Any], lang: str, *, depth: int = 0) -> List[
                 lines.append(f"{prefix}- **{name}**")
                 lines.extend(nested)
             continue
-        lines.append(f"{prefix}- **{name}：**{_scalar(value, lang)}")
+        separator = "：" if str(lang or "").startswith("zh") else ": "
+        lines.append(f"{prefix}- **{name}{separator}**{_scalar(value, lang)}")
     return lines
 
 

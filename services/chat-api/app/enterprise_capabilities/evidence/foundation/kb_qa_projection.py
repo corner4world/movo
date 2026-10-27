@@ -108,8 +108,8 @@ def kb_qa_evidence_rows(tool_name: str, payload: Dict[str, Any]) -> List[Dict[st
     return [
         {
             "tool": tool_name or "kb_search",
-            "title": "内部知识库问答结论",
-            "source": "内部知识库",
+            "title": "Internal knowledge Q&A conclusion",
+            "source": "Internal knowledge base",
             "summary": answer,
             "content": answer,
             "meta": {

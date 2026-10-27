@@ -1244,7 +1244,7 @@ def test_pending_media_constrains_exploration_to_current_editor_toolbar() -> Non
     ]
     constraints = " ".join(fallback.last_state_ledger["action_constraints"])
     assert "browser_upload_file" in constraints
-    assert "截图中的 ref" in constraints
+    assert "ref annotation in the current screenshot" in constraints
     assert "https://assets.example.test" not in str(fallback.last_state_ledger)
 
 
@@ -2823,7 +2823,7 @@ def test_rejected_outer_publish_is_replanned_to_current_editor_control() -> None
     assert constrained["pinned_refs"] == ["editor-next"]
     assert "outer-publish" in " ".join(constrained["forbidden_actions"])
     assert retry_constrained is not None
-    assert "不得返回同一 ref" in " ".join(retry_constrained["action_constraints"])
+    assert "do not return the same ref" in " ".join(retry_constrained["action_constraints"])
     assert fallback.histories[-1][-1].ok is False
     assert driver.prepare_dispatch(recovered, filled) == recovered
 

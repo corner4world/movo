@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -20,18 +20,19 @@ from app.services.image_generation import generate_image_asset
 from app.services.model_vision_probe import probe_model_vision
 from app.llm.types import Message, Role
 from app.api.principal import ApiPrincipal, require_api_principal
+from app.api.model_test_messages import model_test_config_error, model_test_failure, model_test_message
 from app.product.extensions import get_product_extension
 
 router = APIRouter(dependencies=[Depends(require_api_principal)])
 
 
 class ModelTestPayload(BaseModel):
-    prompt: str = Field(default="请用一句话回复当前模型连接测试。", max_length=500)
+    prompt: str = Field(default="Reply in one sentence to test the current model connection.", max_length=500)
     main_id: str = Field(default="default")
 
 
 class ImageModelTestPayload(BaseModel):
-    prompt: str = Field(default="生成一张简洁的科技感封面背景，不要文字。", max_length=2000)
+    prompt: str = Field(default="Generate a clean, futuristic cover background without text.", max_length=2000)
     main_id: str = Field(default="default")
     size: str | None = Field(default=None, max_length=40)
 
@@ -86,15 +87,15 @@ async def available_image_models(
 
 
 @router.post("/models/{model_id}/test/stream")
-async def stream_model_test(model_id: str, payload: Optional[ModelTestPayload] = None) -> StreamingResponse:
+async def stream_model_test(model_id: str, payload: Optional[ModelTestPayload] = None, accept_language: str | None = Header(default=None)) -> StreamingResponse:
     main_id = resolve_main_id((payload.main_id if payload else "") or "default")
-    prompt = (payload.prompt if payload else "") or "请用一句话回复当前模型连接测试。"
+    prompt = (payload.prompt if payload else "") or "Reply in one sentence to test the current model connection."
 
     async def event_stream():
         final_text = ""
         try:
             await update_model_health(model_id, main_id, "unknown", "")
-            yield _sse({"type": "start", "message": "正在连接模型..."})
+            yield _sse({"type": "start", "message": model_test_message("connecting", accept_language)})
             client = await get_llm_client_by_model_id(
                 model_id,
                 main_id=main_id,
@@ -113,14 +114,14 @@ async def stream_model_test(model_id: str, payload: Optional[ModelTestPayload] =
                     final_text += text
                     yield _sse({"type": "delta", "content": text})
             await update_model_health(model_id, main_id, "healthy", "")
-            yield _sse({"type": "done", "message": final_text or "模型连接测试成功。"})
+            yield _sse({"type": "done", "message": final_text or model_test_message("connected", accept_language)})
         except ModelConfigError as exc:
             await update_model_health(model_id, main_id, "failed", str(exc))
-            yield _sse({"type": "error", "message": str(exc)})
+            yield _sse({"type": "error", "message": model_test_config_error(exc, accept_language, "model_failed")})
         except Exception as exc:
             message = f"模型连接测试失败: {exc}"
             await update_model_health(model_id, main_id, "failed", message)
-            yield _sse({"type": "error", "message": message})
+            yield _sse({"type": "error", "message": model_test_failure("model_failed", exc, accept_language)})
 
     return StreamingResponse(
         event_stream(),
@@ -130,9 +131,9 @@ async def stream_model_test(model_id: str, payload: Optional[ModelTestPayload] =
 
 
 @router.post("/models/{model_id}/test")
-async def model_test(model_id: str, payload: Optional[ModelTestPayload] = None) -> dict[str, Any]:
+async def model_test(model_id: str, payload: Optional[ModelTestPayload] = None, accept_language: str | None = Header(default=None)) -> dict[str, Any]:
     main_id = resolve_main_id((payload.main_id if payload else "") or "default")
-    prompt = (payload.prompt if payload else "") or "请用一句话回复当前模型连接测试。"
+    prompt = (payload.prompt if payload else "") or "Reply in one sentence to test the current model connection."
     try:
         client = await get_llm_client_by_model_id(
             model_id,
@@ -152,17 +153,17 @@ async def model_test(model_id: str, payload: Optional[ModelTestPayload] = None) 
         return {"code": 0, "data": {"success": True, "status": "healthy", "message": str(response.content or "")}}
     except ModelConfigError as exc:
         await update_model_health(model_id, main_id, "failed", str(exc))
-        return {"code": 0, "data": {"success": False, "status": "failed", "message": str(exc)}}
+        return {"code": 0, "data": {"success": False, "status": "failed", "message": model_test_config_error(exc, accept_language, "model_failed")}}
     except Exception as exc:
         message = f"模型连接测试失败: {exc}"
         await update_model_health(model_id, main_id, "failed", message)
-        return {"code": 0, "data": {"success": False, "status": "failed", "message": message}}
+        return {"code": 0, "data": {"success": False, "status": "failed", "message": model_test_failure("model_failed", exc, accept_language)}}
 
 
 @router.post("/models/{model_id}/test-image")
-async def image_model_test(model_id: str, payload: Optional[ImageModelTestPayload] = None) -> dict[str, Any]:
+async def image_model_test(model_id: str, payload: Optional[ImageModelTestPayload] = None, accept_language: str | None = Header(default=None)) -> dict[str, Any]:
     main_id = resolve_main_id((payload.main_id if payload else "") or "default")
-    prompt = (payload.prompt if payload else "") or "生成一张简洁的科技感封面背景，不要文字。"
+    prompt = (payload.prompt if payload else "") or "Generate a clean, futuristic cover background without text."
     size = (payload.size if payload else None) or None
     try:
         result = await generate_image_asset(
@@ -188,11 +189,11 @@ async def image_model_test(model_id: str, payload: Optional[ImageModelTestPayloa
         }
     except ModelConfigError as exc:
         await update_model_health(model_id, main_id, "failed", str(exc))
-        return {"code": 0, "data": {"success": False, "status": "failed", "message": str(exc)}}
+        return {"code": 0, "data": {"success": False, "status": "failed", "message": model_test_config_error(exc, accept_language, "image_failed")}}
     except Exception as exc:
         message = f"图片模型连接测试失败: {exc}"
         await update_model_health(model_id, main_id, "failed", message)
-        return {"code": 0, "data": {"success": False, "status": "failed", "message": message}}
+        return {"code": 0, "data": {"success": False, "status": "failed", "message": model_test_failure("image_failed", exc, accept_language)}}
 
 
 @router.post("/models/{model_id}/test-vision")

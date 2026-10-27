@@ -12,11 +12,11 @@ Per-document shape::
     {
         "_id": "<uuid>",
         "owner_user_id": "<uid>",        # "" for admin-curated globals
-        "name": "公司 OA",
+        "name": "Company OA",
         "domain": "oa.acme.com",          # bare host, lowercase
         "entry_url": "https://oa.acme.com/",
         "auth_method": "sso_wechat_work", # free-form hint
-        "hints": "- 登陆走企业微信...\n- 左侧菜单 ...",
+        "hints": "- Sign in with corporate SSO...\n- Use the left navigation...",
         "visibility": "private",          # private | team | global
         "created_at": datetime,
         "updated_at": datetime,

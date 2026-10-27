@@ -17,6 +17,7 @@ from app.services.skill_assets.publish_channels import publish_channel_registry
 from app.services.skill_assets.composite_task import parse_composite_skill
 from app.services.llm import llm_service
 from app.services.org_skill_adapter import _workflow_markdown, _workflow_nodes
+from app.services.style_skill_locale import source_style_language, style_body_language_instruction, style_description_fallback
 from app.utils.oss_uploader import AliyunOSSUploader
 
 
@@ -1802,7 +1803,7 @@ class UserSkillService:
 
         meta, body = _split_frontmatter(final_skill_md)
         name = str(meta.get("name") or style_analysis.get("skill_name") or "user_writing_style")
-        description = str(meta.get("description") or style_analysis.get("skill_description") or "用户写作规范")
+        description = str(meta.get("description") or style_analysis.get("skill_description") or style_description_fallback(source_style_language(style_analysis, flavor_snippet)))
 
         return {
             "name": name,
@@ -1823,43 +1824,40 @@ class UserSkillService:
     ) -> Dict[str, Any]:
         """Phase 1: LLM-based writing style analysis. Returns structured JSON."""
         system = (
-            "你是一位写作规范分析专家。你的任务是从提供的文档片段中，精准提取作者的写作规范特征。\n"
-            "你必须只输出有效的 JSON，不要输出其他解释。\n\n"
-            "分析以下维度，输出 JSON 对象:\n"
-            "1. doc_type: 文档类型（如 'tech_blog', 'research_report', 'tutorial', 'news_article', "
-            "'marketing_copy', 'product_doc', 'newsletter', 'opinion_piece'）\n"
-            "2. opening_style: 开头方式（如 'narrative_hook', 'data_driven', 'question', "
-            "'direct_thesis', 'case_study', 'historical_context', 'quote'）\n"
-            "3. tone: 语气（如 'conversational_professional', 'formal', 'casual', 'academic', "
-            "'authoritative', 'humorous', 'inspirational'）\n"
-            "4. conclusion_style: 结尾方式（如 'call_to_action', 'summary', 'memorable_takeaway', "
-            "'open_question', 'future_outlook'）\n"
-            "5. heading_style: 标题风格，对象包含:\n"
-            "   - max_depth: 最大标题深度(1-4)\n"
-            "   - max_headings: 大约标题数量\n"
-            "   - numbered: 是否使用编号标题\n"
-            "   - style: 标题语言风格('descriptive', 'question', 'action', 'mixed')\n"
-            "6. paragraph_style: 段落风格('long_narrative', 'short_punchy', 'mixed', 'list_heavy')\n"
-            "7. list_usage: 列表使用模式('minimal', 'moderate', 'heavy')\n"
-            "8. visual_usage: 是否使用图表、信息图('none', 'occasional', 'frequent')\n"
-            "9. code_usage: 代码块使用('none', 'occasional', 'frequent')\n"
-            "10. separator_usage: 分割线使用频率(0=无, 1=偶尔, 2+=频繁) → 输出为整数 max_separators\n"
-            "11. language: 主要语言('zh', 'en', 'mixed')\n"
-            "12. notable_phrases: 文档中反复出现的风格短语或口头禅（列表，最多5个）\n"
-            "13. anti_patterns: 该风格应避免的写法（列表，最多8个，如'过度使用感叹号', '每段都以列表开头'）\n"
-            "14. distinctive_features: 该作者区别于一般写作的2-3个最突出特征（用自然语言描述）\n"
-            "15. skill_name: 为这个风格起一个简洁的英文标识名（snake_case, 如 'tech_blog_conversational'）\n"
-            "16. skill_description: 一句话中文描述这个风格\n"
+            "You are an expert in analyzing writing styles. Extract the author's writing conventions precisely from the provided document excerpts.\n"
+            "Output only valid JSON, without explanation.\n\n"
+            "Analyze these dimensions and return a JSON object:\n"
+            "1. doc_type: document type, such as 'tech_blog', 'research_report', 'tutorial', 'news_article', "
+            "'marketing_copy', 'product_doc', 'newsletter', or 'opinion_piece'\n"
+            "2. opening_style: opening approach, such as 'narrative_hook', 'data_driven', 'question', "
+            "'direct_thesis', 'case_study', 'historical_context', or 'quote'\n"
+            "3. tone: such as 'conversational_professional', 'formal', 'casual', 'academic', "
+            "'authoritative', 'humorous', or 'inspirational'\n"
+            "4. conclusion_style: such as 'call_to_action', 'summary', 'memorable_takeaway', "
+            "'open_question', or 'future_outlook'\n"
+            "5. heading_style: object containing max_depth (1-4), approximate max_headings, "
+            "numbered (whether headings are numbered), and style ('descriptive', 'question', 'action', or 'mixed')\n"
+            "6. paragraph_style: 'long_narrative', 'short_punchy', 'mixed', or 'list_heavy'\n"
+            "7. list_usage: 'minimal', 'moderate', or 'heavy'\n"
+            "8. visual_usage: charts or infographics, 'none', 'occasional', or 'frequent'\n"
+            "9. code_usage: code blocks, 'none', 'occasional', or 'frequent'\n"
+            "10. separator_usage: frequency of horizontal rules; output integer max_separators (0 none, 1 occasional, 2+ frequent)\n"
+            "11. language: primary language, 'zh', 'en', or 'mixed'\n"
+            "12. notable_phrases: recurring stylistic phrases or verbal habits (list of at most 5)\n"
+            "13. anti_patterns: writing habits this style should avoid (list of at most 8)\n"
+            "14. distinctive_features: the author's 2-3 most distinctive traits, described in natural language\n"
+            "15. skill_name: concise English snake_case identifier, such as 'tech_blog_conversational'\n"
+            "16. skill_description: one-sentence description of this style in the source document's primary language\n"
         )
         user = (
-            f"文件名: {filename}\n\n"
-            f"--- 文档开头 ---\n{flavor}\n\n"
+            f"Filename: {filename}\n\n"
+            f"--- Document opening ---\n{flavor}\n\n"
         )
         if mid:
-            user += f"--- 文档中段 ---\n{mid}\n\n"
+            user += f"--- Document middle ---\n{mid}\n\n"
         if tail:
-            user += f"--- 文档结尾 ---\n{tail}\n\n"
-        user += "请输出 JSON:"
+            user += f"--- Document ending ---\n{tail}\n\n"
+        user += "Output JSON:"
 
         try:
             resp = await llm_service.chat_complete(
@@ -1879,23 +1877,28 @@ class UserSkillService:
                 "opening_style": "narrative_hook",
                 "tone": "conversational_professional",
                 "conclusion_style": "summary",
-                "language": "zh",
+                "language": source_style_language({}, flavor),
                 "skill_name": "user_custom_style",
-                "skill_description": "从用户文档提取的写作规范",
+                "skill_description": (
+                    "从用户文档提取的写作规范"
+                    if source_style_language({}, flavor) == "zh"
+                    else "Writing style guide extracted from the user's document"
+                ),
             }
 
     async def _compile_style_skill_md(self, style_analysis: Dict, flavor: str) -> str:
         """Phase 2: Compile a style SKILL.md from the analysis results."""
         analysis_str = json.dumps(style_analysis, indent=2, ensure_ascii=False)
         skill_name = str(style_analysis.get("skill_name") or "user_writing_style")
-        skill_desc = str(style_analysis.get("skill_description") or "用户写作规范")
+        language = source_style_language(style_analysis, flavor)
+        skill_desc = str(style_analysis.get("skill_description") or style_description_fallback(language))
 
         system = (
-            "你是一个写作规范技能编译器。你的任务是根据写作规范分析结果，生成一个 SKILL.md 文件。\n"
-            "这个文件的目的是：当 AI 写作系统需要按照这个风格写文章时，读取这个文件来指导写作。\n\n"
-            "输出必须是完整的 markdown 文件，包含 YAML frontmatter 和正文两部分。\n\n"
-            "== YAML Frontmatter 格式 ==\n"
-            "严格按照以下结构输出（---包裹）:\n"
+            "You compile writing-style skills. Generate a SKILL.md file from the style analysis.\n"
+            "An AI writing system will read this file when it needs to write in this style.\n\n"
+            "Output a complete Markdown file with YAML frontmatter and a body.\n\n"
+            "== YAML frontmatter format ==\n"
+            "Follow this structure exactly, enclosed by ---:\n"
             "```\n"
             "---\n"
             f"name: {skill_name}\n"
@@ -1903,47 +1906,47 @@ class UserSkillService:
             "role: style\n"
             "style_contract:\n"
             "  structure:\n"
-            "    max_heading_depth: <从分析中取>\n"
-            "    max_headings: <从分析中取>\n"
-            "    max_separators: <从分析中取>\n"
-            "    paragraph_first: <段落优先于列表则true>\n"
+            "    max_heading_depth: <from analysis>\n"
+            "    max_headings: <from analysis>\n"
+            "    max_separators: <from analysis>\n"
+            "    paragraph_first: <true if paragraphs are preferred over lists>\n"
             "    max_consecutive_lists: 2\n"
             "  visual_policy:\n"
-            "    min_infographics: <0或1或2，看分析>\n"
+            "    min_infographics: <0, 1, or 2 based on analysis>\n"
             "    include_infographic_blocks: <true/false>\n"
             "    image_render_enabled: <true/false>\n"
             "    visual_spec_format: \"[VISUAL:label]...[/VISUAL]\"\n"
             "  defaults:\n"
-            "    opening_style: <从分析中取>\n"
-            "    tone: <从分析中取>\n"
-            "    conclusion_style: <从分析中取>\n"
+            "    opening_style: <from analysis>\n"
+            "    tone: <from analysis>\n"
+            "    conclusion_style: <from analysis>\n"
             "  length:\n"
-            "    min_words: <合理估计>\n"
-            "    max_words: <合理估计>\n"
+            "    min_words: <reasonable estimate>\n"
+            "    max_words: <reasonable estimate>\n"
             "  anti_patterns:\n"
-            "    - <从分析中取，每项一行>\n"
+            "    - <from analysis, one item per line>\n"
             "---\n"
             "```\n\n"
-            "== Markdown 正文 ==\n"
-            "正文是给 LLM 的写作指南（软约束），用中文自然语言写，内容包括：\n"
-            "1. **开头风格**：描述应该怎么开头，给出具体指导和示例\n"
-            "2. **整体语气与叙事节奏**：如何保持一致的语气\n"
-            "3. **段落与结构习惯**：段落长短、过渡方式\n"
-            "4. **标题风格**：标题怎么写才符合这个风格\n"
-            "5. **视觉元素使用**：如果需要，说明信息图的使用规范\n"
-            "6. **结尾风格**：如何收束文章\n"
-            "7. **禁忌与反模式**：列出这个风格绝对不能做的事\n\n"
-            "重要：\n"
-            "- 正文不能包含 # Purpose, # Inputs, # Workflow, # Failure handling 等执行技能段落\n"
-            "- 正文应该读起来像一份写作指导手册，不是代码逻辑说明\n"
-            "- 用第二人称'你'来写指导\n"
-            "- 引用原文中的实际句式作为正面示例\n"
-            "- 返回纯 markdown，不要包裹在代码块中\n"
+            "== Markdown body ==\n"
+            f"Write the body as natural-language writing guidance (soft constraints). {style_body_language_instruction(language)} Cover:\n"
+            "1. **Opening style**: concrete guidance and examples for starting a piece\n"
+            "2. **Overall tone and narrative pace**: how to maintain a consistent tone\n"
+            "3. **Paragraph and structural habits**: paragraph length and transitions\n"
+            "4. **Heading style**: how to write headings that fit this style\n"
+            "5. **Visual elements**: infographic rules when needed\n"
+            "6. **Conclusion style**: how to close the piece\n"
+            "7. **Taboos and anti-patterns**: what this style must never do\n\n"
+            "Important:\n"
+            "- Do not include execution-skill sections such as # Purpose, # Inputs, # Workflow, or # Failure handling\n"
+            "- The body should read as a writing manual, not code logic\n"
+            "- Use second-person guidance\n"
+            "- Quote actual sentence patterns from the source as positive examples\n"
+            "- Return plain Markdown without a code fence\n"
         )
         user = (
-            f"风格分析结果:\n{analysis_str}\n\n"
-            f"原文风味样本（供引用示例）:\n{flavor[:3000]}\n\n"
-            "请生成完整的 style SKILL.md:"
+            f"Style analysis:\n{analysis_str}\n\n"
+            f"Source style sample (for examples):\n{flavor[:3000]}\n\n"
+            "Generate the complete style SKILL.md:"
         )
 
         return await llm_service.chat_complete(
@@ -1961,33 +1964,33 @@ class UserSkillService:
 
             # Must have frontmatter
             if "---" not in md:
-                errors.append("缺少 YAML frontmatter（需要用 --- 包裹）")
+                errors.append("Missing YAML frontmatter (must be enclosed by ---)")
 
             # Must have role: style
             if "role: style" not in md_lower and "role: 'style'" not in md_lower and 'role: "style"' not in md_lower:
-                errors.append("frontmatter 中必须包含 role: style")
+                errors.append("Frontmatter must contain role: style")
 
             # Must have style_contract
             if "style_contract:" not in md:
-                errors.append("frontmatter 中必须包含 style_contract 块")
+                errors.append("Frontmatter must contain a style_contract block")
 
             # Must NOT have execution skill sections
             execution_headers = ["# Purpose", "# Inputs", "# Workflow", "# Failure handling"]
             for h in execution_headers:
                 if h in md:
-                    errors.append(f"不应包含执行技能段落 '{h}'（这是 style skill，不是 execution skill）")
+                    errors.append(f"Must not contain execution-skill section '{h}' (this is a style skill)")
 
             # Must have style_contract sub-sections
             if "style_contract:" in md:
                 if "structure:" not in md:
-                    errors.append("style_contract 中缺少 structure 段")
+                    errors.append("style_contract is missing the structure section")
                 if "defaults:" not in md:
-                    errors.append("style_contract 中缺少 defaults 段")
+                    errors.append("style_contract is missing the defaults section")
 
             # Body should exist (writing guidelines)
             meta, body = _split_frontmatter(md)
             if len(body.strip()) < 100:
-                errors.append("正文（LLM 写作指南）内容太少，至少需要 100 字")
+                errors.append("The body (LLM writing guidance) is too short; at least 100 characters are required")
 
             return errors
 
@@ -2000,15 +2003,15 @@ class UserSkillService:
             if attempt < max_retries:
                 logger.warning("style skill validation failed", extra={"event": "skills.style_validation_failed", "attempt": attempt + 1, "errors": errors})
                 system = (
-                    "你是一个严格的 Style SKILL.md 修复引擎。\n"
-                    "根据以下验证错误修复提供的 SKILL.md。\n\n"
-                    f"验证错误:\n" + "\n".join(f"- {e}" for e in errors) + "\n\n"
-                    "修复要求:\n"
-                    "- 这是一个 style 类型的 skill（写作规范指南），不是 execution 类型\n"
-                    "- frontmatter 必须包含 role: style 和 style_contract\n"
-                    "- 正文是 LLM 写作指南，不是执行流程\n"
-                    "- 直接输出修复后的完整 markdown，以 --- 开头\n"
-                    "- 不要用代码块包裹输出\n"
+                    "You are a strict Style SKILL.md repair engine.\n"
+                    "Fix the supplied SKILL.md according to these validation errors.\n\n"
+                    f"Validation errors:\n" + "\n".join(f"- {e}" for e in errors) + "\n\n"
+                    "Repair requirements:\n"
+                    "- This is a style skill (writing guidance), not an execution skill\n"
+                    "- Frontmatter must include role: style and style_contract\n"
+                    "- The body is LLM writing guidance, not an execution procedure\n"
+                    "- Output the entire repaired Markdown directly, beginning with ---\n"
+                    "- Do not wrap the output in a code fence\n"
                 )
                 try:
                     resp = await llm_service.chat_complete(

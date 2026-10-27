@@ -48,19 +48,19 @@ def _build_summary(*, image_no: int, fact: Dict[str, Any], filename: str) -> str
 
     parts: List[str] = []
     if page_area:
-        parts.append(f"页面：{page_area}")
+        parts.append(f"Page: {page_area}")
     if fields:
-        parts.append(f"字段：{_join_tokens(fields, limit=5)}")
+        parts.append(f"Fields: {_join_tokens(fields, limit=5)}")
     if controls:
-        parts.append(f"控件：{_join_tokens(controls, limit=4)}")
+        parts.append(f"Controls: {_join_tokens(controls, limit=4)}")
     if status_tags:
-        parts.append(f"状态：{_join_tokens(status_tags, limit=4)}")
+        parts.append(f"Status: {_join_tokens(status_tags, limit=4)}")
     if flow and "not identified" not in flow.lower():
-        parts.append(f"流程：{flow}")
+        parts.append(f"Flow: {flow}")
     if not parts:
         title = filename or f"image_{image_no}"
-        parts.append(f"截图：{title}")
-    return "；".join(parts)
+        parts.append(f"Screenshot: {title}")
+    return "; ".join(parts)
 
 
 def build_uploaded_image_assets(
@@ -179,9 +179,9 @@ def build_embedded_document_image_assets(
                 "status_tags": [],
                 "tags": tags[:16],
                 "summary": (
-                    f"原始Word内嵌图片；邻近文本：{near_text[:700]}"
+                    f"Image embedded in the original Word document; nearby text: {near_text[:700]}"
                     if near_text
-                    else f"原始Word内嵌图片：{caption_seed[:180]}"
+                    else f"Image embedded in the original Word document: {caption_seed[:180]}"
                 ),
                 "source_document_id": source_document_id,
                 "source_context": context[:1000],

@@ -86,7 +86,10 @@ async def assess_target_alignment(
             confidence=0.92 if target_entity else 0.72,
             intended=SemanticDescriptor(entity=target_entity if target_entity else "", confidence=0.72),
             observed=SemanticDescriptor(entity=target_entity, confidence=0.9 if target_entity else 0.0, evidence=label),
-            reason="目标元素未包含冲突的业务对象",
+            reason=(
+                "目标元素未包含冲突的业务对象"
+                if lang.startswith("zh") else "The target contains no conflicting business object"
+            ),
             source="local_rule",
         )
 
@@ -107,7 +110,13 @@ async def assess_outcome_alignment(
     llm: Any = None,
 ) -> SemanticAlignment:
     if not intended_entity:
-        return SemanticAlignment(status="unknown", reason="目标契约没有可比较的业务对象")
+        return SemanticAlignment(
+            status="unknown",
+            reason=(
+                "目标契约没有可比较的业务对象"
+                if lang.startswith("zh") else "The target contract has no comparable business object"
+            ),
+        )
     payload = {
         "intended": {"operation": intended_operation, "entity": intended_entity},
         "result_surface": _outcome_payload(after),
@@ -125,13 +134,14 @@ async def _model_alignment(
     )
     if lang.startswith("zh"):
         system = (
-            "你是浏览器动作的语义安全校验器。业务实体是开放字符串，不能依赖站点名称或固定实体枚举。"
-            "当前浏览器节点目标定义本节点要做的动作，用户原始请求只补充最终意图和禁止条件；不能要求一个中间节点完成整个原始请求。"
-            "先仅根据这两项提取 intended.operation/entity；再仅根据 target 或 result_surface "
-            "提取 observed.operation/entity，禁止用用户目标改写页面证据。最后判断两者是否指向同一种业务对象和相容动作。"
-            "例如创建A与创建B、发布A与发布B是 incompatible；打开A编辑器与最终发布A可以 compatible。"
-            "打开菜单、切换页面、搜索、登录等不产生其他业务对象的必要中间动作应判为 compatible 或 unknown，不能仅因按钮名称不同就拦截。"
-            "证据不足返回 unknown。entity 使用简短、规范的业务对象名称；reason 必须引用输入中的具体文字。"
+            "You are a semantic safety gate for browser actions. Business entities are open strings; do not rely on site names or a fixed entity list. "
+            "The current browser node goal defines this node's action; the original user request only adds final intent and prohibitions. "
+            "Do not require an intermediate node to complete the whole original request. First derive intended.operation/entity only from those two inputs; "
+            "then derive observed.operation/entity only from target or result_surface. Never rewrite page evidence to match the user goal. "
+            "Finally decide whether they refer to the same business object and compatible actions. Creating A versus B or publishing A versus B is incompatible; "
+            "opening A's editor and ultimately publishing A can be compatible. Necessary intermediate actions such as opening menus, navigating, searching, "
+            "or logging in, which create no other business object, are compatible or unknown; do not block them only because button labels differ. "
+            "Return unknown when evidence is insufficient. Use short, normalized business-object names for entity; reason must quote specific input text."
         )
     else:
         system = (
@@ -173,7 +183,7 @@ async def _model_alignment(
         return SemanticAlignment(
             status="unknown",
             confidence=0.0,
-            reason=f"语义校验模型不可用: {type(exc).__name__}",
+            reason=f"Semantic alignment model unavailable: {type(exc).__name__}",
             source="fallback",
         )
 

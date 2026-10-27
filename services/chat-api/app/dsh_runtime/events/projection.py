@@ -300,6 +300,8 @@ class KernelEventProjector:
             return {"id": f"evidence-{call_id}", **dict(projected)}
         if name != "knowledge_search":
             return None
+        language = str(value.get("language") or "zh")
+        fallback_title = "Internal knowledge" if language.lower().startswith("en") else "内部知识"
         sources: list[dict[str, Any]] = []
         for index, item in enumerate(list(value.get("items") or [])[:50]):
             if not isinstance(item, dict):
@@ -311,7 +313,7 @@ class KernelEventProjector:
             sources.append({
                 "id": str(item.get("citation_ref") or f"kb-{document_id}-{chunk_id or index}"),
                 "citation_id": str(item.get("citation_ref") or ""),
-                "title": " / ".join(str(part) for part in title_path if str(part)) or document_id or "内部知识",
+                "title": " / ".join(str(part) for part in title_path if str(part)) or document_id or fallback_title,
                 "source_name": "knowledge_search",
                 "snippet": text[:1000],
                 "content": text,

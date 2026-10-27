@@ -155,11 +155,7 @@ async def resume_task(
     resume_language = "en" if str(mission.get("language") or "").lower().startswith("en") else "zh"
     resume_messages = [{
         "role": "user",
-        "content": (
-            "Continue the browser task that was paused for human assistance."
-            if resume_language == "en"
-            else "继续刚才暂停的浏览器任务。"
-        ),
+        "content": "Continue the browser task that was paused for human assistance.",
     }]
     request = ChatRequest.model_validate({
         "messages": resume_messages,

@@ -25,11 +25,11 @@ for (const app of ['admin-web', 'user-web']) {
     function visit(node) {
       if (ts.isPropertyAssignment(node) && ts.isStringLiteral(node.name)) {
         const key = node.name.text
-        if (nonAscii.test(key)) failures.push(`${path.relative(root, file)}: non-ASCII catalog key ${JSON.stringify(key)}`)
         // Locale entries are objects with a language-specific translation.
         if (ts.isObjectLiteralExpression(node.initializer)) {
           const fields = new Set(node.initializer.properties.map(property => property.name?.getText(tree).replace(/^['"]|['"]$/g, '')))
           if (fields.has('zh') || fields.has('zh-CN')) {
+            if (nonAscii.test(key)) failures.push(`${path.relative(root, file)}: non-ASCII catalog key ${JSON.stringify(key)}`)
             catalogKeys.add(key)
             if (!fields.has(app === 'admin-web' ? 'en-US' : 'en')) {
               failures.push(`${path.relative(root, file)}: missing English translation for ${JSON.stringify(key)}`)
@@ -44,6 +44,15 @@ for (const app of ['admin-web', 'user-web']) {
 
   for (const file of sourceFiles) {
     const source = fs.readFileSync(file, 'utf8')
+    if (file.endsWith('.vue')) {
+      const template = source.split(/<script\b/i, 1)[0].replace(/<!--[\s\S]*?-->/g, '')
+      for (const match of template.matchAll(/(?:^|[\s<])(?:aria-label|title|placeholder)="([^"]*)"/gm)) {
+        if (/[\u3400-\u9fff]/u.test(match[1])) failures.push(`${path.relative(root, file)}: hard-coded Chinese template attribute ${JSON.stringify(match[1])}`)
+      }
+      for (const match of template.matchAll(/>\s*([^<{]*[\u3400-\u9fff][^<{]*)\s*</gu)) {
+        failures.push(`${path.relative(root, file)}: hard-coded Chinese template text ${JSON.stringify(match[1].trim())}`)
+      }
+    }
     const calls = /\bt\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g
     let match
     while ((match = calls.exec(source))) {

@@ -161,27 +161,20 @@ class FormContext(BrowserTaskContext):
         return ledger
 
     def _phase_goal(self) -> str:
-        zh = str(self.lang or "").startswith("zh")
         if self.phase == self.PHASE_FILLING:
-            return "填完所有必填字段" if zh else "fill all required fields"
+            return "fill all required fields"
         if self.phase == self.PHASE_SUBMITTING:
-            return "点击提交按钮" if zh else "click the submit button"
+            return "click the submit button"
         if self.phase == self.PHASE_VERIFYING:
-            return "等待提交结果（成功提示或校验错误）" if zh else \
-                   "wait for success toast or validation errors"
-        return "已完成，可 browser_done" if zh else "done — browser_done allowed"
+            return "wait for success toast or validation errors"
+        return "done — browser_done allowed"
 
     # ─── Termination ───────────────────────────────────────────────
     def ready_to_done(self) -> bool:
         return self.phase == self.PHASE_DONE
 
     def done_blocked_hint(self, current_obs: Observation) -> StepRecord:
-        zh = str(self.lang or "").startswith("zh")
-        reason = (
-            f"表单任务未完成，当前阶段={self.phase}；请先填完必填字段并点提交。"
-            if zh else
-            f"Form task not complete (phase={self.phase}); fill required fields and submit first."
-        )
+        reason = f"Form task not complete (phase={self.phase}); fill required fields and submit first."
         return StepRecord(
             observation=current_obs,
             decision=Decision(tool="__form_done_blocked__", args={},

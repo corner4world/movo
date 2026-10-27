@@ -61,8 +61,8 @@ def test_workflow_skill_is_adaptive_and_never_compiles_a_task_graph() -> None:
     source = (
         CHAT_API_ROOT / "app" / "dsh_runtime" / "profile" / "skills" / "workflow.py"
     ).read_text(encoding="utf-8")
-    assert "供 DSH Agent Loop 使用的自适应 Skill" in source
-    assert "不是固定图执行计划" in source
+    assert "This is an adaptive Skill for the DSH Agent Loop" in source
+    assert "not a fixed graph execution plan" in source
     assert "TaskGraph(" not in source
 
 

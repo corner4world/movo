@@ -85,20 +85,20 @@ def augment_media_handoff_ledger(
     constraints = list(ledger.get("action_constraints") or [])
     constraints.append(
         (
-            "用户明确要求通过复制粘贴插入上游图片。定位当前富文本正文编辑器，"
-            "使用 browser_paste_image；不要点击图片上传入口。"
+            "The user explicitly requested insertion of upstream images by copy and paste. Locate the current rich-text body editor "
+            "and use browser_paste_image; do not click an image-upload control."
         )
         if paste_requested
         else (
-            "上游文件仍待写入当前业务表单。先在当前编辑器中定位并激活图片、媒体或附件入口；"
-            "如果控件是无文字图标，使用当前截图中的 ref 标注定位。入口激活后重新观察，"
-            "待 file input 出现后交给 browser_upload_file；不要重新生成文件，也不要把最终发布当作上传。"
+            "Upstream files still need to be added to the current business form. Locate and activate the image, media, or attachment control in the current editor. "
+            "If it is an unlabeled icon, use its ref annotation in the current screenshot. Observe again after activation, then pass the file input to browser_upload_file when it appears. "
+            "Do not regenerate the file or treat final publication as an upload."
         )
     )
     notes = list(ledger.get("notes") or [])
     notes.append(
-        f"pending_media: {len(pending)} 个媒体批次尚未上传"
-        + (f"；当前编辑器候选 refs={candidate_refs}" if candidate_refs else "")
+        f"pending_media: {len(pending)} media batches remain to upload"
+        + (f"; current editor candidate refs={candidate_refs}" if candidate_refs else "")
     )
     pinned_refs = list(ledger.get("pinned_refs") or [])
     pinned_refs.extend(candidate_refs)

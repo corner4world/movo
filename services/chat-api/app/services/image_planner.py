@@ -105,7 +105,7 @@ def _rank_assets_for_planning(
     return [dict(asset) for _, asset in indexed[:candidate_limit]]
 
 
-def build_section_briefs(markdown: str, *, max_sections: int = 10) -> List[SectionBrief]:
+def build_section_briefs(markdown: str, *, max_sections: int = 10, language: str = "zh") -> List[SectionBrief]:
     text = str(markdown or "")
     if not text.strip():
         return []
@@ -120,7 +120,8 @@ def build_section_briefs(markdown: str, *, max_sections: int = 10) -> List[Secti
             headings.append((idx, title))
     if not headings:
         excerpt = "\n".join(lines[:16]).strip()
-        return [SectionBrief(section_id="section_1", heading="正文", start=0, end=len(lines), excerpt=excerpt[:1200])]
+        heading = "Body" if str(language or "").lower().startswith("en") else "正文"
+        return [SectionBrief(section_id="section_1", heading=heading, start=0, end=len(lines), excerpt=excerpt[:1200])]
 
     briefs: List[SectionBrief] = []
     for pos, (start, heading) in enumerate(headings[:max_sections], start=1):
@@ -145,16 +146,17 @@ class ImagePlannerService:
         self._llm = get_request_scoped_llm_client(streaming=False, stage="compose", intent="generation")
 
     @staticmethod
-    def _evidence_caption(base: str) -> str:
+    def _evidence_caption(base: str, *, language: str = "zh") -> str:
         token = str(base or "").strip() or "image"
-        if token.startswith("证据截图："):
+        if token.startswith(("证据截图：", "Evidence screenshot: ")):
             return token
-        return f"证据截图：{token}"
+        return f"Evidence screenshot: {token}" if str(language or "").lower().startswith("en") else f"证据截图：{token}"
 
     def _fallback_layout_hints(
         self,
         *,
         uploaded_assets: List[Dict[str, Any]],
+        language: str = "zh",
     ) -> List[Dict[str, Any]]:
         hints: List[Dict[str, Any]] = []
         for asset in uploaded_assets[:24]:
@@ -167,7 +169,7 @@ class ImagePlannerService:
                     "image_id": str(asset.get("asset_id") or ""),
                     "path": path,
                     "caption": self._evidence_caption(
-                        str(asset.get("page_area") or asset.get("filename") or asset.get("asset_id") or "image").strip()
+                        str(asset.get("page_area") or asset.get("filename") or asset.get("asset_id") or "image").strip(), language=language
                     ),
                     "semantic_cues": list(asset.get("tags") or [])[:8],
                     "status_tags": list(asset.get("status_tags") or [])[:4],
@@ -185,14 +187,15 @@ class ImagePlannerService:
         markdown: str,
         user_goal: str,
         uploaded_assets: List[Dict[str, Any]],
+        language: str = "zh",
     ) -> Dict[str, Any]:
         assets = [dict(item) for item in (uploaded_assets or []) if isinstance(item, dict)]
         if not assets:
             return {"layout_hints": [], "generated_specs": [], "plan": []}
 
-        sections = build_section_briefs(markdown)
+        sections = build_section_briefs(markdown, language=language)
         if not sections:
-            return {"layout_hints": self._fallback_layout_hints(uploaded_assets=assets), "generated_specs": [], "plan": []}
+            return {"layout_hints": self._fallback_layout_hints(uploaded_assets=assets, language=language), "generated_specs": [], "plan": []}
 
         planning_assets = _rank_assets_for_planning(assets=assets, markdown=markdown, sections=sections)
         compact_assets: List[Dict[str, Any]] = []
@@ -222,6 +225,7 @@ class ImagePlannerService:
                 "Use no_image_needed when the section is mostly abstract requirements, scope, goals, or policy text.",
                 "Do not assign the same uploaded asset to multiple sections unless it is strongly justified.",
                 "Keep captions concise and reader-facing.",
+                "Write captions in English." if str(language or "").lower().startswith("en") else "Write captions in Chinese.",
                 "For embedded Word-document images, use source_context, summary, paragraph_index, source_order, and nearby text cues to place images near the section that rewrites the same case/material.",
                 "For news briefs or reports, prefer screenshots whose nearby text mentions the same language desk, platform, media outlet, title, person, or case described by the section.",
             ],
@@ -244,7 +248,7 @@ class ImagePlannerService:
             )
         except Exception:
             return {
-                "layout_hints": self._fallback_layout_hints(uploaded_assets=assets),
+                "layout_hints": self._fallback_layout_hints(uploaded_assets=assets, language=language),
                 "generated_specs": [],
                 "plan": [],
             }
@@ -275,7 +279,7 @@ class ImagePlannerService:
                 if not path:
                     continue
                 caption = self._evidence_caption(
-                    str(placement.caption or asset.get("page_area") or asset.get("filename") or asset_id).strip()
+                    str(placement.caption or asset.get("page_area") or asset.get("filename") or asset_id).strip(), language=language
                 )
                 tags = list(asset.get("tags") or [])[:10]
                 source = _asset_source(asset)
@@ -324,7 +328,7 @@ class ImagePlannerService:
                     "image_id": asset_id,
                     "path": path,
                     "caption": self._evidence_caption(
-                        str(asset.get("page_area") or asset.get("filename") or asset_id).strip()
+                        str(asset.get("page_area") or asset.get("filename") or asset_id).strip(), language=language
                     ),
                     "semantic_cues": list(asset.get("tags") or [])[:10],
                     "status_tags": list(asset.get("status_tags") or [])[:4],
@@ -338,7 +342,7 @@ class ImagePlannerService:
             used_assets.add(asset_id)
 
         if not layout_hints and not generated_specs:
-            layout_hints = self._fallback_layout_hints(uploaded_assets=assets)
+            layout_hints = self._fallback_layout_hints(uploaded_assets=assets, language=language)
 
         return {
             "layout_hints": layout_hints,

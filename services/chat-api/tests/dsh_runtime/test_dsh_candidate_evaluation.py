@@ -149,7 +149,7 @@ def test_report_never_claims_release_ready(tmp_path: Path) -> None:
     )
     json_path, markdown_path = write_report(report, tmp_path)
     assert json.loads(json_path.read_text())["decision"]["release_ready"] is False
-    assert "尚未接纳" in markdown_path.read_text()
+    assert "Not accepted" in markdown_path.read_text()
 
 
 def test_failed_report_remains_renderable_without_capability_inventory(tmp_path: Path) -> None:
@@ -168,7 +168,7 @@ def test_failed_report_remains_renderable_without_capability_inventory(tmp_path:
     )
     json_path, markdown_path = write_report(report, tmp_path)
     assert json_path.exists()
-    assert "未通过契约评估" in markdown_path.read_text()
+    assert "Contract evaluation: **Failed**" in markdown_path.read_text()
 
 
 def test_installed_release_train_rejects_mixed_dsh_versions(tmp_path: Path) -> None:

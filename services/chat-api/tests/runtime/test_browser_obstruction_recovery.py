@@ -23,7 +23,7 @@ def test_covered_node_is_not_hidden_or_retried_as_missing():
     assert len(planning.elements) == 1
     assert planning.elements[0]["href"] == obs.elements[0]["href"]
     assert planning.elements[0]["hitTestable"] is False
-    assert "覆盖" in recovery.blocker(decision, obs)
+    assert "covers its click point" in recovery.blocker(decision, obs)
     assert "occluded_targets" in recovery.augment_state_ledger({})["notes"][0]
     # Only newer, positive hit evidence releases the block.
     recovery.planning_observation(replace(obs, revision="r2"))

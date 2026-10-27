@@ -130,25 +130,18 @@ class ScrapeContext(BrowserTaskContext):
         return ledger
 
     def _phase_goal(self) -> str:
-        zh = str(self.lang or "").startswith("zh")
         if self.phase == self.PHASE_EXTRACTING:
-            return "从当前页的 row_candidates 里抽取需要的数据字段" if zh else \
-                   "extract the requested fields from row_candidates on the current page"
+            return "extract the requested fields from row_candidates on the current page"
         if self.phase == self.PHASE_PAGINATING:
-            return "翻到下一页（系统会自动点击）" if zh else "move to next page (system auto-clicks)"
-        return "已抽完，可 browser_done" if zh else "scraping done — browser_done allowed"
+            return "move to next page (system auto-clicks)"
+        return "scraping done — browser_done allowed"
 
     # ─── Termination ───────────────────────────────────────────────
     def ready_to_done(self) -> bool:
         return self.phase == self.PHASE_DONE
 
     def done_blocked_hint(self, current_obs: Observation) -> StepRecord:
-        zh = str(self.lang or "").startswith("zh")
-        reason = (
-            f"抓取任务未完成，pages_seen={self.pages_seen}；继续翻页或抽取。"
-            if zh else
-            f"Scrape not done (pages_seen={self.pages_seen}); keep paginating/extracting."
-        )
+        reason = f"Scrape not done (pages_seen={self.pages_seen}); keep paginating/extracting."
         return StepRecord(
             observation=current_obs,
             decision=Decision(tool="__scrape_done_blocked__", args={},

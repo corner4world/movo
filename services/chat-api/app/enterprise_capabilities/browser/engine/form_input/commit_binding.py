@@ -189,36 +189,36 @@ class CommitBindingLedger:
         ledger = dict(state_ledger or {})
         forbidden = list(ledger.get("forbidden_actions") or [])
         forbidden.append(
-            "当前表单阶段禁止再次选择这些已确认不属于编辑器的控件："
-            f"refs={rejected_refs or ['当前已消失']}。"
+            "During this form stage, do not select controls already confirmed outside the editor: "
+            f"refs={rejected_refs or ['no longer present']}."
         )
         constraints = list(ledger.get("action_constraints") or [])
         constraints.append(
-            "刚才选择的提交/发布控件不属于当前正在编辑的表单。"
-            "不要重复选择它，也不要只重复观察；请从当前编辑器内其他实时控件中选择下一步。"
+            "The selected submit/publish control does not belong to the form currently being edited. "
+            "Do not select it again or only keep observing; choose the next step from other live controls within this editor."
             + (
-                f" 当前编辑器候选 refs={alternative_refs}。"
+                f" Current editor candidate refs={alternative_refs}."
                 if alternative_refs else
-                " 当前没有可靠候选时，应明确说明缺少可继续的表单内控件。"
+                " If there is no reliable candidate, explain that no usable control remains within the form."
             )
         )
         if repeated_selection:
             constraints.append(
-                "模型刚刚再次选择了已被拒绝的控件。本轮必须改选其他候选，"
-                "不得返回同一 ref。"
+                "The model selected a previously rejected control again. This turn must choose another candidate; "
+                "do not return the same ref."
             )
         notes = list(ledger.get("notes") or [])
         notes.append(
-            "被拒绝控件："
-            + "；".join(
-                f"{item.label or item.key}（{item.reason}，已拒绝 {item.hits} 次）"
+            "Rejected controls: "
+            + "; ".join(
+                f"{item.label or item.key} ({item.reason}; rejected {item.hits} times)"
                 for item in self._rejected_actions.values()
             )
         )
         if alternatives:
             notes.append(
-                "当前编辑器内可重新评估的控件："
-                + "；".join(
+                "Controls to reconsider in the current editor: "
+                + "; ".join(
                     f"{item.get('ref')}={_control_label(item) or item.get('role') or 'action'}"
                     for item in alternatives[:12]
                 )

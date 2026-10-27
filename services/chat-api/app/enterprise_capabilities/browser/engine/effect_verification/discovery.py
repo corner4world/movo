@@ -85,11 +85,11 @@ async def discover_effect_contract(
         stage="browser_effect_discovery",
     )
     system = (
-        "你只判断一次浏览器点击是否会提交真实业务操作，并生成开放式结果验证契约。"
-        "常见动作族可以使用 create/update/delete/submit/publish/send/transition；特殊动作必须使用能表达业务含义的自定义 operation_family，不能因为不在枚举中就判定不支持。"
-        "is_commit 只在本次点击会真正写入、发送、发布、删除、审批或触发外部副作用时为 true；打开表单、切换页面、选择菜单不是 commit。"
-        "action_name 使用 clicked_target 中本次点击动作的简短名称；如果页面名称已经准确，直接沿用。"
-        "fingerprint 只保留目标描述中已经给出的业务字段，不得编造。verification_hints 描述如何回查结果，不得写站点专用代码。"
+        "Decide only whether one browser click commits a real business operation, and produce an open-ended result-verification contract. "
+        "Common operation families include create/update/delete/submit/publish/send/transition. For special actions, use a custom operation_family that expresses the business meaning; do not mark an action unsupported merely because it is outside that list. "
+        "Set is_commit to true only if this click actually writes, sends, publishes, deletes, approves, or triggers an external side effect. Opening a form, changing pages, or selecting a menu is not a commit. "
+        "Use a short name for this click from clicked_target as action_name; retain an accurate page label. Include in fingerprint only business fields already present in the target description; invent none. "
+        "Describe result rechecks in verification_hints without site-specific code."
     ) if lang.startswith("zh") else (
         "Decide whether one browser click commits a real business side effect and produce an open-ended verification contract. "
         "Common families may be create/update/delete/submit/publish/send/transition; use a descriptive custom family for special actions. "
@@ -128,7 +128,7 @@ async def discover_effect_contract(
             side_effect="write",
             is_commit=False,
             expected_effects=[],
-            verification_hints=["重新读取业务对象并确认预期状态变化"],
+            verification_hints=["Read the business object again and confirm the expected state change"],
             source="model",
         )
 
@@ -155,8 +155,8 @@ def _local_contract(*, goal: str, capability_id: str, label: str) -> EffectContr
             is_commit=True,
             completes_goal=not _looks_multi_operation(goal),
             fingerprint=_fingerprint(goal),
-            expected_effects=["业务对象状态发生变化", "提交入口关闭或页面进入后续状态"],
-            verification_hints=["捕获瞬时状态提示", "根据业务指纹回查对象状态"],
+            expected_effects=["Business object state changes", "Commit control closes or the page advances"],
+            verification_hints=["Capture transient status notices", "Recheck object state using the business fingerprint"],
             source="local_rule",
         )
     return None

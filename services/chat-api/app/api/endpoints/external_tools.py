@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.services.external_tools import external_tool_registry, external_tool_service
 from app.api.principal import ApiPrincipal, require_api_principal
+from app.api.external_tool_test_messages import localize_tool_status
 from app.product.resource_access import filter_allowed_resource_ids, resource_is_allowed
 
 router = APIRouter(dependencies=[Depends(require_api_principal)])
@@ -157,6 +158,7 @@ async def test_external_tool(
     payload: ToolTestPayload,
     main_id: str = Query("default", alias="mainId"),
     principal: ApiPrincipal = Depends(require_api_principal),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     if principal.kind == "end_user" and not await resource_is_allowed(
         "tool", main_id=principal.main_id, user_id=principal.user_id, resource_id=tool_id,
@@ -166,7 +168,7 @@ async def test_external_tool(
         data = await external_tool_service.test(tool_id, payload.input, main_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return ApiResponse(data=data)
+    return ApiResponse(data=localize_tool_status(data, accept_language))
 
 
 @router.post("/external-tools/my/{tool_id}/test", response_model=ApiResponse)
@@ -175,16 +177,17 @@ async def test_user_external_tool(
     payload: ToolTestPayload,
     user_id: str = Query("", alias="userId"),
     main_id: str = Query("default", alias="mainId"),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     uid = _require_user_id(user_id)
     data = await external_tool_service.test(tool_id, payload.input, main_id, scope="user", owner_user_id=uid)
-    return ApiResponse(data=data)
+    return ApiResponse(data=localize_tool_status(data, accept_language))
 
 
 @router.post("/external-tools/test-draft", response_model=ApiResponse)
-async def test_draft_external_tool(payload: ToolDraftTestPayload, main_id: str = Query("default", alias="mainId")) -> ApiResponse:
+async def test_draft_external_tool(payload: ToolDraftTestPayload, main_id: str = Query("default", alias="mainId"), accept_language: str | None = Header(default=None)) -> ApiResponse:
     data = await external_tool_service.test_draft(payload.tool, payload.input, main_id)
-    return ApiResponse(data=data)
+    return ApiResponse(data=localize_tool_status(data, accept_language))
 
 
 @router.post("/external-tools/{tool_id}/discover", response_model=ApiResponse)
@@ -192,6 +195,7 @@ async def discover_mcp_tools(
     tool_id: str,
     main_id: str = Query("default", alias="mainId"),
     principal: ApiPrincipal = Depends(require_api_principal),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     if principal.kind == "end_user" and not await resource_is_allowed(
         "tool", main_id=principal.main_id, user_id=principal.user_id, resource_id=tool_id,
@@ -201,7 +205,7 @@ async def discover_mcp_tools(
         data = await external_tool_service.discover_mcp_tools(tool_id, main_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return ApiResponse(data=data)
+    return ApiResponse(data=localize_tool_status(data, accept_language))
 
 
 @router.post("/external-tools/my/{tool_id}/discover", response_model=ApiResponse)
@@ -209,13 +213,14 @@ async def discover_user_mcp_tools(
     tool_id: str,
     user_id: str = Query("", alias="userId"),
     main_id: str = Query("default", alias="mainId"),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     uid = _require_user_id(user_id)
     try:
         data = await external_tool_service.discover_mcp_tools(tool_id, main_id, scope="user", owner_user_id=uid)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return ApiResponse(data=data)
+    return ApiResponse(data=localize_tool_status(data, accept_language))
 
 
 @router.post("/external-tools/generate-description", response_model=ApiResponse)

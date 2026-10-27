@@ -250,7 +250,7 @@ def _workflow_node_instruction(item: Dict[str, Any], *, title: str, business_con
     if title:
         parts.append(title)
     if output_alias:
-        parts.append(f"输出：{output_alias}")
+        parts.append(f"Output: {output_alias}")
     config_parts: List[str] = []
     for key, value in business_config.items():
         if str(key).strip() in {"pluginCode", "scriptCode", "code", "python"}:
@@ -260,7 +260,7 @@ def _workflow_node_instruction(item: Dict[str, Any], *, title: str, business_con
         if isinstance(value, (str, int, float, bool)):
             rendered = str(value)
         elif isinstance(value, list):
-            rendered = "、".join(str(v) for v in value if str(v).strip())
+            rendered = ", ".join(str(v) for v in value if str(v).strip())
         else:
             rendered = json.dumps(value, ensure_ascii=False)
         rendered = _safe_text(rendered, 240)
@@ -269,8 +269,8 @@ def _workflow_node_instruction(item: Dict[str, Any], *, title: str, business_con
         if len(config_parts) >= 8:
             break
     if config_parts:
-        parts.append("配置：" + "；".join(config_parts))
-    return _safe_text("；".join(part for part in parts if part), 1200)
+        parts.append("Configuration: " + "; ".join(config_parts))
+    return _safe_text("; ".join(part for part in parts if part), 1200)
 
 
 def _workflow_nodes(config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -376,7 +376,7 @@ def _workflow_markdown(*, name: str, description: str, scenario: str, steps: Lis
         step_items = [
             {
                 "id": _safe_text(node.get("id"), 80) or f"node_{idx + 1}",
-                "title": _safe_text(node.get("title"), 160) or f"业务节点 {idx + 1}",
+                "title": _safe_text(node.get("title"), 160) or f"Business node {idx + 1}",
                 "instruction": _safe_text(node.get("description"), 1200),
                 "kind": _workflow_node_kind(node),
                 "node_type": str(node.get("type") or ""),
@@ -390,7 +390,7 @@ def _workflow_markdown(*, name: str, description: str, scenario: str, steps: Lis
     else:
         step_items = [
             {
-                "title": f"业务步骤 {idx + 1}",
+                "title": f"Business step {idx + 1}",
                 "instruction": step,
             }
             for idx, step in enumerate(steps)
@@ -408,7 +408,7 @@ def _workflow_markdown(*, name: str, description: str, scenario: str, steps: Lis
         frontmatter,
         [
             ("Purpose", description or name),
-            ("When To Use", scenario or "当用户请求与该组织级工作流 Skill 的业务目标一致时使用。"),
+            ("When To Use", scenario or "Use when the user's request matches this organization workflow Skill's business goal."),
             ("Business Logic", "\n".join(f"{idx + 1}. {step}" for idx, step in enumerate(steps))),
         ],
     )
@@ -491,8 +491,8 @@ def _style_markdown(*, name: str, description: str, scenario: str, config: Dict[
         frontmatter,
         [
             ("Purpose", description or name),
-            ("When To Use", scenario or "当用户请求与该组织级写作规范 Skill 的适用场景一致时使用。"),
-            ("Style Guidance", guidance or "按照该 Skill 的名称、描述和适用场景控制表达风格。"),
+            ("When To Use", scenario or "Use when the user's request matches the applicable scenario of this organization writing style Skill."),
+            ("Style Guidance", guidance or "Control the writing style according to this Skill's name, description, and applicable scenario."),
         ],
     )
 
@@ -578,8 +578,8 @@ def _style_markdown_from_contract(*, name: str, description: str, scenario: str,
     }
     guidance_sections = [
         ("Purpose", description or name),
-        ("When To Use", scenario or "当用户请求与该组织级写作规范 Skill 的适用场景一致时使用。"),
-        ("Style Guidance", _safe_text(contract_json.get("notes"), 3000) or "按照该 Skill 的配置控制结构、表达风格与内容边界。"),
+        ("When To Use", scenario or "Use when the user's request matches the applicable scenario of this organization writing style Skill."),
+        ("Style Guidance", _safe_text(contract_json.get("notes"), 3000) or "Use this Skill's configuration to control structure, writing style, and content boundaries."),
     ]
     return _frontmatter_markdown(frontmatter, guidance_sections)
 

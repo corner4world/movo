@@ -25,7 +25,7 @@ from app.enterprise_capabilities.content.subject_resolution.resolver import Subj
 from app.enterprise_capabilities.content.planning.contracts import ContentPlanSpec
 from app.services.skill_assets.composite_task import CompositeSkillMatchDecision
 from app.enterprise_capabilities.content.publish_assembly.assembler import VisualSlotGenerationDecision
-from app.enterprise_capabilities.browser.engine.agent_loop.planner import _DecisionSchema
+from app.enterprise_capabilities.browser.engine.agent_loop.structured_output import BrowserPlannerOutput
 from app.enterprise_capabilities.content.writer_engine.unified_compose.components import PlanAlignmentAssessment, ReportOutlinePlan
 
 
@@ -291,7 +291,7 @@ def test_all_migrated_decision_schemas_inherit_the_common_contract() -> None:
         _FoundIssues,
         ReportOutlinePlan,
         PlanAlignmentAssessment,
-        _DecisionSchema,
+        BrowserPlannerOutput,
         SubjectResolutionDecision,
         ContentPlanSpec,
         CompositeSkillMatchDecision,

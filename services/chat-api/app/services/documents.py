@@ -16,7 +16,7 @@ def _extract_title(markdown: str) -> str:
     candidate = extract_reliable_markdown_h1(markdown)
     if candidate:
         return candidate
-    # 正确使用 Unicode 范围匹配中日韩字符（\u 在 raw string 里仍会被正则解析为 Unicode）
+    # Use a Unicode range for CJK characters; regex still interprets \u in a raw string.
     language = "zh" if re.search(r"[\u4e00-\u9fff]", markdown or "") else "en"
     return i18n_get("report_title_default", language)
 

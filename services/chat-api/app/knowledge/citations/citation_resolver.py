@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from app.knowledge.api.schemas import KnowledgeChunk, KnowledgeCitation
+from app.knowledge.citations.evidence_messages import evidence_question, evidence_summary, localized_knowledge_label
 
 
 def parse_llm_json(raw: str) -> dict[str, Any]:
@@ -86,7 +87,7 @@ def resolve_citations(chunks: list[KnowledgeChunk], used_chunk_ids: list[str]) -
     return output
 
 
-def build_evidence_bundle(query: str, citations: list[KnowledgeCitation]) -> dict[str, Any]:
+def build_evidence_bundle(query: str, citations: list[KnowledgeCitation], *, language: str = "zh") -> dict[str, Any]:
     sources = []
     for item in citations:
         metadata = item.metadata or {}
@@ -96,8 +97,11 @@ def build_evidence_bundle(query: str, citations: list[KnowledgeCitation]) -> dic
             or metadata.get("title")
             or ""
         ).strip()
-        knowledge_label = str(metadata.get("knowledge_label") or "内部知识").strip()
-        title = f"{knowledge_label}：{document_title}" if document_title else (
+        knowledge_label = localized_knowledge_label(
+            str(metadata.get("knowledge_label") or ""), str(metadata.get("knowledge_scope") or ""), language,
+        )
+        separator = "：" if str(language or "").lower().startswith("zh") else ": "
+        title = f"{knowledge_label}{separator}{document_title}" if document_title else (
             " / ".join(item.title_path) or item.chunk_id
         )
         citation_id = f"{item.document_id}:{item.chunk_id}"
@@ -121,8 +125,8 @@ def build_evidence_bundle(query: str, citations: list[KnowledgeCitation]) -> dic
             }
         )
     return {
-        "summary": f"内部知识问答检索到 {len(citations)} 条引用来源",
+        "summary": evidence_summary(len(citations), language),
         "sources": sources,
-        "confirmed_facts": [f"问题：{query}"],
+        "confirmed_facts": [evidence_question(query, language)],
         "open_questions": [],
     }

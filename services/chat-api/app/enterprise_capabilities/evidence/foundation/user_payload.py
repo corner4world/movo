@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 from app.enterprise_capabilities.evidence.foundation.kb_document_sources import extract_kb_document_sources
+from app.enterprise_capabilities.evidence.foundation.source_labels import evidence_source_label
 
 
 def _source_type(item: Dict[str, Any]) -> str:
@@ -196,6 +197,7 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
     """Project a runtime evidence bundle into fields suitable for end users."""
     if not isinstance(bundle, dict):
         return {}
+    language = str(bundle.get("language") or "zh")
     sources: List[Dict[str, Any]] = []
     seen: set[str] = set()
     raw_digest_rows = _extract_raw_tool_digest_rows(bundle)
@@ -212,7 +214,7 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
         sources.append(
             {
                 "id": f"ev_raw_{digest_idx}",
-                "title": digest_title[:180] or digest_source_name or "网页资料",
+                "title": digest_title[:180] or digest_source_name or evidence_source_label("web", language),
                 "source_name": digest_source_name,
                 "snippet": str(digest_row.get("snippet") or "").strip()[:520],
                 "source_type": "web",
@@ -230,8 +232,8 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
             seen.add(key)
             row = {
                 "id": f"ev_{idx}",
-                "title": str(item.get("title") or "外部知识库")[:180],
-                "source_name": str(meta.get("source_name") or item.get("source") or "外部知识库")[:120],
+                "title": str(item.get("title") or evidence_source_label("external_knowledge", language))[:180],
+                "source_name": str(meta.get("source_name") or item.get("source") or evidence_source_label("external_knowledge", language))[:120],
                 "source_type": "external_knowledge",
                 "snippet": str(item.get("summary") or "")[:520],
             }
@@ -246,7 +248,7 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
         content = str(item.get("content") or item.get("summary") or "").strip()
         if tool == "kb_search" and _empty_kb_result(content or summary):
             continue
-        kb_document_sources = extract_kb_document_sources(item)
+        kb_document_sources = extract_kb_document_sources(item, language=language)
         if kb_document_sources:
             for source in kb_document_sources:
                 key = f"doc:{source.get('document_id') or ''}:{source.get('chunk_id') or ''}"
@@ -280,7 +282,7 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
                 sources.append(
                     {
                         "id": f"ev_{idx}_{digest_idx}",
-                        "title": digest_title[:180] or digest_source_name or "网页资料",
+                        "title": digest_title[:180] or digest_source_name or evidence_source_label("web", language),
                         "source_name": digest_source_name,
                         "snippet": str(digest_row.get("snippet") or "").strip()[:520],
                         "source_type": "web",
@@ -298,8 +300,8 @@ def build_user_evidence_payload(bundle: Dict[str, Any]) -> Dict[str, Any]:
         source_type = _source_type(item)
         row: Dict[str, Any] = {
             "id": f"ev_{idx}",
-            "title": title[:180] or source_name or "资料来源",
-            "source_name": source_name or ("内部知识库" if source_type in {"kb", "internal"} else ""),
+            "title": title[:180] or source_name or evidence_source_label("source", language),
+            "source_name": source_name or (evidence_source_label("internal_knowledge", language) if source_type in {"kb", "internal"} else ""),
             "snippet": (summary[:520] if not pretty_json else ""),
             "source_type": source_type,
         }

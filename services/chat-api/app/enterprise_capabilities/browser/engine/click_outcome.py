@@ -29,8 +29,8 @@ class ClickOutcomePolicy:
         if (_state_key(observation), identity) not in self._unproductive:
             return None
         return (
-            "同一页面上的这个点击已成功投递，但页面没有推进。"
-            "不要重复点击同一元素；请重新观察遮挡层、新标签页、禁用状态或选择其他目标。"
+            "The click was delivered on this page, but the page did not advance. "
+            "Do not click the same element again; inspect overlays, new tabs, disabled state, or choose another target."
         )
 
     def evaluate(
@@ -50,8 +50,8 @@ class ClickOutcomePolicy:
             return ClickOutcome(
                 ok=False,
                 error=(
-                    "点击事件已投递到目标，但 URL、标签页、焦点、交互元素和页面文本均未变化。"
-                    "请重新观察页面并换策略，不要重复点击同一 ref。"
+                    "The click event reached the target, but URL, tabs, focus, interactive elements, and page text did not change. "
+                    "Observe the page again and change strategy; do not repeat the click on the same ref."
                 ),
                 delivered=True,
             )

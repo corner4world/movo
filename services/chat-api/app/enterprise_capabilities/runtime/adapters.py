@@ -17,6 +17,7 @@ from app.enterprise_capabilities.artifacts.resource_result import (
 from app.enterprise_capabilities.browser import browser_task
 from app.knowledge.retrieval.retrieval_client import KnowledgeRetrievalError
 from app.enterprise_capabilities.knowledge_result import unavailable_result
+from app.enterprise_capabilities.knowledge_source.result_messages import knowledge_result_message
 from app.services.runtime_parse_service import runtime_parse_service
 from app.services.rag_service.internal_knowledge_qa_service import internal_knowledge_qa_service
 from app.enterprise_capabilities.knowledge_source.config import get_knowledge_source
@@ -74,15 +75,17 @@ def _artifact_output_spec(arguments: dict[str, Any], key: str) -> dict[str, Any]
 
 
 async def knowledge_search(arguments: dict[str, Any], context: CapabilityExecutionContext) -> dict[str, Any]:
+    language = str(context.turn_context.get("language") or "zh")
     selected = [str(item) for item in list(context.turn_context.get("knowledge_base_ids") or []) if str(item)]
     query = str(arguments.get("query") or "")
     source = await get_knowledge_source(context.tenant_id)
     if source.get("mode") == "external":
         try:
             result = await search_external_knowledge(
-                query=query, main_id=context.tenant_id, user_id=context.user_id, config=source,
+                query=query, main_id=context.tenant_id, user_id=context.user_id, config=source, language=language,
             )
             bundle = build_external_knowledge_evidence(query=query, mapped=result)
+            bundle["language"] = language
             result["evidence_bundle"] = public_capability_evidence(bundle)
             result["_execution_evidence_bundle"] = bundle
             return result
@@ -96,9 +99,10 @@ async def knowledge_search(arguments: dict[str, Any], context: CapabilityExecuti
             session_id=context.conversation_id,
             knowledge_ids=selected,
             top_k=int(arguments.get("top_n") or 8),
+            language=language,
         )
     except KnowledgeRetrievalError as exc:
-        return unavailable_result(query=query, error=exc)
+        return unavailable_result(query=query, error=exc, language=language)
     used_chunks = list(payload.get("usedChunks") or [])
     evidence_items = []
     for chunk in used_chunks:
@@ -116,14 +120,15 @@ async def knowledge_search(arguments: dict[str, Any], context: CapabilityExecuti
             "metadata": dict(chunk.get("metadata") or {}),
         }
         evidence_items.append(row)
-    bundle = build_knowledge_evidence_bundle(query=query, items=evidence_items)
+    bundle = build_knowledge_evidence_bundle(query=query, items=evidence_items, language=language)
     payload["success"] = bool(payload.get("ok", True))
     payload["retrieval_status"] = "completed" if payload.get("retrievedCount") else "empty"
     payload["retrieval_mode"] = "qa"
+    payload["language"] = language
     payload["total"] = payload.get("retrievedCount", 0)
     payload["items"] = used_chunks
     payload["evidence_available"] = bool(used_chunks)
-    payload["message"] = "内部知识问答完成。" if used_chunks else "内部知识检索已完成，但没有找到可支持答案的依据。"
+    payload["message"] = knowledge_result_message("answer_completed" if used_chunks else "answer_empty", language)
     if bundle and used_chunks:
         payload["evidence_bundle"] = public_capability_evidence(bundle)
         payload["_execution_evidence_bundle"] = bundle
@@ -140,7 +145,9 @@ async def knowledge_read_document(arguments: dict[str, Any], context: Capability
         char_offset=int(arguments.get("char_offset") or 0),
         max_chars=int(arguments.get("max_chars") or 5000),
     )
-    bundle = build_knowledge_document_evidence(result)
+    bundle = build_knowledge_document_evidence(
+        result, language=str(context.turn_context.get("language") or "zh"),
+    )
     if bundle:
         result["evidence_bundle"] = public_capability_evidence(bundle)
         result["_execution_evidence_bundle"] = bundle
@@ -228,6 +235,7 @@ async def web_collect(arguments: dict[str, Any], context: CapabilityExecutionCon
         query="\n".join(str(item) for item in list(arguments.get("urls") or [])),
         results=list(public_result.get("results") or []),
         raw_result=public_result,
+        language=str(context.turn_context.get("language") or "zh"),
     )
     if bundle:
         public_result["evidence_bundle"] = public_evidence_bundle(bundle)
@@ -249,6 +257,7 @@ async def external_search(arguments: dict[str, Any], context: CapabilityExecutio
     raw_result = {"results": results, "provider_trace": trace, "total": len(results)}
     bundle = build_research_evidence_bundle(
         tool_name="external_search", query=query, results=results, raw_result=raw_result,
+        language=str(context.turn_context.get("language") or "zh"),
     )
     return {
         "success": bool(results), **raw_result,
@@ -303,6 +312,7 @@ async def progressive_research(arguments: dict[str, Any], context: CapabilityExe
             evidence_sufficient=result.evidence_sufficient,
             budget_exhausted=result.budget_exhausted,
             stop_reason=result.stop_reason,
+            language=str(arguments.get("language") or context.turn_context.get("language") or "zh"),
         )
         return {
             "success": result.ok, **result_payload,

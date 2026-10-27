@@ -36,11 +36,11 @@ class BrowserActionSpec:
     """
 
     capability_id: str                  # e.g. "browser.read"
-    name_zh: str                        # display name
+    name_zh: str                        # localized display name
     name_en: str
-    description_zh: str                 # shown to planner LLM so it picks
-    description_en: str                 # the right capability per step
+    description_zh: str                 # localized description metadata
+    description_en: str                 # English planner description
     produces: Tuple[str, ...]           # artifact keys expected in data
-    data_schema_hint_zh: str            # shown to browser LLM so it knows
-    data_schema_hint_en: str            # what structure to emit on done
+    data_schema_hint_zh: str            # localized schema metadata
+    data_schema_hint_en: str            # English browser output shape
     validate: Callable[[Dict[str, Any]], ContractResult]

@@ -10,9 +10,9 @@ _PATTERNS = {
     "navigate": re.compile(r"打开|访问|浏览|进入|open|visit|browse|navigate", re.I),
     "search": re.compile(r"搜索|检索|查找|search|look\s+up", re.I),
     "read": re.compile(r"读取|提取|获取|查看|总结|标题|正文|内容|read|extract|collect|summari[sz]e|title|content", re.I),
-    # Chinese "返回结果/内容" means return data to the caller. Browser
-    # history is required only with an explicit spatial target such as
-    # "返回到搜索页", "回到列表" or "返回上一页".
+    # A Chinese request to return results or content means data delivery.
+    # Browser history is required only with an explicit destination such as
+    # the search page, list view, or previous page.
     "return": re.compile(
         r"返回(?:到|至)(?=\s*(?:上一|原|搜索|列表|首页|前一|页面|页|https?://))|"
         r"返回(?:上一|原|首页|前一)(?:搜索|列表)?(?:结果)?页(?:面)?|"

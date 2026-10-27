@@ -58,6 +58,7 @@ class ImageNativePresentationPipeline:
     ) -> Dict[str, Any]:
         enriched_output_spec = dict(output_spec or {})
         enriched_output_spec["presentation_pipeline_version"] = "image_native"
+        requested_language = str(enriched_output_spec.get("language") or "zh-CN")
 
         await self._emit_progress(
             progress_callback,
@@ -65,7 +66,7 @@ class ImageNativePresentationPipeline:
                 "stage": "story_planning",
                 "status": "running",
                 "kind": "analyze",
-                "message": story_planning_introduction(),
+                "message": story_planning_introduction(language=requested_language),
             },
         )
         story_plan = None
@@ -93,7 +94,7 @@ class ImageNativePresentationPipeline:
                 "stage": "story_ready",
                 "status": "completed",
                 "kind": "analyze",
-                "message": story_plan_summary(story_plan),
+                "message": story_plan_summary(story_plan, language=requested_language if enriched_output_spec.get("language") else story_plan.language),
             },
         )
 
@@ -119,7 +120,7 @@ class ImageNativePresentationPipeline:
                 "stage": "preview_render",
                 "status": "running",
                 "kind": "render",
-                "message": preview_assembly_summary(len(list(blueprint.pages or []))),
+                "message": preview_assembly_summary(len(list(blueprint.pages or [])), language=requested_language if enriched_output_spec.get("language") else story_plan.language),
             },
         )
         html_preview = self._html_renderer.compile(blueprint=blueprint)
@@ -153,6 +154,7 @@ class ImageNativePresentationPipeline:
             compile_result=html_preview,
             user_id=str(enriched_output_spec.get("user_id") or "anonymous"),
             task_id=str(story_plan.deck_id or "presentation"),
+            language=requested_language if enriched_output_spec.get("language") else story_plan.language,
         )
         logger.info(
             "presentation_image_native_stage stage=preview_ready deck_id=%s slide_count=%s",
@@ -165,7 +167,7 @@ class ImageNativePresentationPipeline:
                 "stage": "presentation_ready",
                 "status": "completed",
                 "kind": "render",
-                "message": presentation_ready_summary(len(list(blueprint.pages or []))),
+                "message": presentation_ready_summary(len(list(blueprint.pages or [])), language=requested_language if enriched_output_spec.get("language") else story_plan.language),
             },
         )
         return {

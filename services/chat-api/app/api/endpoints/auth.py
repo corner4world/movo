@@ -16,6 +16,7 @@ from fastapi import APIRouter, File, Header, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.api.auth_messages import localized_auth_message
 from app.core.db import get_db
 from app.core.end_user_auth import build_session_token, parse_and_verify_session_token, verify_password
 from app.core.tenant import DEFAULT_MAIN_ID, add_main_scope, resolve_main_id
@@ -284,11 +285,11 @@ async def _create_login_challenge(username: str, candidates: list[dict[str, Any]
 
 
 @router.post("/auth/login", response_model=ApiResponse)
-async def login(payload: LoginRequest) -> ApiResponse:
+async def login(payload: LoginRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     db = get_db()
     setup_state = await db["system_bootstrap"].find_one({"_id": "singleton"}, {"completed": 1})
     if not setup_state or not bool(setup_state.get("completed")):
-        return ApiResponse(code=1, message="系统尚未完成初始化，请先在管理后台执行 Setup")
+        return ApiResponse(code=1, message=localized_auth_message("系统尚未完成初始化，请先在管理后台执行 Setup", accept_language))
 
     username = payload.username.strip()
     preferred_main_id = resolve_main_id(payload.mainId) if str(payload.mainId or "").strip() else None
@@ -296,19 +297,19 @@ async def login(payload: LoginRequest) -> ApiResponse:
     if not matched_users and preferred_main_id:
         matched_users = await _find_verified_users(username=username, password=payload.password, preferred_main_id=None)
     if not matched_users:
-        return ApiResponse(code=1, message="用户名或密码错误")
+        return ApiResponse(code=1, message=localized_auth_message("用户名或密码错误", accept_language))
 
     # End-user runtime does not accept fallback tenant id "default".
     matched_users = [item for item in matched_users if _is_valid_tenant_main_id(resolve_main_id(item.get("main_id")))]
     if not matched_users:
-        return ApiResponse(code=1, message="当前账号未绑定有效组织，请联系管理员配置租户ID")
+        return ApiResponse(code=1, message=localized_auth_message("当前账号未绑定有效组织，请联系管理员配置租户ID", accept_language))
 
     candidates = await load_tenant_candidates(db, matched_users)
     if len(candidates) > 1 and not preferred_main_id:
         challenge = await _create_login_challenge(username=username, candidates=candidates)
         return ApiResponse(
             code=1001,
-            message="请选择要进入的组织",
+            message=localized_auth_message("请选择要进入的组织", accept_language),
             data={
                 "requiresTenantSelection": True,
                 "challengeToken": challenge["challengeToken"],
@@ -319,45 +320,45 @@ async def login(payload: LoginRequest) -> ApiResponse:
 
     main_id = preferred_main_id or candidates[0]["mainId"]
     if not _is_valid_tenant_main_id(main_id):
-        return ApiResponse(code=1, message="组织ID无效，请联系管理员配置租户ID")
+        return ApiResponse(code=1, message=localized_auth_message("组织ID无效，请联系管理员配置租户ID", accept_language))
     target = next((item for item in matched_users if resolve_main_id(item.get("main_id")) == main_id), matched_users[0])
     session_payload = await _create_session(target, candidates)
     return ApiResponse(code=0, data=session_payload)
 
 
 @router.post("/auth/login/select-tenant", response_model=ApiResponse)
-async def select_tenant_login(payload: SelectTenantRequest) -> ApiResponse:
+async def select_tenant_login(payload: SelectTenantRequest, accept_language: str | None = Header(default=None)) -> ApiResponse:
     db = get_db()
     now = _now()
     challenge = await db[LOGIN_CHALLENGE_COLLECTION].find_one(
         {"challenge_token": payload.challengeToken, "status": "active"}
     )
     if not challenge:
-        return ApiResponse(code=1, message="登录挑战不存在或已失效")
+        return ApiResponse(code=1, message=localized_auth_message("登录挑战不存在或已失效", accept_language))
     if challenge.get("expires_at") and challenge["expires_at"] < now:
         await db[LOGIN_CHALLENGE_COLLECTION].update_one(
             {"_id": challenge["_id"]},
             {"$set": {"status": "expired", "updated_at": now}},
         )
-        return ApiResponse(code=1, message="登录挑战已过期")
+        return ApiResponse(code=1, message=localized_auth_message("登录挑战已过期", accept_language))
 
     candidates = list(challenge.get("candidates") or [])
     selected_main_id = resolve_main_id(payload.mainId)
     if not _is_valid_tenant_main_id(selected_main_id):
-        return ApiResponse(code=1, message="组织ID无效")
+        return ApiResponse(code=1, message=localized_auth_message("组织ID无效", accept_language))
     selected = next((item for item in candidates if resolve_main_id(item.get("mainId")) == selected_main_id), None)
     if not selected:
-        return ApiResponse(code=1, message="所选组织不可用")
+        return ApiResponse(code=1, message=localized_auth_message("所选组织不可用", accept_language))
 
     user_id = str(selected.get("userId") or "")
     if not ObjectId.is_valid(user_id):
-        return ApiResponse(code=1, message="用户数据异常")
+        return ApiResponse(code=1, message=localized_auth_message("用户数据异常", accept_language))
     main_id = resolve_main_id(selected.get("mainId"))
     if not _is_valid_tenant_main_id(main_id):
-        return ApiResponse(code=1, message="组织ID无效")
+        return ApiResponse(code=1, message=localized_auth_message("组织ID无效", accept_language))
     user_doc = await db[USER_COLLECTION].find_one(add_main_scope({"_id": ObjectId(user_id), "status": "active"}, main_id))
     if not user_doc:
-        return ApiResponse(code=1, message="用户不存在或已禁用")
+        return ApiResponse(code=1, message=localized_auth_message("用户不存在或已禁用", accept_language))
 
     await db[LOGIN_CHALLENGE_COLLECTION].update_one(
         {"_id": challenge["_id"]},
@@ -371,6 +372,7 @@ async def select_tenant_login(payload: SelectTenantRequest) -> ApiResponse:
 async def switch_tenant(
     payload: SwitchTenantRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     resolved = await _resolve_session_user(authorization)
     session_doc = resolved["session"]
@@ -378,16 +380,16 @@ async def switch_tenant(
     available_tenants = list(session_doc.get("available_tenants") or [])
     target_main_id = resolve_main_id(payload.mainId)
     if not _is_valid_tenant_main_id(target_main_id):
-        return ApiResponse(code=1, message="组织ID无效")
+        return ApiResponse(code=1, message=localized_auth_message("组织ID无效", accept_language))
     target = next((item for item in available_tenants if resolve_main_id(item.get("mainId")) == target_main_id), None)
     if not target:
-        return ApiResponse(code=1, message="当前账号不可切换到该组织")
+        return ApiResponse(code=1, message=localized_auth_message("当前账号不可切换到该组织", accept_language))
     user_id = str(target.get("userId") or "")
     if not ObjectId.is_valid(user_id):
-        return ApiResponse(code=1, message="用户数据异常")
+        return ApiResponse(code=1, message=localized_auth_message("用户数据异常", accept_language))
     user_doc = await db[USER_COLLECTION].find_one(add_main_scope({"_id": ObjectId(user_id), "status": "active"}, target_main_id))
     if not user_doc:
-        return ApiResponse(code=1, message="组织内用户不存在或已禁用")
+        return ApiResponse(code=1, message=localized_auth_message("组织内用户不存在或已禁用", accept_language))
     user_doc = await _backfill_missing_avatar(
         user_doc,
         available_tenants,
@@ -418,12 +420,13 @@ async def me(authorization: str | None = Header(default=None)) -> ApiResponse:
 async def update_profile(
     payload: ProfileUpdateRequest,
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     resolved = await _resolve_session_user(authorization)
     current_user = resolved["user"]
     name = payload.name.strip()
     if not name:
-        return ApiResponse(code=1, message="用户名称不能为空")
+        return ApiResponse(code=1, message=localized_auth_message("用户名称不能为空", accept_language))
     db = get_db()
     now = _now()
     mobile = str(current_user.get("mobile") or "").strip()
@@ -442,7 +445,7 @@ async def update_profile(
     available_tenants = await _load_available_tenants(login_name)
     return ApiResponse(
         code=0,
-        message="个人资料已更新",
+        message=localized_auth_message("个人资料已更新", accept_language),
         data=await _profile_with_policy(refreshed or current_user, resolved["main_id"], available_tenants),
     )
 
@@ -451,6 +454,7 @@ async def update_profile(
 async def upload_profile_avatar(
     file: UploadFile = File(...),
     authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     resolved = await _resolve_session_user(authorization)
     current_user = resolved["user"]
@@ -462,10 +466,10 @@ async def upload_profile_avatar(
     }
     suffix = allowed_types.get(content_type)
     if not suffix:
-        return ApiResponse(code=1, message="头像仅支持 JPG、PNG 或 WebP 图片")
+        return ApiResponse(code=1, message=localized_auth_message("头像仅支持 JPG、PNG 或 WebP 图片", accept_language))
     content = await read_upload_with_limit(file, max_bytes=3 * 1024 * 1024, label="Avatar")
     if not content:
-        return ApiResponse(code=1, message="头像文件不能为空")
+        return ApiResponse(code=1, message=localized_auth_message("头像文件不能为空", accept_language))
     valid_signature = (
         (content_type == "image/jpeg" and content.startswith(b"\xff\xd8\xff"))
         or (content_type == "image/png" and content.startswith(b"\x89PNG\r\n\x1a\n"))
@@ -477,7 +481,7 @@ async def upload_profile_avatar(
         )
     )
     if not valid_signature:
-        return ApiResponse(code=1, message="头像文件格式无效")
+        return ApiResponse(code=1, message=localized_auth_message("头像文件格式无效", accept_language))
 
     uploader = ObjectStorageClient()
     user_id = str(current_user["_id"])
@@ -506,7 +510,7 @@ async def upload_profile_avatar(
         available_tenants = await _load_available_tenants(login_name)
     return ApiResponse(
         code=0,
-        message="头像已更新",
+        message=localized_auth_message("头像已更新", accept_language),
         data=await _profile_with_policy(refreshed or current_user, resolved["main_id"], available_tenants),
     )
 
@@ -656,11 +660,12 @@ async def get_org_details(
 
 @router.post("/auth/admin-sso", response_model=ApiResponse)
 async def admin_sso(
-    authorization: str | None = Header(default=None)
+    authorization: str | None = Header(default=None),
+    accept_language: str | None = Header(default=None),
 ) -> ApiResponse:
     """
-    单点登录（SSO）：为已登录的用户加密生成用于管理后台的 access token，
-    并在 admin_sessions 中插入以允许后台免密登录。
+    Create an admin access token for an authenticated user and authorize it in
+    admin_sessions so the admin console can complete SSO without a password.
     """
     resolved = await _resolve_session_user(authorization)
     current_user = resolved["user"]
@@ -669,17 +674,17 @@ async def admin_sso(
     db = get_db()
     tenant = (await load_tenant_candidates(db, [current_user]))[0]
     if tenant.get("spaceType") != "enterprise":
-        return ApiResponse(code=1, message="个人空间没有管理后台")
+        return ApiResponse(code=1, message=localized_auth_message("个人空间没有管理后台", accept_language))
     if not tenant.get("canAccessAdmin"):
-        return ApiResponse(code=1, message="您没有访问管理后台的权限")
+        return ApiResponse(code=1, message=localized_auth_message("您没有访问管理后台的权限", accept_language))
 
-    # 1. 后台账号与用户端账号分离：SSO 只校验已有后台账号，不自动补建。
+    # 1. Admin and user accounts are separate; SSO only verifies existing admin accounts.
     admin_account = await db[ADMIN_ACCOUNT_COLLECTION].find_one({"username": username, "main_id": main_id})
     if not admin_account or admin_account.get("status") != "active" or admin_account.get("group_code") == "member":
-        return ApiResponse(code=1, message="您没有访问管理后台的权限")
+        return ApiResponse(code=1, message=localized_auth_message("您没有访问管理后台的权限", accept_language))
 
-    # 2. 生成 JWT token
-    # 签名密钥：如果环境变量有配置则读，否则用默认开发值
+    # 2. Generate a JWT token.
+    # Use the configured signing key, falling back to the development default.
     jwt_secret = get_settings().ASKAI_ADMIN_JWT_SECRET
     
     subject = {
@@ -691,7 +696,7 @@ async def admin_sso(
     
     token, expires_at, session_id = _create_admin_token(subject, jwt_secret)
     
-    # 3. 在后台活跃 session 表 (admin_sessions) 写入授权，允许直接握手通过
+    # 3. Authorize the active admin session for direct handshake.
     admin_session = {
         "session_id": session_id,
         "username": username,
@@ -705,7 +710,7 @@ async def admin_sso(
     
     return ApiResponse(
         code=0,
-        message="单点登录凭证授权成功",
+        message=localized_auth_message("单点登录凭证授权成功", accept_language),
         data={
             "sso_token": token,
             "expiresAt": expires_at

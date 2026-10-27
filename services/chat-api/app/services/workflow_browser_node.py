@@ -18,11 +18,11 @@ def browser_node_target_reference(business_config: Dict[str, Any] | None = None)
     target_name = browser_node_target_name(business_config)
     target_url = browser_node_target_url(business_config)
     if target_name and target_url:
-        return f"[目标系统: {target_name} ({target_url})]"
+        return f"[Target system: {target_name} ({target_url})]"
     if target_name:
-        return f"[目标系统: {target_name}]"
+        return f"[Target system: {target_name}]"
     if target_url:
-        return f"[目标网址: {target_url}]"
+        return f"[Target URL: {target_url}]"
     return ""
 
 

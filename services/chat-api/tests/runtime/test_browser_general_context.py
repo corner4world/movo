@@ -416,7 +416,7 @@ def test_unfinished_detail_candidate_is_excluded_after_returning_to_results():
     )
     assert verdict == "allow", hint
     constraints = context.build_state_ledger(results)["action_constraints"]
-    assert any("已淘汰" in item for item in constraints)
+    assert any("was excluded" in item for item in constraints)
 
 
 def test_entry_navigation_does_not_complete_open_result_before_candidate_selection():
@@ -821,14 +821,14 @@ def test_wrong_detail_resource_blocks_comment_and_returns_to_source_list():
         wrong_detail,
     )
     assert verdict == "reject"
-    assert "详情页尚未确认" in hint
+    assert "detail page has not been confirmed" in hint
 
     verdict, _, hint = context.validate_action(
         Decision(tool="browser_click", args={"ref": "send"}),
         wrong_detail,
     )
     assert verdict == "reject"
-    assert "禁止填写" in hint
+    assert "Do not fill, upload, or submit" in hint
 
     recovery = context.suggest_next_action(wrong_detail)
     assert recovery is not None

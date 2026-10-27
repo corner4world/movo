@@ -23,7 +23,7 @@ def _now() -> datetime:
 
 async def get_or_create_organization(main_id: str, default_org_name: str = "个人空间", owner_id: str = "") -> Dict[str, Any]:
     """
-    获取或自动兜底创建组织信息。
+    Get the organization, creating one with defaults when absent.
     """
     db = get_db()
     org = await db[ORGANIZATION_COLLECTION].find_one({"main_id": main_id})
@@ -45,19 +45,19 @@ async def get_or_create_organization(main_id: str, default_org_name: str = "个�
 
 async def check_quota_before_request(main_id: str, config: Dict[str, Any]) -> None:
     """
-    在 LLM 请求发起前，检查当前组织是否仍有可用额度。
-    若模型配置中 main_id 是 'default' (使用的是平台默认提供的共享模型)，才需要强制进行点数扣减检验。
-    若当前组织已升级并启用了自有模型 (is_own_model = True)，或模型属于用户自有，不予拦截。
+    Check available organization quota before an LLM request.
+    Enforce point balance only for the platform's shared default model.
+    Own-model organizations and user-owned models are exempt.
     """
     if not main_id or main_id == "default":
         return
 
-    # 只有当使用的是平台默认提供的共享模型时，才受平台额度限制
+    # Apply platform quota only to the default shared model.
     is_shared_model = str(config.get("main_id") or "default").strip() == "default"
 
     org = await get_or_create_organization(main_id)
 
-    # 如果是共享模型，并且没有开启自有模型特权，则强校验点数
+    # Enforce point balance for shared models without own-model privileges.
     if is_shared_model and not org.get("is_own_model", False):
         used = org.get("used_points", 0)
         total = org.get("total_points", 1000000)
@@ -70,8 +70,8 @@ async def check_quota_before_request(main_id: str, config: Dict[str, Any]) -> No
 
 async def deduct_points_after_request(main_id: str, total_tokens: int) -> None:
     """
-    当请求产生 Token 消费后，异步将其累计扣减。
-    如果该组织是免费版（或者未开启 is_own_model），就计入系统账单；
+    Record token consumption asynchronously after a request.
+    Bill free organizations or those without own-model access.
     """
     if not main_id or main_id == "default" or total_tokens <= 0:
         return
@@ -79,7 +79,7 @@ async def deduct_points_after_request(main_id: str, total_tokens: int) -> None:
     db = get_db()
     org = await get_or_create_organization(main_id)
 
-    # 只有在使用系统默认模型，或者未启用自有模型时才累计额度点数消耗
+    # Count point usage only for the default model or when own models are disabled.
     if org.get("tier") == "free" or not org.get("is_own_model", False):
         await db[ORGANIZATION_COLLECTION].update_one(
             {"main_id": main_id},
@@ -96,7 +96,7 @@ async def deduct_points_after_request(main_id: str, total_tokens: int) -> None:
 
 async def check_member_limit(main_id: str) -> None:
     """
-    添加成员时，前置校验当前组织的成员总数是否超限。
+    Check the organization's member limit before adding a member.
     """
     db = get_db()
     org = await get_or_create_organization(main_id)
@@ -105,7 +105,7 @@ async def check_member_limit(main_id: str) -> None:
     if limit is None:
         return
 
-    # 统计 end_users 中本 main_id 的成员总数
+    # Count end_users belonging to this main_id.
     from app.api.endpoints.auth import USER_COLLECTION
     current_count = await db[USER_COLLECTION].count_documents({"main_id": main_id})
 
