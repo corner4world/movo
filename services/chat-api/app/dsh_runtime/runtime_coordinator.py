@@ -8,12 +8,17 @@ from app.dsh_runtime.bindings import KernelBindingRepository
 from app.dsh_runtime.contracts import CreateRuntimeRequest, CreateSessionRequest, SessionSpec
 from app.dsh_runtime.errors import DshRuntimeError
 from app.dsh_runtime.gateway import DshAgentKernelGateway
+from app.dsh_runtime.profile.attachment_transfer import SeedAttachmentTransfer
 
 
 class RuntimeCoordinator:
-    def __init__(self, gateway: DshAgentKernelGateway, bindings: KernelBindingRepository) -> None:
+    def __init__(
+        self, gateway: DshAgentKernelGateway, bindings: KernelBindingRepository,
+        attachment_transfer: SeedAttachmentTransfer | None = None,
+    ) -> None:
         self._gateway = gateway
         self._bindings = bindings
+        self._attachment_transfer = attachment_transfer
 
     @staticmethod
     def isolation_key(tenant_id: str, profile_version: str) -> str:
@@ -103,6 +108,12 @@ class RuntimeCoordinator:
         argument. Without them (direct calls) the predecessor's values are
         kept. ``execution_location`` is always preserved.
         """
+        if self._attachment_transfer is not None:
+            self._attachment_transfer.transfer(
+                source_key=self.isolation_key(str(binding["tenant_id"]), str(binding["profile_version"])),
+                target_key=self.isolation_key(str(binding["tenant_id"]), profile_version),
+                session_id=str(binding["kernel_session_id"]),
+            )
         return await self._replace_binding(
             binding,
             profile_version=profile_version,

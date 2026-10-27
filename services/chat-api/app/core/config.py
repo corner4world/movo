@@ -120,6 +120,7 @@ class Settings(BaseSettings):
     DSH_MODEL_GATEWAY_SIGNING_SECRET: str = ""
     DSH_TOOL_GATEWAY_URL: str = "http://127.0.0.1:8000/internal/dsh/tools"
     DSH_RUNTIME_HOST_URL: str = "http://127.0.0.1:8101"
+    DSH_RUNTIME_STORAGE_ROOT: str = ""
     DSH_RUNTIME_HOST_TOKEN: str = ""
     DSH_MODEL_GATEWAY_URL: str = "http://127.0.0.1:8000/internal/dsh/model/generate"
     DSH_RUNTIME_HTTP_TIMEOUT_SECONDS: float = 5.0

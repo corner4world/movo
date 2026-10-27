@@ -161,12 +161,14 @@ services:
       AUTO_INSTALL_PLAYWRIGHT_ON_START: "false"
       REQUEST_DEBUG_SNAPSHOT_ENABLED: "false"
       DSH_RUNTIME_HOST_URL: http://dsh-runtime-host:8101
+      DSH_RUNTIME_STORAGE_ROOT: /data/dsh-runtime
       DSH_TOOL_GATEWAY_URL: http://chat-api:8000/internal/dsh/tools
       DSH_MODEL_GATEWAY_URL: http://chat-api:8000/internal/dsh/model/generate
     volumes:
       - deployment-secrets:/run/askai-secrets:ro
       - askai-storage:/app/storage
       - knowledge-storage:/data/knowledge-documents
+      - dsh-runtime-data:/data/dsh-runtime
     depends_on:
       bootstrap:
         condition: service_completed_successfully

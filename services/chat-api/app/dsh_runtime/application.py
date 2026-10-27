@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.dsh_runtime.bindings import KernelBindingRepository
 from app.dsh_runtime.chat_service import DshChatService
+from app.dsh_runtime.profile.attachment_transfer import SeedAttachmentTransfer
 from app.dsh_runtime.conversation import ConversationRepository
 from app.dsh_runtime.events import KernelEventRepository
 from app.dsh_runtime.events.turn_channel import TurnEventRegistry
@@ -135,7 +137,14 @@ class DshRuntimeApplication:
         )
         self.chat = DshChatService(
             gateway=gateway,
-            coordinator=RuntimeCoordinator(gateway, bindings),
+            coordinator=RuntimeCoordinator(
+                gateway, bindings,
+                attachment_transfer=SeedAttachmentTransfer(
+                    Path(settings.DSH_RUNTIME_STORAGE_ROOT)
+                    if settings.DSH_RUNTIME_STORAGE_ROOT
+                    else Path(__file__).resolve().parents[2] / "dsh" / "storage"
+                ),
+            ),
             conversations=conversations,
             bindings=bindings,
             events=events,
