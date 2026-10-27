@@ -296,6 +296,7 @@ Thumbs.db
 # 测试覆盖率目录
 coverage/
 qa/evidence/
+/qa/release/
 
 # ==================================================
 # Python 项目特定配置
