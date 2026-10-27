@@ -326,7 +326,7 @@ async function redeemShare(page: Page, shareUrl: string, username: string, passw
   log('share link redeemed; session joined and opened');
 }
 
-/** Enter a session via 新建对话, send the first message, and capture X-Session-Id. */
+/** Enter a session through New chat, send the first message, and capture X-Session-Id. */
 async function createChatSession(page: Page, message: string): Promise<string> {
   await page.getByRole('button', { name: '新建对话' }).click();
   const composer = page.locator(COMPOSER).first();
@@ -583,7 +583,7 @@ test('T12 step (9): two-context sharing, author identity, member add/remove, liv
   const t10FailureB = await pageB.screenshot({ fullPage: true });
   await expect(messageRow(pageB, MSG_B)).toBeHidden({ timeout: 15_000 });
   // The shared pane is gone entirely: no session header / share control remains.
-  // (Do NOT assert the sidebar 分享给我 section disappears — the stack is reused
+  // (Do NOT assert the sidebar Shared with me section disappears — the stack is reused
   // across runs and B can still be a member of sessions from earlier runs.)
   await expect(pageB.locator('[aria-label="分享会话"]')).toHaveCount(0, { timeout: 15_000 });
   const t10FailureA = await pageA.screenshot({ fullPage: true });
