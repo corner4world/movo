@@ -1,0 +1,8 @@
+# Document Parser development rules
+
+## Code language
+
+- Use English for identifiers, variable and function names, class names, comments, docstrings, log messages, test names, and internal keys.
+- Do not use Chinese text as an identifier, code comment, or translation key.
+- Keep translation keys stable and in English. Put user-facing Chinese in localization or other explicit presentation data, with an English translation.
+- When editing existing code, do not add new Chinese code annotations; update nearby annotations when practical.
