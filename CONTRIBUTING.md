@@ -4,6 +4,10 @@ Contributions should be focused, modular, and covered by tests appropriate to
 the change. Do not commit environment files, credentials, generated build
 caches, uploaded documents, avatars, logs, or other runtime data.
 
+Write source comments and shared technical documentation in English. Put
+user-visible copy in the locale catalogs rather than in components or API
+handlers. Keep Chinese translations and language-specific test fixtures intact.
+
 By intentionally submitting a contribution, you agree to the contribution
 terms in LICENSE, including use of the contribution in MOVO commercial products
 and services. Do not submit code or assets that you do not have the right to
@@ -13,6 +17,7 @@ Before opening a pull request, run the relevant checks:
 
 ```bash
 python3 scripts/check_open_source_hygiene.py
+python3 scripts/check_api_error_translations.py
 python -m compileall -q services/chat-api/app services/admin-api/app services/document-parser/app
 cd apps/user-web && npm run build
 cd ../admin-web && npm ci --legacy-peer-deps && npm run build
