@@ -1,36 +1,26 @@
+import { codeRuntimeErrorMessages } from '../../locales/codeRuntimeErrorMessages'
+
 export function codeRuntimeErrorMessage(error: unknown, locale: 'zh' | 'en'): string {
   const raw = String(error instanceof Error ? error.message : error || '')
   const normalized = raw.toLowerCase()
   if (normalized.includes('code permission setting') || normalized.includes('code permission config') ||
       normalized.includes('automatic review requires')) {
-    return locale === 'zh'
-      ? '自定义权限配置无效。请打开 config.toml 检查三个设置项，保存后重试。'
-      : 'Invalid custom permissions. Open config.toml, check the three settings, save, and retry.'
+    return codeRuntimeErrorMessages.permissions[locale]
   }
   if (normalized.includes('already owned by an active write handle')) {
-    return locale === 'zh'
-      ? '此会话正在恢复中，请稍后重试。若问题持续，请重启桌面端。'
-      : 'This task is already being restored. Retry shortly; restart the desktop app if it persists.'
+    return codeRuntimeErrorMessages.restoring[locale]
   }
   if (normalized.includes('another desktop device')) {
-    return locale === 'zh'
-      ? '此项目会话绑定在另一台桌面设备。历史记录可查看，但请回到原设备继续执行。'
-      : 'This project task is bound to another desktop device. History remains readable; continue on the original device.'
+    return codeRuntimeErrorMessages.otherDevice[locale]
   }
   if (normalized.includes('workspace') && (normalized.includes('unavailable') || normalized.includes('missing'))) {
-    return locale === 'zh'
-      ? '原项目目录已丢失或不可访问。历史记录仍可查看；请恢复原目录后重试。'
-      : 'The original project folder is missing or unavailable. History remains readable; restore the folder and retry.'
+    return codeRuntimeErrorMessages.missingFolder[locale]
   }
   if (normalized.includes('profile') && (normalized.includes('compatible') || normalized.includes('changed'))) {
-    return locale === 'zh'
-      ? '当前 DSH Runtime Profile 与该历史会话不兼容。为保护原会话，系统未自动切换执行环境。'
-      : 'The current DSH Runtime Profile is incompatible with this historical task. Execution was not silently moved.'
+    return codeRuntimeErrorMessages.incompatibleProfile[locale]
   }
   if (normalized.includes('runtime') && (normalized.includes('unavailable') || normalized.includes('ready'))) {
-    return locale === 'zh'
-      ? '本地 DSH Runtime 当前不可用。历史记录仍可查看，请恢复桌面 Runtime 后重试。'
-      : 'The local DSH Runtime is unavailable. History remains readable; restore the desktop Runtime and retry.'
+    return codeRuntimeErrorMessages.runtimeUnavailable[locale]
   }
-  return raw || (locale === 'zh' ? '本地 Code 会话暂时不可用。' : 'The local Code task is unavailable.')
+  return raw || codeRuntimeErrorMessages.taskUnavailable[locale]
 }

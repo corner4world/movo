@@ -22,7 +22,7 @@ import {
   type BrowserOwner,
 } from '../../platform'
 import { useEmbeddedBrowserState } from '../../composables/browser/embeddedBrowserState'
-import { useLocale } from '../../composables/i18n'
+import { getLocale, t, useLocale } from '../../composables/i18n'
 import BrowserAddressBar from './BrowserAddressBar.vue'
 import BrowserTabs from './BrowserTabs.vue'
 import RecordingReviewDialog from './RecordingReviewDialog.vue'
@@ -65,10 +65,10 @@ async function beginRecording() {
   recordingStream?.close()
   recordingStream = streamRecording(props.userId, (event) => {
     if (!recordingId.value || event.recording_id === recordingId.value) recordedEvents.value.push(event)
-  }, () => { recordingMessage.value = locale.value === 'zh' ? '录制事件流已中断' : 'Recording stream interrupted' })
+  }, () => { recordingMessage.value = t('browser.recordingInterrupted') })
   try {
     const result = await startRecording(props.userId, '', state.value.session_id || props.sessionId || 'default')
-    if (!result.ok) throw new Error(locale.value === 'zh' ? '本地浏览器 Agent 未连接' : 'Local browser agent is not connected')
+    if (!result.ok) throw new Error(t('browser.agentDisconnected'))
     recordingId.value = result.recording_id
     recording.value = true
     showRecordingReview.value = false
@@ -130,16 +130,17 @@ async function persistRecording() {
       capability_id: analysis.capability_id,
     })
     if (!result.ok) throw new Error(result.reason || 'cache_rejected')
-    recordingMessage.value = locale.value === 'zh' ? '流程已保存，下次会优先本地执行' : 'Workflow saved for local-first replay'
+    recordingMessage.value = t('browser.workflowSaved')
     showRecordingReview.value = false
     recordingAnalysis.value = null
     recordingId.value = ''
     recordedEvents.value = []
     await restoreBrowserSurface()
   } catch (error) {
-    recordingMessage.value = locale.value === 'zh'
-      ? `流程未保存：${String((error as Error)?.message || error)}`
-      : `Workflow not saved: ${String((error as Error)?.message || error)}`
+    const reason = String((error as Error)?.message || error)
+    recordingMessage.value = t('browser.workflowSaveFailed', {
+      reason: getLocale() === 'en' && /[\u3400-\u9fff]/u.test(reason) ? t('browser.unknownError') : reason,
+    })
   } finally {
     savingRecording.value = false
   }
@@ -249,25 +250,25 @@ onBeforeUnmount(() => {
   <section class="electron-browser">
     <BrowserTabs :tabs="state.tabs" :active-id="state.active_tab_id" @new="newTab" @select="selectTab" @close="closeTab">
       <template #actions>
-        <span v-if="state.controllable" class="owner-label"><span class="status-dot" :class="{ loading: state.loading }"></span>{{ state.owner === 'human' ? (locale === 'zh' ? '人工' : 'Human') : 'Agent' }}</span>
+        <span v-if="state.controllable" class="owner-label"><span class="status-dot" :class="{ loading: state.loading }"></span>{{ state.owner === 'human' ? t('browser.human') : 'Agent' }}</span>
         <button
           v-if="state.controllable && props.userId"
           class="record-command"
           :class="{ active: recording }"
           type="button"
           :disabled="savingRecording"
-          :title="recording ? (locale === 'zh' ? '停止录制' : 'Stop recording') : (locale === 'zh' ? '录制人工流程' : 'Record manual workflow')"
+          :title="recording ? t('browser.stopRecording') : t('browser.recordWorkflow')"
           @click="recording ? finishRecording() : beginRecording()"
-        ><span class="record-dot"></span>{{ recording ? (locale === 'zh' ? '停止' : 'Stop') : (locale === 'zh' ? '录制' : 'Record') }}</button>
-        <button v-if="state.controllable && state.owner === 'human'" class="resume-command" type="button" :title="locale === 'zh' ? '交还 Agent 执行' : 'Resume agent'" @click="setOwner('agent')"><PlayOutline /></button>
-        <button v-if="showPanelClose !== false" class="panel-close" type="button" :title="locale === 'zh' ? '关闭浏览器面板' : 'Close browser panel'" @click="close"><CloseOutline /></button>
+        ><span class="record-dot"></span>{{ recording ? t('browser.stop') : t('browser.record') }}</button>
+        <button v-if="state.controllable && state.owner === 'human'" class="resume-command" type="button" :title="t('browser.resumeAgent')" @click="setOwner('agent')"><PlayOutline /></button>
+        <button v-if="showPanelClose !== false" class="panel-close" type="button" :title="t('browser.closePanel')" @click="close"><CloseOutline /></button>
       </template>
     </BrowserTabs>
     <header class="browser-toolbar">
       <div class="navigation-controls">
-        <button class="icon-command" type="button" :disabled="!state.canGoBack" title="后退" @click="navigateEmbeddedBrowserHistory('back')"><ArrowBackOutline /></button>
-        <button class="icon-command" type="button" :disabled="!state.canGoForward" title="前进" @click="navigateEmbeddedBrowserHistory('forward')"><ArrowForwardOutline /></button>
-        <button class="icon-command" type="button" title="刷新" @click="reloadEmbeddedBrowser"><ReloadOutline /></button>
+        <button class="icon-command" type="button" :disabled="!state.canGoBack" :title="t('browser.back')" @click="navigateEmbeddedBrowserHistory('back')"><ArrowBackOutline /></button>
+        <button class="icon-command" type="button" :disabled="!state.canGoForward" :title="t('browser.forward')" @click="navigateEmbeddedBrowserHistory('forward')"><ArrowForwardOutline /></button>
+        <button class="icon-command" type="button" :title="t('browser.reload')" @click="reloadEmbeddedBrowser"><ReloadOutline /></button>
       </div>
       <div class="address-container">
         <BrowserAddressBar :url="state.url" @navigate="navigate" />

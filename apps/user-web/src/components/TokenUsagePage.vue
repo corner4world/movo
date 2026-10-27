@@ -7,6 +7,7 @@ import { listTokenUsage, type TokenUsageItem, type TokenUsageSummary } from '../
 import { t, useLocale } from '../composables/i18n'
 import { formatAppShortDateTime } from '../composables/appTimezone'
 import { formatQuotaUsagePercent, formatTokenAmount, quotaUsagePercent } from '../utils/tokenNumberFormat'
+import { internalRequestTitles } from '../locales/legacyIdentityValues'
 
 const props = defineProps<{
   userId?: string | null
@@ -59,7 +60,6 @@ const usedPercent = computed(() => {
 })
 const usedPercentLabel = computed(() => formatQuotaUsagePercent(Number(billing.value?.usedPoints || 0), totalQuota.value))
 const primaryModel = computed(() => summary.value.top_models[0]?.model_name || t('usage.default_model'))
-const internalRequestTitles = new Set(['意图路由', 'LLM 调用', 'LLM_Call', '任务规划', '内容生成', '任务执行'])
 
 async function loadBilling() {
   if (!props.token) return

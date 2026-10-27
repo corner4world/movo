@@ -1,0 +1,48 @@
+export const gitCommitMessages = {
+  title: { zh: '提交代码变更', en: 'Commit changes' },
+  fileCount: { zh: '将提交当前工作区的全部 {count} 个变更文件', en: 'All {count} changed files will be committed' },
+  close: { zh: '关闭', en: 'Close' },
+  branch: { zh: '保存到新分支', en: 'Branch for these changes' },
+  branchHint: { zh: '当前隔离 Worktree 尚无分支；提交时才会创建。', en: 'This isolated Worktree has no branch yet. It will be created when you commit.' },
+  message: { zh: '提交说明（可选）', en: 'Commit message (optional)' },
+  messagePlaceholder: { zh: '输入提交说明；留空将根据本次变更自动生成', en: 'Enter a message, or leave blank to generate one automatically' },
+  messageHint: { zh: '不填写也可以直接提交。', en: 'Leave blank to generate from the changed files.' },
+  cancel: { zh: '取消', en: 'Cancel' },
+  committing: { zh: '正在提交…', en: 'Committing…' },
+  commit: { zh: '提交', en: 'Commit' },
+  noRemote: { zh: '当前仓库尚未配置远程地址', en: 'No Git remote is configured' },
+  pushing: { zh: '正在提交并推送…', en: 'Committing and pushing…' },
+  commitPush: { zh: '提交并推送', en: 'Commit & Push' },
+} as const
+
+export const gitBranchMessages = {
+  startingBranch: { zh: '起始分支', en: 'Starting branch' },
+  localBranch: { zh: '本地分支', en: 'Local branch' },
+  worktreeHint: { zh: '隔离目录从此分支启动，暂不创建新分支。', en: 'The isolated Worktree starts here; no branch is created yet.' },
+  switchHint: { zh: '切换会直接改变当前项目目录。', en: 'Switching changes the selected project directory.' },
+  search: { zh: '搜索分支…', en: 'Search branches…' },
+  loading: { zh: '正在读取分支…', en: 'Loading branches…' },
+  local: { zh: '本地', en: 'LOCAL' },
+  current: { zh: '当前', en: 'current' },
+  remote: { zh: '远程', en: 'REMOTE' },
+  noMatches: { zh: '没有匹配的分支', en: 'No matching branches' },
+  createLocal: { zh: '新建本地分支', en: 'Create local branch' },
+  newName: { zh: '新分支名称', en: 'New branch name' },
+  create: { zh: '创建', en: 'Create' },
+} as const
+
+export const workspaceChangesMessages = {
+  waitToCommit: { zh: '请等待当前 Code 任务完成后再提交。', en: 'Wait for the current Code task to finish before committing.' },
+  noBranch: { zh: '无分支', en: 'No branch' },
+  waitForTask: { zh: '请等待当前任务完成', en: 'Wait for the current task to finish' },
+  commit: { zh: '提交', en: 'Commit' },
+  files: { zh: '个文件', en: 'files' },
+  added: { zh: '增加行', en: 'lines added' },
+  removed: { zh: '删除行', en: 'lines removed' },
+  filter: { zh: '筛选变更文件…', en: 'Filter changed files…' },
+  noMatches: { zh: '没有匹配的变更', en: 'No matching changes' },
+  gitUnavailable: { zh: '无法读取 Git 信息', en: 'Git information unavailable' },
+  loadingDiff: { zh: '正在读取变更…', en: 'Loading diff…' },
+  selectFile: { zh: '选择文件后查看具体代码变更。', en: 'Select a changed file.' },
+  diffTruncated: { zh: '变更较大，仅显示安全范围内的内容。', en: 'Diff truncated for safety.' },
+} as const

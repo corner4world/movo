@@ -6,6 +6,7 @@ import ActivityIcon from './ActivityIcon.vue'
 import { activityOutcome, activityStateMessageKey } from '../domain/activityPresentation'
 import { toolActionLabelKey, toolCallSummary, toolDisplayName } from '../domain/repeatedToolCalls'
 import { failureMessageKey } from '../domain/failureMessage'
+import { localizedInternalToolLabel } from '../domain/internalToolLabels'
 
 const props = withDefaults(defineProps<{ item: ExecutionItemV3; active?: boolean }>(), {
   active: true,
@@ -38,13 +39,13 @@ const text = computed(() => {
     return String(payload.label || '')
   }
   if (props.item.kind === 'tool') {
-    const name = toolDisplayName(props.item)
+    const name = localizedInternalToolLabel(payload.name, toolDisplayName(props.item))
     return name ? t('execution.v3.tool_call_named', { name }) : t(toolActionLabelKey(props.item))
   }
   if (props.item.kind === 'subagent') return String(payload.goal || payload.summary || '')
   if (props.item.kind === 'approval') {
     if (['dsh', 'dsh-local', 'askai-approval'].includes(String(payload.source || ''))) {
-      const name = String(payload.display_name || '').trim()
+      const name = localizedInternalToolLabel(payload.tool_name, payload.display_name)
       return name ? t('approval.timeline_pending', { name }) : t('ui.permission_required')
     }
     return String(payload.reason || t('ui.permission_required'))

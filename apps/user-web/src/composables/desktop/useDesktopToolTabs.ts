@@ -7,6 +7,7 @@ import {
   type DesktopToolTab,
 } from '../../components/desktop/desktopToolTabs'
 import type { DshTaskChangeSet } from '../../platform/types'
+import { desktopChromeMessages, desktopTerminalTabTitle } from '../../locales/desktopChromeMessages'
 
 interface DesktopToolTabsOptions {
   getScopeKey: () => string
@@ -34,7 +35,7 @@ export function useDesktopToolTabs(options: DesktopToolTabsOptions) {
   const active = computed<string | null>({ get: () => state().activeId, set: value => update({ ...state(), activeId: value }) })
   const activeTab = computed(() => tabs.value.find(tab => tab.id === active.value) || null)
   const activeKind = computed(() => activeTab.value?.kind || null)
-  const localized = (zh: string, en: string) => options.getLocale?.() === 'en' ? en : zh
+  const language = () => options.getLocale?.() === 'en' ? 'en' : 'zh'
 
   function activate(tab: DesktopToolTab): void {
     update({ ...state(), activeId: tab.id })
@@ -52,12 +53,12 @@ export function useDesktopToolTabs(options: DesktopToolTabsOptions) {
     if (!options.isAvailable(kind)) return
     if (kind === 'terminal') {
       const number = state().nextTerminal
-      const tab = { id: `terminal:${number}`, kind, title: localized(`终端 ${number}`, `Terminal ${number}`) } satisfies DesktopToolTab
+      const tab = { id: `terminal:${number}`, kind, title: desktopTerminalTabTitle[language()](number) } satisfies DesktopToolTab
       update({ tabs: [...state().tabs, tab], activeId: tab.id, nextTerminal: number + 1 })
       options.onActivate?.(tab)
       return
     }
-    addOrActivate({ id: kind, kind, title: localized({ browser: '浏览器', changes: '变更', files: '文件' }[kind], { browser: 'Browser', changes: 'Changes', files: 'Files' }[kind]) })
+    addOrActivate({ id: kind, kind, title: desktopChromeMessages[kind][language()] })
   }
 
   function reveal(kind: DesktopToolLauncherKind): void {

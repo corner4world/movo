@@ -1,3 +1,5 @@
+import { tokenNumberUnits } from '../locales/tokenNumberUnits'
+
 export type TokenNumberLocale = 'zh' | 'en'
 
 function normalizedAmount(value: number): number {
@@ -15,8 +17,8 @@ function formatScaled(value: number, divisor: number, unit: string, locale: Toke
 export function formatTokenAmount(value: number, locale: TokenNumberLocale): string {
   const amount = normalizedAmount(value)
   if (locale === 'zh') {
-    if (amount >= 100_000_000) return formatScaled(amount, 100_000_000, '亿', locale)
-    if (amount >= 10_000) return formatScaled(amount, 10_000, '万', locale)
+    if (amount >= 100_000_000) return formatScaled(amount, 100_000_000, tokenNumberUnits.hundredMillion, locale)
+    if (amount >= 10_000) return formatScaled(amount, 10_000, tokenNumberUnits.tenThousand, locale)
     return new Intl.NumberFormat('zh-CN').format(amount)
   }
   if (amount >= 1_000_000_000) return formatScaled(amount, 1_000_000_000, 'B', locale)

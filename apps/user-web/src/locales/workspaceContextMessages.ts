@@ -1,0 +1,18 @@
+export const workspaceContextMessages = {
+  'workspaceContext.chooseProject': { zh: '选择项目', en: 'Choose project' },
+  'workspaceContext.newWorktree': { zh: '新建本地工作树', en: 'New local worktree' },
+  'workspaceContext.editLocally': { zh: '本地修改', en: 'Edit locally' },
+  'workspaceContext.preparing': { zh: '准备中…', en: 'Preparing…' },
+  'workspaceContext.selection': { zh: '项目选择', en: 'Project selection' },
+  'workspaceContext.folder': { zh: '项目目录', en: 'Project folder' },
+  'workspaceContext.copyProjectPath': { zh: '复制项目地址', en: 'Copy project path' },
+  'workspaceContext.copied': { zh: '已复制', en: 'Copied' },
+  'workspaceContext.copyPath': { zh: '复制路径', en: 'Copy path' },
+  'workspaceContext.runMode': { zh: '修改方式', en: 'Run mode' },
+  'workspaceContext.changeMode': { zh: '选择本任务的文件修改方式', en: 'Choose how this task changes files' },
+  'workspaceContext.editLocallyHint': { zh: '直接在当前项目和当前分支中修改。', en: 'Make changes directly in the current project and branch.' },
+  'workspaceContext.newWorktreeHint': { zh: '从所选起始分支创建隔离目录，暂不创建新分支。', en: 'Create an isolated folder from the selected starting branch; no branch is created yet.' },
+  'workspaceContext.switchProject': { zh: '切换项目…', en: 'Switch project…' },
+  'workspaceContext.disconnectHint': { zh: '仅解除当前草稿的项目关联，不会删除项目或本地文件。', en: 'Disconnect this draft only; project files are not deleted.' },
+  'workspaceContext.regularChat': { zh: '设为普通对话', en: 'Use regular chat' },
+} as const

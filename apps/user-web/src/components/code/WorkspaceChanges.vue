@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { workspaceChangesMessages } from '../../locales/gitWorkspaceMessages'
 import { computed, onMounted, ref, watch } from 'vue'
 import GitBranchOutline from '@vicons/ionicons5/es/GitBranchOutline'
 import GitCommitOutline from '@vicons/ionicons5/es/GitCommitOutline'
@@ -15,6 +16,7 @@ import { buildWorkspaceChangeTree } from './changeTree'
 import { suggestCommitMessage } from './commitMessageSuggestion'
 
 const props = defineProps<{ sessionId: string; locale?: 'zh' | 'en'; running?: boolean; requestedPath?: string }>()
+const copy = (key: keyof typeof workspaceChangesMessages) => workspaceChangesMessages[key][props.locale === 'en' ? 'en' : 'zh']
 const emit = defineEmits<{ (event: 'committed', result: DshGitCommitResult): void; (event: 'open-diff', path: string): void }>()
 const summary = ref<DshWorkspaceSummary | null>(null)
 const selected = ref('')
@@ -70,7 +72,7 @@ function openCommitDialog() {
 }
 async function commit(message: string, push: boolean, branchName?: string) {
   if (props.running) {
-    commitError.value = props.locale === 'en' ? 'Wait for the current Code task to finish before committing.' : '请等待当前 Code 任务完成后再提交。'
+    commitError.value = copy('waitToCommit')
     return
   }
   committing.value = true
@@ -128,21 +130,21 @@ onMounted(refresh)
     <nav>
       <div class="overview">
         <div class="branch">
-          <div class="branch-label"><GitBranchOutline /><span>{{ summary?.branch || (locale === 'en' ? 'No branch' : '无分支') }}</span></div>
-          <button type="button" class="commit-button" :disabled="!canCommit" :title="running ? (locale === 'en' ? 'Wait for the current task to finish' : '请等待当前任务完成') : ''" @click="openCommitDialog"><GitCommitOutline />{{ locale === 'en' ? 'Commit' : '提交' }}</button>
+          <div class="branch-label"><GitBranchOutline /><span>{{ summary?.branch || (copy('noBranch')) }}</span></div>
+          <button type="button" class="commit-button" :disabled="!canCommit" :title="running ? (copy('waitForTask')) : ''" @click="openCommitDialog"><GitCommitOutline />{{ copy('commit') }}</button>
         </div>
         <div class="metrics">
-          <div><strong>{{ filtered.length }}</strong><span>{{ locale === 'en' ? 'files' : '个文件' }}</span></div>
-          <div class="metric-add"><strong>+{{ totals.additions }}</strong><span>{{ locale === 'en' ? 'lines added' : '增加行' }}</span></div>
-          <div class="metric-delete"><strong>-{{ totals.deletions }}</strong><span>{{ locale === 'en' ? 'lines removed' : '删除行' }}</span></div>
+          <div><strong>{{ filtered.length }}</strong><span>{{ copy('files') }}</span></div>
+          <div class="metric-add"><strong>+{{ totals.additions }}</strong><span>{{ copy('added') }}</span></div>
+          <div class="metric-delete"><strong>-{{ totals.deletions }}</strong><span>{{ copy('removed') }}</span></div>
         </div>
       </div>
-      <label class="filter"><SearchOutline /><input v-model="filter" :placeholder="locale === 'en' ? 'Filter changed files…' : '筛选变更文件…'" /></label>
+      <label class="filter"><SearchOutline /><input v-model="filter" :placeholder="copy('filter')" /></label>
       <div class="tree-scroll">
         <WorkspaceChangeTreeNode v-for="node in tree" :key="node.path" :node="node" :selected-path="selected" :locale="locale" @select="select" @open="emit('open-diff', $event)" />
-        <div v-if="!filtered.length" class="empty tree-empty">{{ locale === 'en' ? 'No matching changes' : '没有匹配的变更' }}</div>
+        <div v-if="!filtered.length" class="empty tree-empty">{{ copy('noMatches') }}</div>
       </div>
-      <div v-if="summary && !summary.git_available" class="git-warning">{{ locale === 'en' ? 'Git information unavailable' : '无法读取 Git 信息' }}</div>
+      <div v-if="summary && !summary.git_available" class="git-warning">{{ copy('gitUnavailable') }}</div>
       <GitPublishStatus v-else :commit="lastCommit" :push="lastPush" :summary="summary" :busy="pushing" :error="pushError" :locale="locale" @push="push" />
     </nav>
     <main>
@@ -154,10 +156,10 @@ onMounted(refresh)
         <span v-else-if="selectedChange && ((selectedChange.additions || 0) > 0 || (selectedChange.deletions || 0) > 0)" class="diff-stat"><b v-if="(selectedChange.additions || 0) > 0">+{{ selectedChange.additions }}</b><i v-if="(selectedChange.deletions || 0) > 0">-{{ selectedChange.deletions }}</i></span>
       </div>
       <div v-if="error" class="empty error">{{ error }}</div>
-      <div v-else-if="loading" class="empty">{{ locale === 'en' ? 'Loading diff…' : '正在读取变更…' }}</div>
+      <div v-else-if="loading" class="empty">{{ copy('loadingDiff') }}</div>
       <UnifiedDiffView v-else-if="fileDiff?.diff" :diff="fileDiff.diff" :path="selected" />
-      <div v-else class="empty">{{ locale === 'en' ? 'Select a changed file.' : '选择文件后查看具体代码变更。' }}</div>
-      <div v-if="fileDiff?.truncated" class="notice">{{ locale === 'en' ? 'Diff truncated for safety.' : '变更较大，仅显示安全范围内的内容。' }}</div>
+      <div v-else class="empty">{{ copy('selectFile') }}</div>
+      <div v-if="fileDiff?.truncated" class="notice">{{ copy('diffTruncated') }}</div>
     </main>
     <GitCommitDialog :show="commitDialogOpen" :file-count="summary?.changes.length || 0" :busy="committing" :busy-action="commitAction" :blocked="running" :push-available="Boolean(summary?.remote_names.length)" :detached="detached" :branch-suggestion="branchSuggestion" :error="commitError" :locale="locale" @close="commitDialogOpen = false" @commit="commit" />
   </div>

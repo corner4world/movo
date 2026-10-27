@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { desktopChromeMessages } from '../../locales/desktopChromeMessages'
 
 type MenuName = 'file' | 'edit' | 'view'
 type Action = 'new-chat' | 'add-project' | 'toggle-sidebar'
@@ -10,6 +11,7 @@ interface TitlebarBridge {
 }
 
 const props = defineProps<{ collapsed: boolean; dark: boolean; locale: 'zh' | 'en' }>()
+const copy = (key: keyof typeof desktopChromeMessages) => desktopChromeMessages[key][props.locale]
 const emit = defineEmits<{
   (event: 'toggle-sidebar'): void
   (event: 'new-chat'): void
@@ -42,7 +44,7 @@ watch(() => props.dark, (dark) => { void bridge?.setDark(dark) }, { immediate: t
     <button
       type="button"
       class="windows-titlebar__toggle"
-      :aria-label="collapsed ? (locale === 'en' ? 'Show sidebar' : '展开侧栏') : (locale === 'en' ? 'Hide sidebar' : '收起侧栏')"
+      :aria-label="collapsed ? (copy('showSidebar')) : (copy('hideSidebar'))"
       :aria-expanded="!collapsed"
       @click="emit('toggle-sidebar')"
     >
@@ -53,7 +55,7 @@ watch(() => props.dark, (dark) => { void bridge?.setDark(dark) }, { immediate: t
     </button>
     <div class="windows-titlebar__menus" role="menubar">
       <button v-for="menu in (['file', 'edit', 'view'] as const)" :key="menu" type="button" role="menuitem" @click="openMenu(menu, $event)">
-        {{ locale === 'en' ? { file: 'File', edit: 'Edit', view: 'View' }[menu] : { file: '文件', edit: '编辑', view: '视图' }[menu] }}
+        {{ copy(({ file: 'fileMenu', edit: 'editMenu', view: 'viewMenu' } as const)[menu]) }}
       </button>
     </div>
     <div class="windows-titlebar__drag" aria-hidden="true"></div>

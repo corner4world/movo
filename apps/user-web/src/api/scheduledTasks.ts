@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { installAuthExpiryInterceptor } from './authExpiry'
+import { getLocale } from '../composables/i18n'
 
 export type ScheduleKind = 'once' | 'daily' | 'weekly'
 export type ScheduledSessionMode = 'fixed' | 'new_per_run'
@@ -35,7 +36,7 @@ const client = axios.create({ baseURL: '/askai-api/api', timeout: 20000 })
 installAuthExpiryInterceptor(client)
 
 function config(token: string) {
-  return { headers: { Authorization: `Bearer ${token}` } }
+  return { headers: { Authorization: `Bearer ${token}`, 'Accept-Language': getLocale() === 'en' ? 'en-US' : 'zh-CN' } }
 }
 
 export async function listScheduledJobs(token: string): Promise<ScheduledJob[]> {

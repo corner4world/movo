@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { desktopChromeMessages } from '../../locales/desktopChromeMessages'
 
 export type DesktopPrimarySection = 'home' | 'scheduled' | 'skills' | 'plugins' | 'tools' | 'knowledge'
 
@@ -43,17 +44,17 @@ const emit = defineEmits<{
 }>()
 
 const items = computed<NavigationItem[]>(() => [
-  { id: 'home', zh: '首页', en: 'Home', visible: true, badge: 0 },
-  { id: 'scheduled', zh: '定时', en: 'Tasks', visible: true, badge: 0 },
-  { id: 'skills', zh: 'Skill', en: 'Skills', visible: props.skillsAvailable, badge: props.skillBadge },
-  { id: 'plugins', zh: '插件', en: 'Plugins', visible: true, badge: 0 },
-  { id: 'tools', zh: 'MCP', en: 'MCP', visible: props.toolsAvailable, badge: 0 },
-  { id: 'knowledge', zh: '知识库', en: 'Knowledge Base', visible: props.knowledgeAvailable, badge: props.knowledgeBadge },
+  { id: 'home', ...desktopChromeMessages.home, visible: true, badge: 0 },
+  { id: 'scheduled', ...desktopChromeMessages.scheduled, visible: true, badge: 0 },
+  { id: 'skills', ...desktopChromeMessages.skills, visible: props.skillsAvailable, badge: props.skillBadge },
+  { id: 'plugins', ...desktopChromeMessages.plugins, visible: true, badge: 0 },
+  { id: 'tools', ...desktopChromeMessages.tools, visible: props.toolsAvailable, badge: 0 },
+  { id: 'knowledge', ...desktopChromeMessages.knowledge, visible: props.knowledgeAvailable, badge: props.knowledgeBadge },
 ])
 </script>
 
 <template>
-  <nav class="desktop-primary-nav" :aria-label="locale === 'en' ? 'Primary navigation' : '主导航'">
+  <nav class="desktop-primary-nav" :aria-label="desktopChromeMessages.primaryNavigation[locale === 'en' ? 'en' : 'zh']">
     <div class="desktop-primary-nav__items">
       <button
         v-for="item in items.filter(entry => entry.visible)"

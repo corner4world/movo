@@ -7,6 +7,7 @@ import GitCompareOutline from '@vicons/ionicons5/es/GitCompareOutline'
 import RefreshOutline from '@vicons/ionicons5/es/RefreshOutline'
 import { undoDshTaskChanges } from '../../platform'
 import type { DshTaskChangeSet } from '../../platform/types'
+import { taskChangeCardMessages } from '../../locales/codeWorkspaceMessages'
 
 const props = defineProps<{ sessionId: string; changes: DshTaskChangeSet; locale?: 'zh' | 'en' }>()
 const emit = defineEmits<{
@@ -18,6 +19,7 @@ const expanded = ref(false)
 const confirmUndo = ref(false)
 const undoing = ref(false)
 const error = ref('')
+const copy = <K extends keyof typeof taskChangeCardMessages>(key: K) => taskChangeCardMessages[key][props.locale === 'en' ? 'en' : 'zh']
 let confirmTimer: ReturnType<typeof setTimeout> | undefined
 watch(() => props.changes, value => { current.value = value }, { deep: true })
 const visibleFiles = computed(() => expanded.value ? current.value.files : current.value.files.slice(0, 3))
@@ -49,11 +51,11 @@ onBeforeUnmount(() => clearTimeout(confirmTimer))
     <header>
       <div class="summary-icon"><CheckmarkCircleOutline v-if="current.undone" /><GitCompareOutline v-else /></div>
       <div class="summary-copy">
-        <strong>{{ current.undone ? (locale === 'en' ? 'Changes undone' : '已撤销本次变更') : (locale === 'en' ? `Edited ${current.files.length} file(s)` : `已更新 ${current.files.length} 个文件`) }}</strong>
+        <strong>{{ current.undone ? copy('undone') : taskChangeCardMessages.edited[locale === 'en' ? 'en' : 'zh'](current.files.length) }}</strong>
         <span v-if="!current.undone"><b>+{{ current.additions }}</b><i>-{{ current.deletions }}</i></span>
       </div>
-      <button v-if="current.undo_available" type="button" class="undo-button" :class="{ confirm: confirmUndo }" :disabled="undoing" @click="requestUndo"><RefreshOutline />{{ undoing ? (locale === 'en' ? 'Undoing…' : '正在撤销…') : confirmUndo ? (locale === 'en' ? 'Confirm undo' : '确认撤销') : (locale === 'en' ? 'Undo' : '撤销') }}</button>
-      <button v-if="!current.undone" type="button" class="review-button" @click="emit('review', current)">{{ locale === 'en' ? 'Review' : '评审' }}</button>
+      <button v-if="current.undo_available" type="button" class="undo-button" :class="{ confirm: confirmUndo }" :disabled="undoing" @click="requestUndo"><RefreshOutline />{{ undoing ? copy('undoing') : confirmUndo ? copy('confirmUndo') : copy('undo') }}</button>
+      <button v-if="!current.undone" type="button" class="review-button" @click="emit('review', current)">{{ copy('review') }}</button>
     </header>
     <div v-if="!current.undone" class="file-list">
       <button v-for="file in visibleFiles" :key="file.path" type="button" class="file-row" :title="file.path" @click="emit('review', current, file.path)">
@@ -62,7 +64,7 @@ onBeforeUnmount(() => clearTimeout(confirmTimer))
         <code v-else><b>+{{ file.additions || 0 }}</b><i>-{{ file.deletions || 0 }}</i></code>
       </button>
       <button v-if="remaining || expanded && current.files.length > 3" type="button" class="expand-button" @click="expanded = !expanded">
-        {{ expanded ? (locale === 'en' ? 'Show less' : '收起') : (locale === 'en' ? `Show ${remaining} more` : `再显示 ${remaining} 个文件`) }}
+        {{ expanded ? copy('showLess') : taskChangeCardMessages.showMore[locale === 'en' ? 'en' : 'zh'](remaining) }}
         <ChevronUpOutline v-if="expanded" /><ChevronDownOutline v-else />
       </button>
     </div>

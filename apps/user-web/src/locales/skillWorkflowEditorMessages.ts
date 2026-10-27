@@ -1,6 +1,8 @@
 import type { Locale } from './messages';
 
 export const skillWorkflowEditorMessages: Record<string, Record<Locale, string>> = {
+  'workflow.outputDefault': { zh: '节点输出', en: 'Step output' },
+  'workflow.needsClarification': { zh: '需要澄清', en: 'Needs clarification' },
   'legacy.read_uploaded_materials': { zh: '读取上传材料', en: 'Read Uploaded Materials' },
   'legacy.raw_materials': { zh: '原始材料', en: 'Raw materials' },
   'legacy.extract_processable_resources': { zh: '提取可处理资源', en: 'Extract Processable Resources' },

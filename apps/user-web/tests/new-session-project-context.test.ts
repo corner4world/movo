@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { inheritedDraftProjectContext } from '../src/composables/code/draftProjectContext'
+import { workspaceContextMessages } from '../src/locales/workspaceContextMessages'
+import { workspaceChoiceMessages } from '../src/locales/codeWorkspaceMessages'
 
 const workspace = {
   workspace_id: 'movo',
@@ -45,13 +47,20 @@ assert.doesNotMatch(runtime, /selectDshWorkspace|async function choose\(/, 'conv
 assert.match(appShell, /icon === 'plus'\) startLocalSession\(\{ inheritCurrentProject: true \}\)/)
 assert.match(appShell, /@click="\(\) => startLocalSession\(\{ inheritCurrentProject: true \}\)"/)
 assert.match(appShell, /startLocalSession\(\{ shouldNavigate: currentView\.value === 'chat' \}\)/)
-assert.match(picker, /'切换项目…'/)
-assert.match(picker, /'设为普通对话'/)
-assert.doesNotMatch(picker, /'移除项目'/)
+assert.match(picker, /copy\('workspaceContext\.switchProject'\)/)
+assert.match(picker, /copy\('workspaceContext\.regularChat'\)/)
+assert.equal(workspaceContextMessages['workspaceContext.switchProject'].zh, '切换项目…')
+assert.equal(workspaceContextMessages['workspaceContext.switchProject'].en, 'Switch project…')
+assert.equal(workspaceContextMessages['workspaceContext.regularChat'].zh, '设为普通对话')
+assert.equal(workspaceContextMessages['workspaceContext.regularChat'].en, 'Use regular chat')
 assert.match(picker, /<WorkspaceChoiceList/)
 assert.match(picker, /@select="selectWorkspace"/)
-assert.match(choiceList, /'选择已有项目'/)
-assert.match(choiceList, /'添加新项目…'/)
+assert.match(choiceList, /copy\('chooseProject'\)/)
+assert.match(choiceList, /copy\('addProject'\)/)
+assert.equal(workspaceChoiceMessages.chooseProject.zh, '选择已有项目')
+assert.equal(workspaceChoiceMessages.chooseProject.en, 'Choose a project')
+assert.equal(workspaceChoiceMessages.addProject.zh, '添加新项目…')
+assert.equal(workspaceChoiceMessages.addProject.en, 'Add a new project…')
 assert.match(appShell, /function selectBoundProject\(key: string, workspace: DshWorkspace\)/)
 assert.match(appShell, /@select-code-workspace="\(workspace\) => selectBoundProject\(pane\.key, workspace\)"/)
 assert.match(appShell, /@choose-code-workspace="\(\) => openProjectCreate\(pane\.key\)"/)

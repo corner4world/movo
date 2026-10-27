@@ -263,10 +263,10 @@
                           </summary>
                           <div class="node-usage-content">
                             <strong>{{ t('legacy.use_case') }}</strong>
-                            <p>{{ t(workflowTypeMeta(step.type).usageDescription) }}</p>
+                            <p>{{ translateSourceText(workflowTypeMeta(step.type).usageDescription) }}</p>
                             <div class="node-usage-example">
                               <span>{{ t('legacy.example') }}</span>
-                              <p>{{ t(workflowTypeMeta(step.type).usageExample) }}</p>
+                              <p>{{ translateSourceText(workflowTypeMeta(step.type).usageExample) }}</p>
                             </div>
                           </div>
                         </details>
@@ -345,8 +345,8 @@
                     </template>
                     <div class="quick-node-help">
                       <strong>{{ t('workflow.preset.' + item.type + '.label') }} · {{ t('legacy.use_case') }}</strong>
-                      <p>{{ t(item.usageDescription || '') }}</p>
-                      <div><span>{{ t('legacy.example') }}</span>{{ t(item.usageExample || '') }}</div>
+                      <p>{{ translateSourceText(item.usageDescription || '') }}</p>
+                      <div><span>{{ t('legacy.example') }}</span>{{ translateSourceText(item.usageExample || '') }}</div>
                     </div>
                   </n-popover>
                 </div>
@@ -805,8 +805,12 @@
 </template>
 
 <script setup lang="ts">
+import { workflowTextInferenceRules } from '../locales/workflowTextInferenceRules';
+import { publishChannelSuggestions, contentFormSuggestions, targetAudienceSuggestions, preferredStyleSuggestions, type LocalizedSelectOption } from '../locales/workflowSelectOptions';
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { t, translateSourceText, useLocale } from '../composables/i18n';
+import { localizeWorkflowDefaults } from './workflowDefaultLocale';
+import { workflowResponseText } from './workflowResponseText';
 import { formatAppDateTime } from '../composables/appTimezone';
 import {
   NButton,
@@ -998,257 +1002,209 @@ const workflowNodeTypes: Array<{
 }> = [
   {
     type: 'read_material',
-    label: '读取材料',
-    shortLabel: '材料',
+    get label() { return t('workflow.preset.read_material.label') },
+    get shortLabel() { return t('workflow.preset.read_material.short') },
     color: '#2f6bff',
     bg: '#eef4ff',
     icon: readMaterialIcon,
-    defaultTitle: '读取上传材料',
-    placeholder: '例如：读取用户上传的传播数据文档和原始材料。',
-    defaultConfig: { sourceType: 'upload', source: '上传材料', outputAlias: '原始材料' },
-    usageDescription: '读取用户上传材料，或按权限读取指定的个人知识文档。知识文档会按顺序续读，不使用相似度片段代替全文。',
-    usageExample: '读取用户上传的《华东区域项目进展报告.docx》和《项目执行数据.xlsx》，获取报告正文，以及 Excel 中“项目清单”和“月度进度”两个工作表的全部内容。',
+    get defaultTitle() { return t('workflow.preset.read_material.title') },
+    get placeholder() { return t('workflow.preset.read_material.placeholder') },
+    defaultConfig: { sourceType: 'upload', get source() { return t('workflow.preset.read_material.src') }, get outputAlias() { return t('workflow.preset.read_material.out') } },
+    get usageDescription() { return t('legacy.read_uploaded_material_or_an_authorized_personal_knowledge_document') },
+    get usageExample() { return t('legacy.read_the_uploaded_east_china_project_progress_report_and') },
   },
   {
     type: 'extract_resources',
-    label: '提取资源',
-    shortLabel: '资源',
+    get label() { return t('workflow.preset.extract_resources.label') },
+    get shortLabel() { return t('workflow.preset.extract_resources.short') },
     color: '#0891b2',
     bg: '#ecfeff',
     icon: extractResourcesIcon,
-    defaultTitle: '提取可处理资源',
-    placeholder: '例如：从上传文档中提取图片、URL 和附件，供后续理解或采集使用。',
-    defaultConfig: { resourceTypes: ['images', 'urls', 'attachments'], outputAlias: '资源列表' },
-    usageDescription: '用于从上游材料中分离图片、网页链接和附件，形成可供后续节点逐项处理的资源列表。它只定位并提取资源，不识别图片内容，也不采集网页正文。',
-    usageExample: '从《品牌传播复盘.docx》中提取所有内嵌截图、以 http 或 https 开头的网页链接及附件对象，分别输出为图片、链接和附件列表。',
+    get defaultTitle() { return t('workflow.preset.extract_resources.title') },
+    get placeholder() { return t('workflow.preset.extract_resources.placeholder') },
+    defaultConfig: { resourceTypes: ['images', 'urls', 'attachments'], get outputAlias() { return t('workflow.preset.extract_resources.out') } },
+    get usageDescription() { return t('legacy.separate_images_web_links_and_attachments_from_upstream_materials') },
+    get usageExample() { return t('legacy.extract_all_embedded_screenshots_http_https_links_and_attachment') },
   },
   {
     type: 'understand_image',
-    label: '图片理解',
-    shortLabel: '识图',
+    get label() { return t('workflow.preset.understand_image.label') },
+    get shortLabel() { return t('workflow.preset.understand_image.short') },
     color: '#4f46e5',
     bg: '#eef2ff',
     icon: understandImageIcon,
-    defaultTitle: '理解图片内容',
-    placeholder: '例如：对上一步提取出的图片进行多模态识别，提取图中对象、文字、图表和关键信息。',
-    defaultConfig: { input: '上游图片资源', outputAlias: '图片理解结果' },
-    usageDescription: '用于识别上游图片中的文字、对象、界面、图表和关键视觉信息，并输出可继续处理的文字描述或结构化结果。它不负责从文档中提取图片。',
-    usageExample: '识别上游的 8 张社交平台截图，逐张提取账号名称、发布时间、阅读量和互动量；无法看清的字段标记为“无法识别”。',
+    get defaultTitle() { return t('workflow.preset.understand_image.title') },
+    get placeholder() { return t('workflow.preset.understand_image.placeholder') },
+    defaultConfig: { get input() { return t('workflow.preset.understand_image.in') }, get outputAlias() { return t('workflow.preset.understand_image.out') } },
+    get usageDescription() { return t('legacy.recognize_text_objects_interfaces_charts_and_key_visual_details') },
+    get usageExample() { return t('legacy.analyze_eight_upstream_social_platform_screenshots_and_extract_the') },
   },
   {
     type: 'extract_info',
-    label: '抽取信息',
-    shortLabel: '抽取',
+    get label() { return t('workflow.preset.extract_info.label') },
+    get shortLabel() { return t('workflow.preset.extract_info.short') },
     color: '#2563eb',
     bg: '#edf5ff',
     icon: extractInfoIcon,
-    defaultTitle: '抽取关键信息',
-    placeholder: '例如：从上传文档中抽取总阅读量、播放量、互动量。',
-    defaultConfig: { target: '关键字段 / 事实 / 指标', method: '自动识别', outputAlias: '抽取结果' },
-    usageDescription: '用于从上游文本、表格或识图结果中提取指定字段、事实和指标，并整理为结构化结果。它适合明确“要哪些信息”的场景，不负责汇总计算。',
-    usageExample: '从项目报告中提取项目名称、负责人、起止日期、合同金额、当前进度和主要风险；缺失字段保留为空，不自行推测。',
+    get defaultTitle() { return t('workflow.preset.extract_info.title') },
+    get placeholder() { return t('workflow.preset.extract_info.placeholder') },
+    defaultConfig: { get target() { return t('workflow.preset.extract_info.target') }, get method() { return t('workflow.preset.extract_info.method') }, get outputAlias() { return t('workflow.preset.extract_info.out') } },
+    get usageDescription() { return t('legacy.extract_specified_fields_facts_and_metrics_from_upstream_text') },
+    get usageExample() { return t('legacy.extract_the_project_name_owner_dates_contract_amount_current') },
   },
   {
     type: 'compute_metric',
-    label: '统计计算',
-    shortLabel: '统计',
+    get label() { return t('workflow.preset.compute_metric.label') },
+    get shortLabel() { return t('workflow.preset.compute_metric.short') },
     color: '#16a36f',
     bg: '#effaf4',
     icon: computeMetricIcon,
-    defaultTitle: '计算核心指标',
-    placeholder: '例如：汇总各渠道数据，计算占比、排序并识别异常波动。',
-    defaultConfig: { method: '求和 / 占比 / 排序 / 异常识别', outputAlias: '指标分析' },
-    usageDescription: '用于对上游结构化数据执行求和、平均、占比、同比环比、排序和异常识别等确定口径的统计计算。计算规则和分组维度应在节点要求中写清楚。',
-    usageExample: '按区域汇总 2026 年第一季度合同金额和回款金额，计算回款率，按回款率从高到低排序，并标记回款率低于 60% 的区域。',
+    get defaultTitle() { return t('workflow.preset.compute_metric.title') },
+    get placeholder() { return t('workflow.preset.compute_metric.placeholder') },
+    defaultConfig: { get method() { return t('workflow.preset.compute_metric.method') }, get outputAlias() { return t('workflow.preset.compute_metric.out') } },
+    get usageDescription() { return t('legacy.run_defined_calculations_on_upstream_structured_data_such_as') },
+    get usageExample() { return t('legacy.aggregate_q1_2026_contract_and_collection_amounts_by_region') },
   },
   {
     type: 'data_collect',
-    label: '数据采集',
-    shortLabel: '采集',
+    get label() { return t('workflow.preset.data_collect.label') },
+    get shortLabel() { return t('workflow.preset.data_collect.short') },
     color: '#0d9488',
     bg: '#ecfdf5',
     icon: dataCollectIcon,
-    defaultTitle: '采集网页数据',
-    placeholder: '例如：从上一步抽取出的网页链接采集正文内容，作为后续分析和生成依据。',
-    defaultConfig: { source: '网页链接 / 上游 URL', outputAlias: '采集内容' },
-    usageDescription: '用于访问上游提供的网页链接并采集页面标题、正文、发布时间、来源等内容。它面向已知链接的页面采集，不负责通过关键词搜索互联网。',
-    usageExample: '采集上游链接列表中的新闻页面，保存标题、发布时间、来源、正文和原始 URL；过滤导航、页脚和广告文字，失败链接记录失败原因。',
+    get defaultTitle() { return t('workflow.preset.data_collect.title') },
+    get placeholder() { return t('workflow.preset.data_collect.placeholder') },
+    defaultConfig: { get source() { return t('workflow.preset.data_collect.src') }, get outputAlias() { return t('workflow.preset.data_collect.out') } },
+    get usageDescription() { return t('legacy.visit_upstream_web_links_and_collect_page_titles_body') },
+    get usageExample() { return t('legacy.collect_news_pages_from_the_upstream_url_list_keeping') },
   },
   browserAutomationNodeMeta,
   {
     type: 'internal_search',
-    label: '内部搜索',
-    shortLabel: '内搜',
+    get label() { return t('workflow.preset.internal_search.label') },
+    get shortLabel() { return t('workflow.preset.internal_search.short') },
     color: '#a16207',
     bg: '#fff8e8',
     icon: internalSearchIcon,
-    defaultTitle: '查询内部口径',
-    placeholder: '例如：查找公司过往复盘口径和内部评价标准。',
-    defaultConfig: { source: '知识库 / 制度库 / 历史材料', outputAlias: '内部依据' },
-    usageDescription: '用于在已配置的企业知识库、制度库或历史材料中检索内部依据，并返回相关内容和来源。适合查制度、口径、案例和内部知识，不访问公开互联网。',
-    usageExample: '在“项目管理制度库”中检索项目延期认定标准、风险分级规则和周报提交要求，返回对应条款、制度名称及原文位置。',
+    get defaultTitle() { return t('workflow.preset.internal_search.title') },
+    get placeholder() { return t('workflow.preset.internal_search.placeholder') },
+    defaultConfig: { get source() { return t('workflow.preset.internal_search.src') }, get outputAlias() { return t('workflow.preset.internal_search.out') } },
+    get usageDescription() { return t('legacy.search_configured_enterprise_knowledge_bases_policy_libraries_or_historical') },
+    get usageExample() { return t('legacy.search_the_project_management_policy_library_for_project_delay') },
   },
   {
     type: 'external_search',
-    label: '外部搜索',
-    shortLabel: '外搜',
+    get label() { return t('workflow.preset.external_search.label') },
+    get shortLabel() { return t('workflow.preset.external_search.short') },
     color: '#d97706',
     bg: '#fff7ed',
     icon: externalSearchIcon,
-    defaultTitle: '搜索外部资料',
-    placeholder: '例如：检索公开行业数据和新闻背景，补充外部依据。',
-    defaultConfig: { source: '公开网页 / 新闻 / 行业资料', outputAlias: '外部资料' },
-    usageDescription: '用于按关键词搜索公开网页、新闻和行业资料，获得外部信息线索及来源链接。适合开放式资料发现；如需读取某个已知网页的完整正文，应使用数据采集。',
-    usageExample: '搜索 2026 年上半年中国新能源汽车出口量相关的官方统计和行业报告，优先采用政府部门及行业协会来源，返回数据摘要、发布日期和链接。',
+    get defaultTitle() { return t('workflow.preset.external_search.title') },
+    get placeholder() { return t('workflow.preset.external_search.placeholder') },
+    defaultConfig: { get source() { return t('workflow.preset.external_search.src') }, get outputAlias() { return t('workflow.preset.external_search.out') } },
+    get usageDescription() { return t('legacy.search_public_web_pages_news_and_industry_materials_by') },
+    get usageExample() { return t('legacy.search_official_statistics_and_industry_reports_on_china_s') },
   },
   {
     type: 'call_tool',
-    label: '调用工具',
-    shortLabel: '工具',
+    get label() { return t('workflow.preset.call_mcp.label') },
+    get shortLabel() { return t('workflow.preset.call_mcp.short') },
     color: '#0f83a5',
     bg: '#eefbff',
     icon: callToolIcon,
-    defaultTitle: '调用业务工具',
-    placeholder: '例如：调用 MCP 或企业工具查询本月渠道投放数据。',
-    defaultConfig: { toolScope: '自动选择 / MCP / 企业工具', outputAlias: '工具数据' },
-    usageDescription: '用于调用已接入平台的 Tool 或 MCP，向业务系统查询数据或执行其开放的操作。节点要求应明确工具、输入参数和期望返回内容。',
-    usageExample: '调用“订单查询”工具，查询 2026-06-01 至 2026-06-30 华东区域状态为“已完成”的订单，返回订单号、客户名称、成交金额和完成时间。',
+    get defaultTitle() { return t('workflow.preset.call_mcp.title') },
+    get placeholder() { return t('workflow.preset.call_mcp.placeholder') },
+    defaultConfig: { get toolScope() { return t('workflow.preset.call_mcp.scope') }, get outputAlias() { return t('workflow.preset.call_mcp.out') } },
+    get usageDescription() { return t('legacy.call_connected_tools_or_mcp_services_to_query_business') },
+    get usageExample() { return t('legacy.call_the_order_query_tool_for_completed_east_china') },
   },
   {
     type: 'script_plugin',
-    label: '数据处理',
-    shortLabel: '处理',
+    get label() { return t('workflow.preset.script_plugin.label') },
+    get shortLabel() { return t('workflow.preset.script_plugin.short') },
     color: '#475569',
     bg: '#f1f5f9',
     icon: dataProcessingIcon,
-    defaultTitle: '处理数据',
-    placeholder: '例如：规整上传 DOCX、整理图片链接，并输出新的交付文件。',
+    get defaultTitle() { return t('workflow.preset.script_plugin.title') },
+    get placeholder() { return t('workflow.preset.script_plugin.placeholder') },
     defaultConfig: {
       runtime: 'python',
-      outputAlias: '处理结果',
+      get outputAlias() { return t('workflow.preset.script_plugin.out') },
       processingInstruction: '',
       selectedInputSource: 'all',
       selectedInputTypes: ['files', 'documents', 'images', 'urls', 'texts', 'data'],
       pluginCode: '',
     },
-    usageDescription: '用于按照自然语言要求生成并执行确定性的处理代码，对上游文件、文本、链接或结构化数据进行清洗、转换、合并、重排和文件生成。适合规则明确且需要可重复执行的处理。',
-    usageExample: '读取上游《项目执行数据.xlsx》，统一日期为 YYYY-MM-DD，删除订单号重复的记录，按区域汇总合同金额和回款金额，输出《区域项目汇总.xlsx》。',
+    get usageDescription() { return t('legacy.generate_and_run_deterministic_processing_code_from_natural_language') },
+    get usageExample() { return t('legacy.read_the_project_execution_workbook_normalize_dates_to_yyyy') },
   },
   {
     type: 'generate_content',
-    label: '生成内容',
-    shortLabel: '生成',
+    get label() { return t('workflow.preset.generate_content.label') },
+    get shortLabel() { return t('workflow.preset.generate_content.short') },
     color: '#7c3aed',
     bg: '#f4f0ff',
     icon: generateContentIcon,
-    defaultTitle: '生成业务内容',
-    placeholder: '例如：基于指标分析和原始材料生成正式复盘稿。',
-    defaultConfig: { input: '上游结果', outputAlias: '生成稿' },
-    usageDescription: '用于根据上游材料和分析结果撰写报告、文章、摘要、方案等内容，可结合选定的写作规范 Skill 控制结构和表达。它负责内容生成，不负责最终文件格式导出。',
-    usageExample: '根据项目报告和季度指标，生成一份 1500 字以内的《华东区域一季度项目复盘》，包含总体情况、关键成果、主要问题和下一步计划四个部分。',
+    get defaultTitle() { return t('workflow.preset.generate_content.title') },
+    get placeholder() { return t('workflow.preset.generate_content.placeholder') },
+    defaultConfig: { get input() { return t('workflow.preset.generate_content.in') }, get outputAlias() { return t('workflow.preset.generate_content.out') } },
+    get usageDescription() { return t('legacy.write_reports_articles_summaries_and_plans_from_upstream_materials') },
+    get usageExample() { return t('legacy.write_a_project_review_under_1_500_chinese_characters') },
   },
   {
     type: 'translate_rewrite',
-    label: '文档翻译',
-    shortLabel: '翻译',
+    get label() { return t('workflow.preset.translate_doc.label') },
+    get shortLabel() { return t('workflow.preset.translate_doc.short') },
     color: '#9333ea',
     bg: '#faf0ff',
     icon: translateRewriteIcon,
-    defaultTitle: '翻译文档',
-    placeholder: '例如：将报告翻译成目标语言，并保持术语和表达一致。',
-    defaultConfig: { mode: '翻译 / 润色 / 扩写 / 压缩', outputAlias: '改写稿' },
-    usageDescription: '用于翻译或改写上游文档内容，在保留原意的前提下统一术语、语气和表达。应明确目标语言、保留项及专有名词处理规则。',
-    usageExample: '将《产品发布说明.docx》翻译为英文，保留标题层级、表格和数字格式；“智汇云”统一译为“Insight Cloud”，产品型号不翻译。',
+    get defaultTitle() { return t('workflow.preset.translate_doc.title') },
+    get placeholder() { return t('workflow.preset.translate_doc.placeholder') },
+    defaultConfig: { get mode() { return t('workflow.preset.translate_doc.mode') }, get outputAlias() { return t('workflow.preset.translate_doc.out') } },
+    get usageDescription() { return t('legacy.translate_or_rewrite_upstream_documents_while_preserving_meaning_and') },
+    get usageExample() { return t('legacy.translate_the_product_release_notes_into_english_while_preserving') },
   },
   {
     type: 'fill_table',
-    label: '填表制表',
-    shortLabel: '填表',
+    get label() { return t('workflow.preset.fill_excel.label') },
+    get shortLabel() { return t('workflow.preset.fill_excel.short') },
     color: '#0f766e',
     bg: '#effdfa',
     icon: fillTableIcon,
-    defaultTitle: '填表或制表',
-    placeholder: '例如：把统计结果填入指定 Excel 或生成结构化明细表。',
-    defaultConfig: { target: 'Word / Excel / PDF / 表格', outputAlias: '表格结果' },
-    usageDescription: '用于把上游结构化结果写入指定表格模板，或按明确列结构生成新表。应说明目标模板、工作表、字段对应关系和空值处理方式。',
-    usageExample: '将上游项目数据填入《月度项目台账.xlsx》的“6月台账”工作表，按项目编号匹配行，填写负责人、完成率、回款金额和风险等级。',
+    get defaultTitle() { return t('workflow.preset.fill_excel.title') },
+    get placeholder() { return t('workflow.preset.fill_excel.placeholder') },
+    defaultConfig: { get target() { return t('workflow.preset.fill_excel.target') }, get outputAlias() { return t('workflow.preset.fill_excel.out') } },
+    get usageDescription() { return t('legacy.write_upstream_structured_results_into_a_specified_spreadsheet_template') },
+    get usageExample() { return t('legacy.fill_the_june_ledger_sheet_in_the_monthly_project') },
   },
   {
     type: 'review_check',
-    label: '校验复核',
-    shortLabel: '复核',
+    get label() { return t('workflow.preset.review_check.label') },
+    get shortLabel() { return t('legacy.review') },
     color: '#b45309',
     bg: '#fffbeb',
     icon: reviewCheckIcon,
-    defaultTitle: '复核上游结果',
-    placeholder: '例如：依据审核规则逐项核对合同条款，列出风险、缺失项和无法确认的事项。',
+    get defaultTitle() { return t('legacy.review_an_earlier_result') },
+    get placeholder() { return t('workflow.preset.review_check.placeholder') },
     defaultConfig: {
-      reviewSubject: '', reviewCriteria: '', reviewCriteriaMode: 'upstream', outputAlias: '复核结果',
+      reviewSubject: '', reviewCriteria: '', reviewCriteriaMode: 'upstream', get outputAlias() { return t('legacy.review_findings') },
     },
-    usageDescription: '指导 Agent 根据已有依据检查上游事实或生成结果，逐项给出判断、原文证据和待人工确认项。',
-    usageExample: '用审核规则逐条核对合同条款：每条规则给出合同原文和规则原文，无法核实时标记需要人工复核。',
+    get usageDescription() { return t('legacy.guide_the_agent_to_review_earlier_facts_or_results') },
+    get usageExample() { return t('legacy.compare_each_contract_clause_with_the_rules_cite_both') },
   },
   {
     type: 'export_delivery',
-    label: '导出交付',
-    shortLabel: '导出',
+    get label() { return t('workflow.preset.export_deliverable.label') },
+    get shortLabel() { return t('workflow.preset.export_deliverable.short') },
     color: '#ea580c',
     bg: '#fff4ed',
     icon: exportDeliveryIcon,
-    defaultTitle: '导出交付文件',
-    placeholder: '例如：将复盘稿导出为 Word 和 PDF，便于提交归档。',
-    defaultConfig: { format: 'Word / PDF / Excel / PPT', outputAlias: '交付文件' },
-    usageDescription: '用于把上游最终内容导出为 Word、PDF、Excel 或 PPT 等交付文件。它处理交付格式和文件命名，不应承担内容分析、改写或统计计算。',
-    usageExample: '将上游《华东区域一季度项目复盘》导出为 Word 和 PDF，文件名分别为《华东区域一季度项目复盘.docx》和《华东区域一季度项目复盘.pdf》。',
+    get defaultTitle() { return t('workflow.preset.export_deliverable.title') },
+    get placeholder() { return t('workflow.preset.export_deliverable.placeholder') },
+    defaultConfig: { format: 'Word / PDF / Excel / PPT', get outputAlias() { return t('workflow.preset.export_deliverable.out') } },
+    get usageDescription() { return t('legacy.export_upstream_final_content_to_deliverables_such_as_word') },
+    get usageExample() { return t('legacy.export_the_east_china_q1_project_review_as_word') },
   },
-];
-
-type LocalizedSelectOption = {
-  value: string;
-  zh: string;
-  en: string;
-  aliases?: string[];
-};
-
-const publishChannelSuggestions: LocalizedSelectOption[] = [
-  { value: 'generic', zh: '通用', en: 'Generic' },
-  { value: 'website', zh: '官网', en: 'Website' },
-  { value: 'docs', zh: '产品文档', en: 'Docs' },
-  { value: 'knowledge_base', zh: '知识库', en: 'Knowledge Base' },
-  { value: 'email', zh: '邮件', en: 'Email' },
-  { value: 'wechat_official', zh: '微信公众号', en: 'WeChat Official Account' },
-  { value: 'zhihu', zh: '知乎', en: 'Zhihu' },
-  { value: 'xiaohongshu', zh: '小红书', en: 'Xiaohongshu' },
-];
-
-const contentFormSuggestions: LocalizedSelectOption[] = [
-  { value: 'article', zh: '文章', en: 'Article' },
-  { value: 'report', zh: '报告', en: 'Report' },
-  { value: 'brief', zh: '简报', en: 'Brief' },
-  { value: 'memo', zh: '备忘录', en: 'Memo' },
-  { value: 'guide', zh: '指南', en: 'Guide' },
-  { value: 'faq', zh: '问答', en: 'FAQ' },
-  { value: 'presentation_outline', zh: '演示大纲', en: 'Presentation Outline' },
-];
-
-const targetAudienceSuggestions: LocalizedSelectOption[] = [
-  { value: 'general_public', zh: '大众读者', en: 'General Public' },
-  { value: 'professionals', zh: '专业人士', en: 'Professionals' },
-  { value: 'decision_makers', zh: '决策者', en: 'Decision Makers' },
-  { value: 'developers', zh: '开发者', en: 'Developers' },
-  { value: 'students', zh: '学生', en: 'Students' },
-  { value: 'internal_team', zh: '内部团队', en: 'Internal Team' },
-];
-
-const preferredStyleSuggestions: LocalizedSelectOption[] = [
-  { value: 'professional', zh: '专业', en: 'Professional' },
-  { value: 'formal', zh: '正式', en: 'Formal' },
-  { value: 'concise', zh: '简洁', en: 'Concise' },
-  { value: 'analytical', zh: '分析型', en: 'Analytical' },
-  { value: 'objective', zh: '客观', en: 'Objective' },
-  { value: 'authoritative', zh: '权威', en: 'Authoritative' },
-  { value: 'practical', zh: '实用', en: 'Practical' },
-  { value: 'storytelling', zh: '故事化', en: 'Storytelling' },
 ];
 
 const localizedOptionLabel = (item: LocalizedSelectOption) => (locale.value === 'zh' ? item.zh : item.en);
@@ -1353,22 +1309,22 @@ function workflowTypeMeta(type: WorkflowNodeType | string) {
 }
 
 function workflowTypeLabel(type: WorkflowNodeType | string): string {
-  return workflowTypeMeta(type).label;
+  return t('workflow.preset.' + workflowTypeMeta(type).type + '.label');
 }
 
 function serializeWorkflowNodeCatalog() {
   return workflowNodeTypes.map((item) => ({
     type: item.type,
     name: t('workflow.preset.' + item.type + '.label'),
-    usageDescription: t(item.usageDescription || ''),
-    usageExample: t(item.usageExample || ''),
+    usageDescription: translateSourceText(item.usageDescription || ''),
+    usageExample: translateSourceText(item.usageExample || ''),
   }));
 }
 
 function createWorkflowNode(type: WorkflowNodeType = 'extract_info', seed: Partial<WorkflowStep> = {}): WorkflowStep {
   const meta = workflowTypeMeta(type);
   const businessConfig = {
-    ...(meta.defaultConfig || {}),
+    ...localizeWorkflowDefaults(meta.defaultConfig || {}),
     ...(seed.businessConfig || {}),
   };
   if (type === 'review_check' && !seed.businessConfig?.outputAlias) {
@@ -1376,7 +1332,7 @@ function createWorkflowNode(type: WorkflowNodeType = 'extract_info', seed: Parti
   }
   const outputAlias = seed.outputAlias || (seed.businessConfig?.outputAlias
     ? String(businessConfig.outputAlias).trim()
-    : t(String(businessConfig.outputAlias || '')).trim());
+    : translateSourceText(String(businessConfig.outputAlias || '')).trim());
   businessConfig.outputAlias = outputAlias;
   return {
     id: seed.id || createId(),
@@ -1426,7 +1382,7 @@ function normalizeWorkflowNode(value: any, index = 0): WorkflowStep | null {
   if (typeof value === 'string') {
     const text = value.trim();
     const type = inferWorkflowNodeTypeFromText(text);
-    return text ? createWorkflowNode(type, { id: createId(), text, title: workflowTypeMeta(type).defaultTitle }) : null;
+    return text ? createWorkflowNode(type, { id: createId(), text, title: translateSourceText(workflowTypeMeta(type).defaultTitle) }) : null;
   }
   if (!value || typeof value !== 'object') return null;
   const rawText = String(value.description || value.text || value.instruction || '').trim();
@@ -1453,21 +1409,7 @@ function normalizeWorkflowNode(value: any, index = 0): WorkflowStep | null {
 function inferWorkflowNodeTypeFromText(text: string): WorkflowNodeType {
   const normalized = text.toLowerCase();
   if (looksLikeBrowserAutomation(normalized)) return 'browser_automation';
-  const rules: Array<{ type: WorkflowNodeType; keywords: string[] }> = [
-    { type: 'extract_resources', keywords: ['提取资源', '资源提取', '提取图片', '提取链接', '提取url', '提取附件', '图片资源', '内嵌图片'] },
-    { type: 'understand_image', keywords: ['图片理解', '图像理解', '多模态', '识图', '图片识别', '图表识别', '截图理解', '视觉理解'] },
-    { type: 'read_material', keywords: ['读取', '阅读', '上传', '材料', '文档', '原始', 'word', 'pdf', '附件'] },
-    { type: 'extract_info', keywords: ['抽取', '提取', '识别', '字段', '指标', '关键信息', '口径'] },
-    { type: 'compute_metric', keywords: ['统计', '计算', '汇总', '求和', '占比', '排序', '排名', '异常', '波动', '总量'] },
-    { type: 'data_collect', keywords: ['采集', '抓取', '爬取', '网页链接', '链接', 'url', '正文', '页面内容', 'firecrawl'] },
-    { type: 'internal_search', keywords: ['内部', '知识库', '制度', '历史', '过往', '内部口径'] },
-    { type: 'external_search', keywords: ['外部', '搜索', '检索', '公开', '新闻', '网页', '行业', '联网'] },
-    { type: 'call_tool', keywords: ['mcp', '工具', '接口', '调用', '查询系统', '业务系统', 'api'] },
-    { type: 'translate_rewrite', keywords: ['文档翻译', '翻译', '改写', '润色', '压缩', '扩写', '转写', '多语言'] },
-    { type: 'fill_table', keywords: ['填表', '制表', '表格', 'excel', 'sheet', '明细表', '模板'] },
-    { type: 'export_delivery', keywords: ['导出', '交付', '下载', '归档', 'word', 'pdf', 'ppt', '文件'] },
-    { type: 'generate_content', keywords: ['生成', '撰写', '写作', '成稿', '草稿', '报告', '专报', '复盘稿', '内容'] },
-  ];
+  const rules: ReadonlyArray<{ type: WorkflowNodeType; keywords: readonly string[] }> = workflowTextInferenceRules;
   return rules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)))?.type || 'generate_content';
 }
 
@@ -1865,9 +1807,10 @@ function handleNodeTypeChange(step: WorkflowStep, newType: WorkflowNodeType) {
     if (!step.businessConfig) {
       step.businessConfig = {};
     }
-    for (const key of Object.keys(meta.defaultConfig)) {
+    const defaults = localizeWorkflowDefaults(meta.defaultConfig);
+    for (const key of Object.keys(defaults)) {
       if (step.businessConfig[key] === undefined) {
-        step.businessConfig[key] = JSON.parse(JSON.stringify(meta.defaultConfig[key]));
+        step.businessConfig[key] = JSON.parse(JSON.stringify(defaults[key]));
       }
     }
   }
@@ -1877,7 +1820,7 @@ function appendNodeByType(type: WorkflowNodeType) {
   const text = newStepText.value.trim();
   const next = createWorkflowNode(type, text ? { text } : {});
   const used = new Set(workflowSteps.value.map(item => item.outputAlias || item.businessConfig?.outputAlias));
-  const base = next.outputAlias || next.title || '节点输出';
+  const base = next.outputAlias || next.title || t('workflow.outputDefault');
   let index = 2;
   while (used.has(next.outputAlias)) next.outputAlias = `${base}${index++}`;
   next.businessConfig.outputAlias = next.outputAlias;
@@ -1951,17 +1894,17 @@ async function regenerateSteps() {
     workflowSteps.value = generated;
     activeStepId.value = workflowSteps.value[0]?.id || '';
     testResult.value = null;
-    stepGenerationError.value = generated.length ? '' : (result.message || t('workflow.step_generated_empty'));
+    stepGenerationError.value = generated.length ? '' : workflowResponseText(result.message, 'workflow.step_generated_empty');
     if (generated.length) {
       message.success(t('workflow.step_generated'));
     } else {
-      message.warning(result.message || t('workflow.step_generated_empty_hint'));
+      message.warning(workflowResponseText(result.message, 'workflow.step_generated_empty_hint'));
     }
   } catch (error: any) {
     workflowSteps.value = [];
     activeStepId.value = workflowSteps.value[0]?.id || '';
     testResult.value = null;
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('workflow.step_generated_failed');
+    stepGenerationError.value = workflowResponseText(error?.response?.data?.detail || error?.message, 'workflow.step_generated_failed');
     message.error(stepGenerationError.value);
   } finally {
     generatingSteps.value = false;
@@ -1989,7 +1932,7 @@ async function optimizeSteps() {
     });
     const optimized = mapGeneratedNodes(result.nodes || []);
     if (!optimized.length) {
-      stepGenerationError.value = result.message || t('workflow.optimize_warn_no_result');
+      stepGenerationError.value = workflowResponseText(result.message, 'workflow.optimize_warn_no_result');
       message.warning(stepGenerationError.value);
       return;
     }
@@ -1998,7 +1941,7 @@ async function optimizeSteps() {
     testResult.value = null;
     message.success(t('workflow.optimize_success'));
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('workflow.optimize_failed');
+    stepGenerationError.value = workflowResponseText(error?.response?.data?.detail || error?.message, 'workflow.optimize_failed');
     message.error(stepGenerationError.value);
   } finally {
     optimizing.value = false;
@@ -2022,14 +1965,14 @@ async function supplementStepWithAi() {
     });
     const supplemented = mapGeneratedNodes(result.nodes || []);
     if (!supplemented.length) {
-      stepGenerationError.value = result.message || t('workflow.supplement_warn_no_result');
+      stepGenerationError.value = workflowResponseText(result.message, 'workflow.supplement_warn_no_result');
       message.warning(stepGenerationError.value);
       return;
     }
     const nextStep: WorkflowStep = {
       id: createId(),
       type: supplemented[0]?.type || 'generate_content',
-      title: supplemented[0]?.title || '补充业务节点',
+      title: supplemented[0]?.title || t('workflow.supplement_node_title'),
       text: supplemented[0]?.text || supplement,
       businessConfig: supplemented[0]?.businessConfig || {},
       boundWritingSkillId: supplemented[0]?.boundWritingSkillId || '',
@@ -2041,7 +1984,7 @@ async function supplementStepWithAi() {
     testResult.value = null;
     message.success(t('workflow.supplement_added'));
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('workflow.supplement_failed');
+    stepGenerationError.value = workflowResponseText(error?.response?.data?.detail || error?.message, 'workflow.supplement_failed');
     message.error(stepGenerationError.value);
   } finally {
     supplementingStep.value = false;
@@ -2069,16 +2012,16 @@ async function runWorkflowTest() {
       testedAt: checkedAt,
       pass: Boolean(result.pass),
       logic: {
-        label: result.logic?.label || '需要澄清',
+        label: result.logic?.label || t('workflow.needsClarification'),
         level: result.logic?.level === 'success' ? 'success' : 'warning',
-        summary: result.logic?.summary || '后端未返回明确的逻辑说明。',
+        summary: result.logic?.summary || t('workflow.test_logic_empty'),
       },
       coverage: Array.isArray(result.coverage) ? result.coverage : [],
       readiness: Array.isArray(result.readiness) ? result.readiness : [],
       suggestions: Array.isArray(result.suggestions) && result.suggestions.length
         ? result.suggestions
-        : ['后端未返回具体建议，请检查步骤是否覆盖目标、输入、判断、异常和输出。'],
-      conclusion: result.conclusion || '本次检查未返回明确结论。',
+        : [t('workflow.test_suggest_empty')],
+      conclusion: result.conclusion || t('workflow.test_conclusion_empty'),
     };
     testResult.value = nextResult;
     await persistWorkflowCheck(nextResult);
@@ -2379,18 +2322,18 @@ async function saveWorkflow(): Promise<boolean> {
     && !String(node.businessConfig?.knowledgeSourceId || '').trim());
   if (missingKnowledge) {
     activeStepId.value = String(missingKnowledge.id || '');
-    message.warning('请先选择要读取的知识文档');
+    message.warning(t('legacy.select_a_knowledge_document_to_read_first'));
     return false;
   }
   const aliases = workflowNodes.map(node => String(node.outputAlias || '').trim()).filter(Boolean);
   if (aliases.length !== new Set(aliases).size) {
-    message.warning('节点输出名不能重复，请为不同材料设置不同名称');
+    message.warning(t('legacy.step_output_names_must_be_unique_give_each_material'));
     return false;
   }
   const invalidReviewId = bindReviewSources(workflowNodes);
   if (invalidReviewId) {
     activeStepId.value = invalidReviewId;
-    message.warning('请为校验复核选择有效的上游复核对象和判定依据');
+    message.warning(t('legacy.select_a_valid_earlier_result_and_criteria_for_review'));
     return false;
   }
   saving.value = true;

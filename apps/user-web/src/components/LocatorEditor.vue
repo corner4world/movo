@@ -4,7 +4,7 @@
 // icon class / row anchor; runtime does AND-matching. Fields are
 // deliberately few so the UI stays usable without a training wheel.
 //
-// If a user pastes an HTML snippet into the "从 HTML 提取" box, we
+// If a user pastes an HTML snippet into the extraction box, we
 // do a lightweight extraction to prefill the form — this is the
 // "one-shot tool" discussed earlier, kept inline to avoid a separate
 // heavyweight modal.

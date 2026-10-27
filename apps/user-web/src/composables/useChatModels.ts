@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { fetchChatModels, type ChatModelOption } from '../api/models'
 import { t, type Locale } from './i18n'
+import { chatChromeMessages } from '../locales/chatChromeMessages'
 
 export function useChatModels(options: {
   getMainId: () => string
@@ -17,7 +18,7 @@ export function useChatModels(options: {
     if (modelsLoading.value) return t('chat.models_loading')
     if (modelLoadError.value) return t('chat.models_load_failed')
     if (selectedModel.value) return selectedModel.value.displayName || selectedModel.value.modelName
-    const fallback = options.getLocale() === 'en' ? 'No model configured' : '未配置模型'
+    const fallback = chatChromeMessages.noModel[options.getLocale()]
     if (chatModels.value.length) return chatModels.value[0]?.displayName || chatModels.value[0]?.modelName || fallback
     return fallback
   })

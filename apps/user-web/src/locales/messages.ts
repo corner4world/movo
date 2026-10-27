@@ -6,11 +6,33 @@ import { reviewWorkflowMessages } from './reviewWorkflowMessages'
 import { skillWorkflowEditorMessages } from './skillWorkflowEditorMessages'
 import { workflowNodeUsageMessages } from './workflowNodeUsageMessages'
 import { imagePreviewMessages } from './imagePreviewMessages'
+import { projectDialogMessages } from './projectDialogMessages'
+import { scheduledTaskErrorMessages } from './scheduledTaskErrorMessages'
+import { authResponseMessages } from './authResponseMessages'
+import { schemaDescriptionMessages } from './schemaDescriptionMessages'
+import { browserSurfaceMessages } from './browserSurfaceMessages'
+import { toolActivationMessages } from './toolActivationMessages'
+import { browserAutomationNodeMessages } from './browserAutomationNodeMessages'
+import { internalToolMessages } from './internalToolMessages'
+import { appShellMessages } from './appShellMessages'
+import { chatComposerMessages } from './chatComposerMessages'
+import { workspaceContextMessages } from './workspaceContextMessages'
 
 export type Locale = 'zh' | 'en'
 export type MessageValue = string | Record<Locale, string>
 
 export const messages = {
+  ...projectDialogMessages,
+  ...scheduledTaskErrorMessages,
+  ...authResponseMessages,
+  ...schemaDescriptionMessages,
+  ...browserSurfaceMessages,
+  ...toolActivationMessages,
+  ...browserAutomationNodeMessages,
+  ...internalToolMessages,
+  ...appShellMessages,
+  ...chatComposerMessages,
+  ...workspaceContextMessages,
   'chat.question.title': { zh: '需要你的回答', en: 'Your input is needed' },
   'chat.question.subtitle': { zh: '回答后，助手会继续处理当前问题', en: 'The assistant will continue after you answer' },
   'chat.question.other': { zh: '填写其他答案', en: 'Enter another answer' },
@@ -830,7 +852,7 @@ export const messages = {
   // Default Node presets
   'workflow.preset.read_material.label': { zh: '读取材料', en: 'Read Materials' },
   'workflow.preset.browser_automation.label': { zh: '浏览器自动化', en: 'Browser Automation' },
-  'workflow.preset.browser_automation.placeholder': { zh: '例如：打开微信公众号后台，进入草稿箱，添加图文并将上一步生成的文章保存为草稿，不要发布。', en: 'e.g. Open the publishing console, create an article from the previous step, and save it as a draft without publishing.' },
+  'workflow.preset.browser_automation.placeholder': { zh: '例如：打开微信公众号后台，进入草稿箱，添加图文并将上一步生成的文章保存为草稿，不要发布。', en: 'e.g. Open the WeChat Official Account console, go to Drafts, add an illustrated article using the article from the previous step, and save it as a draft without publishing.' },
   'workflow.browser.target_url': { zh: '目标网址（可选）', en: 'Target URL (optional)' },
   'workflow.browser.target_name': { zh: '目标名称（可选）', en: 'Target name (optional)' },
   'workflow.browser.target_name_placeholder': { zh: '例如：OA、财务系统、微信公众号后台', en: 'e.g. OA, Finance System, Publishing Console' },

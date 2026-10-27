@@ -1,3 +1,5 @@
+import { changeStatusMessages } from '../../locales/codePresentationMessages'
+
 export type ChangeTone = 'added' | 'modified' | 'deleted' | 'renamed' | 'conflict' | 'neutral'
 
 export interface ChangeStatusPresentation {
@@ -8,14 +10,14 @@ export interface ChangeStatusPresentation {
 
 export function changeStatusPresentation(status: string, locale: 'zh' | 'en' = 'zh'): ChangeStatusPresentation {
   const code = status.trim().toUpperCase()
-  const english = locale === 'en'
-  if (code === '??') return { label: 'U', description: english ? 'Untracked file' : '尚未被 Git 跟踪的新文件', tone: 'added' }
-  if (code.includes('U') || code === 'AA' || code === 'DD') return { label: 'C', description: english ? 'Merge conflict' : '存在尚未解决的合并冲突', tone: 'conflict' }
-  if (code.includes('D')) return { label: 'D', description: english ? 'Deleted file' : '已删除的文件', tone: 'deleted' }
-  if (code.includes('R')) return { label: 'R', description: english ? 'Renamed file' : '已重命名的文件', tone: 'renamed' }
-  if (code.includes('A')) return { label: 'A', description: english ? 'Added file' : '已添加到 Git 的新文件', tone: 'added' }
-  if (code.includes('M')) return { label: 'M', description: english ? 'Modified file' : '内容已修改的文件', tone: 'modified' }
-  return { label: code || (english ? 'Changed' : '变更'), description: english ? 'Changed file' : '发生变更的文件', tone: 'neutral' }
+  const label = (key: keyof typeof changeStatusMessages) => changeStatusMessages[key][locale]
+  if (code === '??') return { label: 'U', description: label('untracked'), tone: 'added' }
+  if (code.includes('U') || code === 'AA' || code === 'DD') return { label: 'C', description: label('conflict'), tone: 'conflict' }
+  if (code.includes('D')) return { label: 'D', description: label('deleted'), tone: 'deleted' }
+  if (code.includes('R')) return { label: 'R', description: label('renamed'), tone: 'renamed' }
+  if (code.includes('A')) return { label: 'A', description: label('added'), tone: 'added' }
+  if (code.includes('M')) return { label: 'M', description: label('modified'), tone: 'modified' }
+  return { label: code || label('changed'), description: label('changedFile'), tone: 'neutral' }
 }
 
 export type FileTone = 'typescript' | 'javascript' | 'python' | 'vue' | 'json' | 'web' | 'style' | 'markdown' | 'config' | 'shell' | 'database' | 'native' | 'generic'

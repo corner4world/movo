@@ -1,4 +1,5 @@
 import type { ExecutionEventV3 } from './protocol'
+import { durationMessages } from '../../../locales/codePresentationMessages'
 
 export const TERMINAL_RUN_EVENT_TYPES = new Set<ExecutionEventV3['type']>([
   'run.completed',
@@ -19,12 +20,7 @@ export function formatRunDuration(durationMs: number | null, locale: 'zh' | 'en'
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
 
-  if (locale === 'en') {
-    if (hours) return `${hours}h ${minutes}m ${seconds}s`
-    if (minutes) return `${minutes}m ${seconds}s`
-    return `${seconds}s`
-  }
-  if (hours) return `${hours}小时${minutes}分${seconds}秒`
-  if (minutes) return `${minutes}分${seconds}秒`
-  return `${seconds}秒`
+  const values = { hours, minutes, seconds }
+  const key = hours ? 'hours' : minutes ? 'minutes' : 'seconds'
+  return durationMessages[key][locale].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name as keyof typeof values]))
 }

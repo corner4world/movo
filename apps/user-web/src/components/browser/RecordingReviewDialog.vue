@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { RecordingAnalysis } from '../../api/recording'
+import { recordingReviewMessages, recordingReviewUi } from '../../locales/recordingReviewMessages'
 
-defineProps<{
+const props = defineProps<{
   show: boolean
   loading: boolean
   saving: boolean
@@ -16,23 +17,13 @@ defineEmits<{
   (event: 'retry'): void
 }>()
 
-const reasonLabels: Record<string, { zh: string; en: string }> = {
-  recording_not_stopped: { zh: '录制尚未完整停止', en: 'Recording has not fully stopped' },
-  recording_has_no_actions: { zh: '没有识别到浏览器操作', en: 'No browser actions were detected' },
-  recording_site_missing: { zh: '无法识别目标网站', en: 'The target site could not be identified' },
-  recorded_actions_not_replayable: { zh: '部分操作无法稳定回放', en: 'Some actions cannot be replayed reliably' },
-  recording_has_no_replayable_steps: { zh: '没有可回放步骤', en: 'No replayable steps were found' },
-  terminal_business_action_missing: { zh: '缺少保存、提交或发布等最终动作', en: 'A final save, submit, or publish action is missing' },
-  required_media_action_missing: { zh: '流程需要图片或文件，但未录到上传动作', en: 'A required media or file action was not recorded' },
-  temporary_navigation_url_present: { zh: '导航地址包含临时登录或会话参数', en: 'A navigation URL contains temporary session parameters' },
-  unstable_recorded_locator_present: { zh: '部分操作只有不稳定的位置定位', en: 'Some actions only have unstable positional locators' },
-  human_click_target_missing: { zh: '有一次产生页面变化的点击未识别到目标控件', en: 'A click that changed the page did not have an identifiable target' },
-  recording_target_unavailable: { zh: '录制期间有浏览器页面未成功接入录制器', en: 'A browser page was not attached to the recorder during this recording' },
-  unsupported_human_action: { zh: '录制中包含当前尚不支持的人工操作', en: 'The recording contains an unsupported manual action' },
+function reasonLabel(reason: string): string {
+  return recordingReviewMessages[reason as keyof typeof recordingReviewMessages]?.[props.locale] || reason
 }
 
-function reasonLabel(reason: string, locale: 'zh' | 'en'): string {
-  return reasonLabels[reason]?.[locale] || reason
+function copy(key: keyof typeof recordingReviewUi, count?: number): string {
+  const value = recordingReviewUi[key][props.locale]
+  return count === undefined ? value : value.replace('{count}', String(count))
 }
 </script>
 
@@ -47,50 +38,50 @@ function reasonLabel(reason: string, locale: 'zh' | 'en'): string {
       >
         <header class="dialog-header">
           <div>
-            <p class="eyebrow">{{ locale === 'zh' ? '人工流程录制' : 'Manual workflow recording' }}</p>
-            <h2 id="recording-review-title">{{ locale === 'zh' ? '确认识别到的流程' : 'Review detected workflow' }}</h2>
+            <p class="eyebrow">{{ copy('eyebrow') }}</p>
+            <h2 id="recording-review-title">{{ copy('title') }}</h2>
           </div>
           <span v-if="analysis" class="step-count">
-            {{ locale === 'zh' ? `${analysis.steps.length} 个可回放步骤` : `${analysis.steps.length} replayable steps` }}
+            {{ copy('replayableSteps', analysis.steps.length) }}
           </span>
         </header>
 
         <div v-if="loading" class="dialog-state" role="status">
           <span class="spinner" aria-hidden="true"></span>
-          <span>{{ locale === 'zh' ? '正在识别步骤并自动生成名称…' : 'Detecting steps and generating a name…' }}</span>
+          <span>{{ copy('detecting') }}</span>
         </div>
 
         <template v-else-if="analysis">
           <div class="workflow-name">
-            <span>{{ locale === 'zh' ? '自动生成名称' : 'Generated name' }}</span>
+            <span>{{ copy('generatedName') }}</span>
             <strong>{{ analysis.display_name }}</strong>
           </div>
 
           <div v-if="!analysis.complete" class="validation-error" role="alert">
-            <strong>{{ locale === 'zh' ? '当前录制不完整，暂不能保存' : 'This recording is incomplete and cannot be saved' }}</strong>
+            <strong>{{ copy('incomplete') }}</strong>
             <ul>
-              <li v-for="reason in analysis.reasons" :key="reason">{{ reasonLabel(reason, locale) }}</li>
+              <li v-for="reason in analysis.reasons" :key="reason">{{ reasonLabel(reason) }}</li>
             </ul>
           </div>
 
-          <ol class="step-list" :aria-label="locale === 'zh' ? '识别到的步骤' : 'Detected steps'">
+          <ol class="step-list" :aria-label="copy('detectedSteps')">
             <li v-for="step in analysis.steps" :key="step.index">
               <span class="step-index">{{ step.index }}</span>
               <span class="step-label">{{ step.label }}</span>
               <span v-if="step.parameterized" class="parameter-tag">
-                {{ locale === 'zh' ? '参数化' : 'Parameterized' }}
+                {{ copy('parameterized') }}
               </span>
             </li>
           </ol>
         </template>
 
         <div v-else class="dialog-state error" role="alert">
-          {{ error || (locale === 'zh' ? '流程分析失败，请重新录制' : 'Workflow analysis failed. Please record again.') }}
+          {{ error || (copy('analysisFailed')) }}
         </div>
 
         <footer class="dialog-footer">
           <button type="button" class="secondary" :disabled="saving" @click="$emit('discard')">
-            {{ locale === 'zh' ? '丢弃' : 'Discard' }}
+            {{ copy('discard') }}
           </button>
           <button
             v-if="analysis && !analysis.complete"
@@ -99,7 +90,7 @@ function reasonLabel(reason: string, locale: 'zh' | 'en'): string {
             :disabled="loading || saving"
             @click="$emit('retry')"
           >
-            {{ locale === 'zh' ? '重新分析' : 'Analyze again' }}
+            {{ copy('analyzeAgain') }}
           </button>
           <button
             type="button"
@@ -107,7 +98,7 @@ function reasonLabel(reason: string, locale: 'zh' | 'en'): string {
             :disabled="loading || saving || !analysis?.complete"
             @click="$emit('save')"
           >
-            {{ saving ? (locale === 'zh' ? '保存中…' : 'Saving…') : (locale === 'zh' ? '保存流程' : 'Save workflow') }}
+            {{ saving ? (copy('saving')) : (copy('save')) }}
           </button>
         </footer>
       </section>

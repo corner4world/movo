@@ -1,0 +1,31 @@
+export const desktopChromeMessages = {
+  showSidebar: { zh: '展开侧栏', en: 'Show sidebar' },
+  hideSidebar: { zh: '收起侧栏', en: 'Hide sidebar' },
+  openChanges: { zh: '打开变更', en: 'Open changes' },
+  changes: { zh: '变更', en: 'Changes' },
+  openFiles: { zh: '打开文件', en: 'Open files' },
+  files: { zh: '文件', en: 'Files' },
+  openTerminal: { zh: '打开终端', en: 'Open terminal' },
+  terminal: { zh: '终端', en: 'Terminal' },
+  browser: { zh: '浏览器', en: 'Browser' },
+  workspaceTools: { zh: '工作区工具', en: 'Workspace tools' },
+  close: { zh: '关闭', en: 'Close' },
+  newToolTab: { zh: '新建工具标签页', en: 'New tool tab' },
+  newTab: { zh: '新建标签页', en: 'New tab' },
+  closeToolPanel: { zh: '关闭工具面板', en: 'Close tool panel' },
+  primaryNavigation: { zh: '主导航', en: 'Primary navigation' },
+  home: { zh: '首页', en: 'Home' },
+  scheduled: { zh: '定时', en: 'Tasks' },
+  skills: { zh: 'Skill', en: 'Skills' },
+  plugins: { zh: '插件', en: 'Plugins' },
+  tools: { zh: 'MCP', en: 'MCP' },
+  knowledge: { zh: '知识库', en: 'Knowledge Base' },
+  fileMenu: { zh: '文件', en: 'File' },
+  editMenu: { zh: '编辑', en: 'Edit' },
+  viewMenu: { zh: '视图', en: 'View' },
+} as const
+
+export const desktopTerminalTabTitle = {
+  zh: (number: number) => `终端 ${number}`,
+  en: (number: number) => `Terminal ${number}`,
+} as const

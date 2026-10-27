@@ -6,6 +6,7 @@ import {
   selectEmbeddedBrowserSession,
 } from '../../platform'
 import { useLocale } from '../../composables/i18n'
+import { chatChromeMessages } from '../../locales/chatChromeMessages'
 
 const { locale } = useLocale()
 const props = defineProps<{ sessionId?: string; iconOnly?: boolean; active?: boolean }>()
@@ -26,12 +27,12 @@ async function openBrowser() {
     type="button"
     class="browser-test-button"
     :class="{ 'icon-only': iconOnly, active }"
-    :aria-label="locale === 'zh' ? '打开测试浏览器' : 'Open test browser'"
-    :title="locale === 'zh' ? '打开浏览器进行人工测试' : 'Open browser for manual testing'"
+    :aria-label="chatChromeMessages.openTestBrowser[locale]"
+    :title="chatChromeMessages.manualTestBrowser[locale]"
     @click="openBrowser"
   >
     <GlobeOutline />
-    <span v-if="!iconOnly">{{ locale === 'zh' ? '测试浏览器' : 'Test browser' }}</span>
+    <span v-if="!iconOnly">{{ chatChromeMessages.testBrowser[locale] }}</span>
   </button>
 </template>
 

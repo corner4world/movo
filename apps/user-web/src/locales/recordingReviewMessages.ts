@@ -1,0 +1,30 @@
+export const recordingReviewMessages = {
+  recording_not_stopped: { zh: '录制尚未完整停止', en: 'Recording has not fully stopped' },
+  recording_has_no_actions: { zh: '没有识别到浏览器操作', en: 'No browser actions were detected' },
+  recording_site_missing: { zh: '无法识别目标网站', en: 'The target site could not be identified' },
+  recorded_actions_not_replayable: { zh: '部分操作无法稳定回放', en: 'Some actions cannot be replayed reliably' },
+  recording_has_no_replayable_steps: { zh: '没有可回放步骤', en: 'No replayable steps were found' },
+  terminal_business_action_missing: { zh: '缺少保存、提交或发布等最终动作', en: 'A final save, submit, or publish action is missing' },
+  required_media_action_missing: { zh: '流程需要图片或文件，但未录到上传动作', en: 'A required media or file action was not recorded' },
+  temporary_navigation_url_present: { zh: '导航地址包含临时登录或会话参数', en: 'A navigation URL contains temporary session parameters' },
+  unstable_recorded_locator_present: { zh: '部分操作只有不稳定的位置定位', en: 'Some actions only have unstable positional locators' },
+  human_click_target_missing: { zh: '有一次产生页面变化的点击未识别到目标控件', en: 'A click that changed the page did not have an identifiable target' },
+  recording_target_unavailable: { zh: '录制期间有浏览器页面未成功接入录制器', en: 'A browser page was not attached to the recorder during this recording' },
+  unsupported_human_action: { zh: '录制中包含当前尚不支持的人工操作', en: 'The recording contains an unsupported manual action' },
+} as const
+
+export const recordingReviewUi = {
+  eyebrow: { zh: '人工流程录制', en: 'Manual workflow recording' },
+  title: { zh: '确认识别到的流程', en: 'Review detected workflow' },
+  replayableSteps: { zh: '{count} 个可回放步骤', en: '{count} replayable steps' },
+  detecting: { zh: '正在识别步骤并自动生成名称…', en: 'Detecting steps and generating a name…' },
+  generatedName: { zh: '自动生成名称', en: 'Generated name' },
+  incomplete: { zh: '当前录制不完整，暂不能保存', en: 'This recording is incomplete and cannot be saved' },
+  detectedSteps: { zh: '识别到的步骤', en: 'Detected steps' },
+  parameterized: { zh: '参数化', en: 'Parameterized' },
+  analysisFailed: { zh: '流程分析失败，请重新录制', en: 'Workflow analysis failed. Please record again.' },
+  discard: { zh: '丢弃', en: 'Discard' },
+  analyzeAgain: { zh: '重新分析', en: 'Analyze again' },
+  saving: { zh: '保存中…', en: 'Saving…' },
+  save: { zh: '保存流程', en: 'Save workflow' },
+} as const

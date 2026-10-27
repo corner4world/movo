@@ -1,0 +1,18 @@
+export const chatComposerMessages = {
+  'composer.scope.all': { zh: '全部', en: 'All' },
+  'composer.scope.mine': { zh: '我的', en: 'Mine' },
+  'composer.scope.organization': { zh: '企业', en: 'Org' },
+  'composer.unsupportedFiles': { zh: '不支持的文件类型：{names}', en: 'Unsupported file types: {names}' },
+  'composer.skill.workflow': { zh: '工作流', en: 'Workflow' },
+  'composer.skill.ordinary': { zh: '普通 Skill', en: 'Standard Skill' },
+  'composer.skill.expert': { zh: '专家包', en: 'Expert Package' },
+  'composer.skill.writing': { zh: '写作规范', en: 'Writing' },
+  'composer.selected': { zh: '已选择', en: 'Selected' },
+  'composer.selectSkill': { zh: '选择 Skill', en: 'Select Skill' },
+  'composer.skillList': { zh: 'Skill 列表', en: 'Skill list' },
+  'composer.loading': { zh: '加载中...', en: 'Loading...' },
+  'composer.noDescription': { zh: '暂无描述', en: 'No description' },
+  'composer.noSkills': { zh: '没有找到可用 Skill', en: 'No available skills' },
+  'composer.loadMore': { zh: '加载更多', en: 'Load more' },
+  'composer.addAttachment': { zh: '添加附件', en: 'Add attachment' },
+} as const

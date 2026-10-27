@@ -3,6 +3,7 @@ import { waitForBrowserInterventionReady } from '../browser/browserInterventionR
 import type { ExecutionEventV3 } from '../../features/execution-v3/domain/protocol'
 import type { ChatStreamHandle } from '../useChatStream'
 import { startTaskResumeStream } from './taskResume'
+import { browserInterventionMessages } from '../../locales/browserInterventionMessages'
 
 type ResumableIntervention = {
   category?: string
@@ -118,9 +119,7 @@ function linkedAbortController(parent: AbortSignal): AbortController {
 
 function resumeProgressEvent(runId: string, nodeId: string, locale: string, auth: boolean): ExecutionEventV3 {
   const eventId = `browser_resumed_${runId}_${nodeId}_${Date.now()}`
-  const message = locale === 'zh'
-    ? (auth ? '登录成功，继续执行任务' : '人工操作已完成，继续执行任务')
-    : (auth ? 'Login succeeded, resuming task' : 'Human intervention completed, resuming task')
+  const message = browserInterventionMessages[auth ? 'authResumed' : 'humanResumed'][locale === 'zh' ? 'zh' : 'en']
   return {
     v: 3,
     event_id: eventId,

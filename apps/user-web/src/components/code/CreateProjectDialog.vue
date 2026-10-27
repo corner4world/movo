@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 import { NButton, NModal, NRadio, NRadioGroup } from 'naive-ui'
 import type { DshWorkspace } from '../../platform/types'
+import { t } from '../../composables/i18n'
 
-const props = defineProps<{ show: boolean; workspace: DshWorkspace | null; worktree: boolean; busy?: boolean; selecting?: boolean; selectionPhase?: string; selectionError?: string; locale?: 'zh' | 'en' }>()
+const props = defineProps<{ show: boolean; workspace: DshWorkspace | null; worktree: boolean; busy?: boolean; selecting?: boolean; selectionPhase?: string; selectionError?: string }>()
 const emit = defineEmits<{ (event: 'update:worktree', value: boolean): void; (event: 'choose-folder'): void; (event: 'create'): void; (event: 'close'): void }>()
 
 const projectName = computed(() => {
@@ -15,31 +16,31 @@ const canCreate = computed(() => Boolean(props.workspace && !props.busy && !prop
 </script>
 
 <template>
-  <NModal :show="show" preset="card" :mask-closable="!busy" :closable="!busy" style="width:440px" :title="locale === 'en' ? 'Create project' : '创建项目'" @update:show="(value) => !value && emit('close')">
+  <NModal :show="show" preset="card" :mask-closable="!busy" :closable="!busy" style="width:440px" :title="t('projectDialog.create')" @update:show="(value) => !value && emit('close')">
     <div class="project-dialog">
       <section class="field-group">
-        <span class="field-label">{{ locale === 'en' ? 'Local folder' : '本地目录' }}</span>
+        <span class="field-label">{{ t('projectDialog.localFolder') }}</span>
         <div class="folder-row">
           <div class="folder-details">
-            <strong>{{ projectName || (locale === 'en' ? 'No folder selected' : '尚未选择目录') }}</strong>
-            <span :title="workspace?.path">{{ workspace?.path || (locale === 'en' ? 'The project will use the folder name' : '项目将自动使用目录名称') }}</span>
+            <strong>{{ projectName || t('projectDialog.noFolder') }}</strong>
+            <span :title="workspace?.path">{{ workspace?.path || t('projectDialog.folderNameHint') }}</span>
           </div>
-          <NButton size="small" :loading="selecting" :disabled="busy || selecting" @click="emit('choose-folder')">{{ locale === 'en' ? 'Choose folder' : '选择文件夹' }}</NButton>
+          <NButton size="small" :loading="selecting" :disabled="busy || selecting" @click="emit('choose-folder')">{{ t('projectDialog.chooseFolder') }}</NButton>
         </div>
         <p v-if="selectionError" class="folder-error" role="alert">{{ selectionError }}</p>
         <p v-else-if="selecting && selectionPhase" class="folder-progress" role="status">{{ selectionPhase }}</p>
       </section>
       <section class="field-group">
-        <span class="field-label">{{ locale === 'en' ? 'Change mode' : '修改方式' }}</span>
+        <span class="field-label">{{ t('projectDialog.changeMode') }}</span>
         <NRadioGroup :value="worktree" :disabled="busy" @update:value="(value) => emit('update:worktree', Boolean(value))">
           <div class="mode-options">
-            <NRadio :value="false"><span class="mode-copy"><strong>{{ locale === 'en' ? 'Edit locally' : '本地修改' }}</strong><small>{{ locale === 'en' ? 'Use the current branch' : '直接在当前分支中修改' }}</small></span></NRadio>
-            <NRadio :value="true"><span class="mode-copy"><strong>{{ locale === 'en' ? 'New local worktree' : '新建本地工作树' }}</strong><small>{{ locale === 'en' ? 'Create an isolated folder; create a branch only when keeping changes' : '创建隔离目录；保留成果时再创建分支' }}</small></span></NRadio>
+            <NRadio :value="false"><span class="mode-copy"><strong>{{ t('projectDialog.editLocally') }}</strong><small>{{ t('projectDialog.currentBranch') }}</small></span></NRadio>
+            <NRadio :value="true"><span class="mode-copy"><strong>{{ t('projectDialog.newWorktree') }}</strong><small>{{ t('projectDialog.worktreeHint') }}</small></span></NRadio>
           </div>
         </NRadioGroup>
       </section>
     </div>
-    <template #footer><div class="dialog-actions"><NButton :disabled="busy" @click="emit('close')">{{ locale === 'en' ? 'Cancel' : '取消' }}</NButton><NButton type="primary" :loading="busy" :disabled="!canCreate" @click="emit('create')">{{ locale === 'en' ? 'Create project' : '创建项目' }}</NButton></div></template>
+    <template #footer><div class="dialog-actions"><NButton :disabled="busy" @click="emit('close')">{{ t('ui.cancel') }}</NButton><NButton type="primary" :loading="busy" :disabled="!canCreate" @click="emit('create')">{{ t('projectDialog.create') }}</NButton></div></template>
   </NModal>
 </template>
 

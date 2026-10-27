@@ -1,4 +1,5 @@
 import type { DshExecutionEvent, DshPendingApproval } from './types'
+import { desktopUiHarnessMessages } from '../locales/desktopUiHarnessMessages'
 
 /** Browser-only visual contract harness. It is imported exclusively in Vite DEV mode. */
 export function installDesktopUiTestHarness() {
@@ -34,10 +35,10 @@ export function installDesktopUiTestHarness() {
         // can verify the loading label and the composer progress ring.
         setTimeout(() => {
           emit('run.started', undefined, undefined, { kernel: 'dsh', source: 'desktop' })
-          emit('item.completed', 'commentary', 'commentary-1', { text: '我先检查相关实现和测试，再进行修改。', source: 'model' })
+          emit('item.completed', 'commentary', 'commentary-1', { text: desktopUiHarnessMessages.commentary, source: 'model' })
           emit('item.started', 'tool', 'bash-1', { name: 'bash', display_name: 'bash', code_dispatch: true, args: { command: 'npm test' } })
           emit('item.completed', 'tool', 'bash-1', { name: 'bash', display_name: 'bash', code_dispatch: true, args: { command: 'npm test' }, result_summary: '{"exitCode":1,"stderr":"one test failed"}' })
-          pending = [{ approval_id: 'approval-ui', session_id: sessionId, tool_name: 'bash', call_id: 'bash-2', reason: '该命令需要扩大当前 Workspace 权限。', created_at: Date.now() }]
+          pending = [{ approval_id: 'approval-ui', session_id: sessionId, tool_name: 'bash', call_id: 'bash-2', reason: desktopUiHarnessMessages.approvalReason, created_at: Date.now() }]
           emit('item.started', 'approval', 'approval-ui', { source: 'dsh-local', approval_id: 'approval-ui', tool_name: 'bash', display_name: 'bash', status: 'pending' })
         }, 5000)
         return { accepted: true, messageId: 'message-ui' }
@@ -48,7 +49,7 @@ export function installDesktopUiTestHarness() {
         emit('item.completed', 'approval', approvalId, { outcome: 'allowed-once', status: 'decided' })
         emit('item.started', 'tool', 'edit-1', { name: 'edit', display_name: 'edit', code_dispatch: true, args: { file_path: 'src/app.ts' } })
         emit('item.completed', 'tool', 'edit-1', { name: 'edit', display_name: 'edit', code_dispatch: true, result_summary: 'updated src/app.ts' })
-        emit('item.completed', 'final_answer', 'answer-ui', { text: '修改完成，测试已经通过。', source: 'model' })
+        emit('item.completed', 'final_answer', 'answer-ui', { text: desktopUiHarnessMessages.finalAnswer, source: 'model' })
         emit('run.completed', undefined, undefined, { reason: 'stop' })
         return { decided: true }
       },

@@ -1,4 +1,5 @@
 import type { ExternalToolItem, ToolPayload } from '../api/tools';
+import { t } from '../composables/i18n';
 
 export const MCP_ENABLED_TOOL_LIMIT = 50;
 
@@ -13,10 +14,10 @@ export function mcpActivationError(tool: ToolLike | ToolPayload): string {
   if (tool.type !== 'mcp' || tool.status !== 'active') return '';
   const names = enabledMcpToolNames(tool.config);
   if (names.length === 0) {
-    return `请先选择允许 Agent 使用的 MCP 工具，最多 ${MCP_ENABLED_TOOL_LIMIT} 个。`;
+    return t('toolActivation.selectRequired', { limit: MCP_ENABLED_TOOL_LIMIT });
   }
   if (names.length > MCP_ENABLED_TOOL_LIMIT) {
-    return `MCP 已选择 ${names.length} 个工具，超过上限 ${MCP_ENABLED_TOOL_LIMIT} 个，请减少后再启用。`;
+    return t('toolActivation.overLimit', { count: names.length, limit: MCP_ENABLED_TOOL_LIMIT });
   }
   return '';
 }
@@ -30,15 +31,15 @@ export function nextMcpToolSelection(current: string[], name: string, checked: b
   }
   if (currentNames.includes(normalized)) return { names: currentNames, error: '' };
   if (currentNames.length >= MCP_ENABLED_TOOL_LIMIT) {
-    return { names: currentNames, error: `最多只能选择 ${MCP_ENABLED_TOOL_LIMIT} 个 MCP 工具。` };
+    return { names: currentNames, error: t('toolActivation.selectionLimit', { limit: MCP_ENABLED_TOOL_LIMIT }) };
   }
   return { names: [...currentNames, normalized], error: '' };
 }
 
 export function toolStatusConfirmText(tool: ToolLike, enabled: boolean): string {
-  const name = tool.name || '未命名工具';
+  const name = tool.name || t('toolActivation.unnamed');
   if (enabled) {
-    return `确认启用「${name}」吗？启用后会参与 Agent / Skill 的工具选择。`;
+    return t('toolActivation.enableConfirm', { name });
   }
-  return `确认禁用「${name}」吗？禁用后 Agent / Skill 将无法继续调用。`;
+  return t('toolActivation.disableConfirm', { name });
 }

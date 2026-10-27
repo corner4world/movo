@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { captureEmbeddedBrowserPreview, type BrowserOwner, type BrowserPreviewFrame } from '../../platform'
+import { browserMiniViewMessages } from '../../locales/browserMiniViewMessages'
 
 const props = defineProps<{
   sessionId: string
@@ -21,11 +22,11 @@ const failed = ref(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 let requestVersion = 0
 
-const zh = computed(() => props.locale !== 'en')
-const displayTitle = computed(() => frame.value?.title || props.title || (zh.value ? '浏览器任务' : 'Browser task'))
+const copy = (key: keyof typeof browserMiniViewMessages) => browserMiniViewMessages[key][props.locale === 'en' ? 'en' : 'zh']
+const displayTitle = computed(() => frame.value?.title || props.title || copy('task'))
 const ownerLabel = computed(() => props.owner === 'human'
-  ? (zh.value ? '人工操作中' : 'Human in control')
-  : (zh.value ? 'Agent 操作中' : 'Agent working'))
+  ? copy('humanControl')
+  : copy('agentWorking'))
 
 function stopPolling() {
   requestVersion += 1
@@ -70,7 +71,7 @@ onBeforeUnmount(stopPolling)
 </script>
 
 <template>
-  <aside class="browser-mini" :aria-label="zh ? '浏览器实时画面' : 'Live browser preview'">
+  <aside class="browser-mini" :aria-label="copy('livePreview')">
     <header class="browser-mini__header">
       <div class="browser-mini__identity">
         <span class="browser-mini__status" :class="{ loading }" aria-hidden="true"></span>
@@ -82,16 +83,16 @@ onBeforeUnmount(stopPolling)
       <div class="browser-mini__actions">
         <button
           type="button"
-          :aria-label="zh ? '展开浏览器侧栏' : 'Open browser side panel'"
-          :title="zh ? '展开' : 'Expand'"
+          :aria-label="copy('openPanel')"
+          :title="copy('expand')"
           @click="emit('expand')"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5M3 8l6-6m6 0 6 6M3 16l6 6m6 0 6-6" /></svg>
         </button>
         <button
           type="button"
-          :aria-label="zh ? '关闭浏览器画中画' : 'Close browser preview'"
-          :title="zh ? '关闭' : 'Close'"
+          :aria-label="copy('closePreview')"
+          :title="copy('close')"
           @click="emit('close')"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
@@ -101,15 +102,15 @@ onBeforeUnmount(stopPolling)
     <button
       class="browser-mini__stage"
       type="button"
-      :aria-label="zh ? '双击展开浏览器侧栏' : 'Double-click to open browser side panel'"
+      :aria-label="copy('doubleClickOpen')"
       @dblclick="emit('expand')"
     >
       <img v-if="frame" :src="frame.data_url" :alt="displayTitle" draggable="false" />
       <span v-else class="browser-mini__placeholder">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H4zM8 21h8M12 17v4" /></svg>
-        {{ failed ? (zh ? '暂时无法获取画面' : 'Preview unavailable') : (zh ? '正在获取浏览器画面…' : 'Loading browser preview…') }}
+        {{ failed ? (copy('unavailable')) : (copy('loading')) }}
       </span>
-      <span class="browser-mini__hint">{{ zh ? '双击展开' : 'Double-click to expand' }}</span>
+      <span class="browser-mini__hint">{{ copy('doubleClickExpand') }}</span>
     </button>
   </aside>
 </template>

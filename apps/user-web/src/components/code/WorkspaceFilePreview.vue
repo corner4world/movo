@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { previewDshWorkspaceFile } from '../../platform'
 import type { DshFilePreview } from '../../platform/types'
+import { workspacePreviewMessages } from '../../locales/codeWorkspaceMessages'
 import CodeFileTypeIcon from './CodeFileTypeIcon.vue'
 import CodeSyntaxPreview from './CodeSyntaxPreview.vue'
 
@@ -9,6 +10,7 @@ const props = defineProps<{ sessionId: string; path: string; locale?: 'zh' | 'en
 const preview = ref<DshFilePreview | null>(null)
 const loading = ref(false)
 const error = ref('')
+const copy = (key: keyof typeof workspacePreviewMessages) => workspacePreviewMessages[key][props.locale === 'en' ? 'en' : 'zh']
 
 async function load(): Promise<void> {
   if (!props.path) { preview.value = null; return }
@@ -26,12 +28,12 @@ onMounted(load)
   <section class="file-preview">
     <div v-if="preview" class="preview-heading"><div class="preview-file"><CodeFileTypeIcon :path="preview.path" /><strong>{{ preview.name }}</strong></div><span>{{ preview.language || preview.mime_type }} · {{ preview.size }} B</span></div>
     <div v-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="loading" class="state">{{ locale === 'en' ? 'Loading…' : '正在读取…' }}</div>
+    <div v-else-if="loading" class="state">{{ copy('loadingFile') }}</div>
     <img v-else-if="preview?.kind === 'image'" :src="preview.content" :alt="preview.name" class="image-preview" />
     <CodeSyntaxPreview v-else-if="preview?.kind === 'text'" :content="preview.content" :path="preview.path" :language="preview.language" />
-    <div v-else-if="preview?.kind === 'binary'" class="state">{{ locale === 'en' ? 'Binary files cannot be previewed.' : '该二进制文件暂不支持预览。' }}</div>
-    <div v-else class="state">{{ locale === 'en' ? 'Select a file to preview it.' : '选择文件后在此预览。' }}</div>
-    <div v-if="preview?.truncated" class="truncated">{{ locale === 'en' ? 'Preview truncated for safety.' : '文件较大，仅显示安全范围内的内容。' }}</div>
+    <div v-else-if="preview?.kind === 'binary'" class="state">{{ copy('binary') }}</div>
+    <div v-else class="state">{{ copy('selectFile') }}</div>
+    <div v-if="preview?.truncated" class="truncated">{{ copy('truncatedFile') }}</div>
   </section>
 </template>
 

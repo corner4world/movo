@@ -26,6 +26,7 @@ import {
 import ScheduledTaskEditor from './ScheduledTaskEditor.vue'
 import { getLocale, t } from '../../composables/i18n'
 import { formatScheduledInstant, formatScheduledWallTime } from './scheduledTaskTime'
+import { scheduledTaskError } from './scheduledTaskErrors'
 
 const props = defineProps<{
   token: string
@@ -72,9 +73,7 @@ async function load(silent = false) {
   try {
     jobs.value = await listScheduledJobs(props.token)
   } catch (error: any) {
-    message.error(
-      error?.response?.data?.detail || error?.message || t('legacy.failed_to_load_scheduled_tasks'),
-    )
+    message.error(scheduledTaskError(error, 'legacy.failed_to_load_scheduled_tasks'))
   } finally {
     if (!silent) loading.value = false
   }
@@ -104,9 +103,7 @@ async function save(draft: ScheduledJobDraft) {
     message.success(editingJob.value ? t('legacy.scheduled_task_updated') : t('legacy.scheduled_task_created'))
     await load()
   } catch (error: any) {
-    message.error(
-      error?.response?.data?.detail || error?.message || t('legacy.failed_to_save'),
-    )
+    message.error(scheduledTaskError(error, 'legacy.failed_to_save'))
   } finally {
     saving.value = false
   }
@@ -117,9 +114,7 @@ async function toggle(job: ScheduledJob, enabled: boolean) {
     await updateScheduledJob(props.token, job.id, { enabled })
     await load()
   } catch (error: any) {
-    message.error(
-      error?.response?.data?.detail || error?.message || t('legacy.failed_to_update'),
-    )
+    message.error(scheduledTaskError(error, 'legacy.failed_to_update'))
   }
 }
 
@@ -129,9 +124,7 @@ async function runNow(job: ScheduledJob) {
     message.success(t('legacy.execution_started'))
     await load()
   } catch (error: any) {
-    message.error(
-      error?.response?.data?.detail || error?.message || t('legacy.failed_to_start'),
-    )
+    message.error(scheduledTaskError(error, 'legacy.failed_to_start'))
   }
 }
 
@@ -141,9 +134,7 @@ async function remove(job: ScheduledJob) {
     await load()
     message.success(t('legacy.scheduled_task_deleted'))
   } catch (error: any) {
-    message.error(
-      error?.response?.data?.detail || error?.message || t('legacy.failed_to_delete'),
-    )
+    message.error(scheduledTaskError(error, 'legacy.failed_to_delete'))
   }
 }
 
@@ -189,7 +180,7 @@ watch(
 
 <template>
   <div class="page-stack tasks-page">
-    <!-- 头部区域，风格与 MyToolsPage / MySkillsPage 一致 -->
+    <!-- Header styled like MyToolsPage and MySkillsPage -->
     <header class="tasks-header">
       <div class="tasks-header-left">
         <n-button secondary @click="emit('back')">
@@ -200,9 +191,9 @@ watch(
       </div>
     </header>
 
-    <!-- 列表主面板 Shell Card （注意：无顶部统计卡片） -->
+    <!-- Main list card without a statistics card -->
     <n-card class="list-card shell-card" :bordered="false" size="large">
-      <!-- 过滤与操作工具栏 -->
+      <!-- Filter and action toolbar -->
       <div class="list-filter-row">
         <div class="filter-toolbar">
           <n-space align="center" :size="10" class="filter-left">
@@ -254,7 +245,7 @@ watch(
         </div>
       </div>
 
-      <!-- 列表内容区 -->
+      <!-- List content -->
       <div class="list-body">
         <n-spin :show="loading">
           <div v-if="filteredJobs.length" class="task-grid">

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { t } from '../composables/i18n'
 import { installAuthExpiryInterceptor } from './authExpiry'
+import { authResponseText } from './authResponseText'
 
 const client = axios.create({
   baseURL: '/askai-api/api',
@@ -90,18 +91,18 @@ export async function loginWithPassword(
         requiresTenantSelection: true,
         challengeToken: payload?.data?.challengeToken,
         tenantCandidates: payload?.data?.candidates || [],
-        message: payload?.message || t('api.auth.select_org'),
+        message: authResponseText(payload?.message, 'api.auth.select_org'),
       }
     }
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.login_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.login_failed') }
     }
     const token = payload?.data?.token
     const profile = payload?.data?.profile
     if (!token) return { ok: false, message: t('api.auth.missing_token') }
     return { ok: true, token, profile }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.login_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.login_failed') }
   }
 }
 
@@ -110,14 +111,14 @@ export async function selectTenantAndLogin(challengeToken: string, mainId: strin
     const response = await client.post('/auth/login/select-tenant', { challengeToken, mainId })
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.login_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.login_failed') }
     }
     const token = payload?.data?.token
     const profile = payload?.data?.profile
     if (!token) return { ok: false, message: t('api.auth.missing_token') }
     return { ok: true, token, profile }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.login_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.login_failed') }
   }
 }
 
@@ -134,14 +135,14 @@ export async function switchTenant(token: string, mainId: string): Promise<AuthR
     )
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.switch_org_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.switch_org_failed') }
     }
     const nextToken = payload?.data?.token
     const profile = payload?.data?.profile
     if (!nextToken) return { ok: false, message: t('api.auth.missing_token') }
     return { ok: true, token: nextToken, profile }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.switch_org_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.switch_org_failed') }
   }
 }
 
@@ -154,7 +155,7 @@ export async function fetchUserProfile(token: string): Promise<{ ok: boolean; da
     })
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.get_user_info_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.get_user_info_failed') }
     }
     const data = payload?.data || {}
     return {
@@ -178,7 +179,7 @@ export async function fetchUserProfile(token: string): Promise<{ ok: boolean; da
       },
     }
   } catch (error: any) {
-    return { ok: false, status: error?.response?.status, message: error?.response?.data?.message || error?.message || t('api.auth.get_user_info_failed') }
+    return { ok: false, status: error?.response?.status, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.get_user_info_failed') }
   }
 }
 
@@ -194,11 +195,11 @@ export async function updateUserProfile(
     )
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.update_profile_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.update_profile_failed') }
     }
-    return { ok: true, data: payload?.data, message: payload?.message }
+    return { ok: true, data: payload?.data, message: authResponseText(payload?.message) }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.update_profile_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.update_profile_failed') }
   }
 }
 
@@ -214,11 +215,11 @@ export async function uploadUserAvatar(
     })
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.upload_avatar_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.upload_avatar_failed') }
     }
-    return { ok: true, data: payload?.data, message: payload?.message }
+    return { ok: true, data: payload?.data, message: authResponseText(payload?.message) }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.upload_avatar_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.upload_avatar_failed') }
   }
 }
 
@@ -241,11 +242,11 @@ export async function fetchOrgBilling(token: string): Promise<{ ok: boolean; dat
     })
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.get_quota_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.get_quota_failed') }
     }
     return { ok: true, data: payload?.data }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.get_quota_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.get_quota_failed') }
   }
 }
 
@@ -260,10 +261,10 @@ export async function getAdminSSOToken(token: string): Promise<{ ok: boolean; ss
     )
     const payload = response.data
     if (!isOk(payload)) {
-      return { ok: false, message: payload?.message || t('api.auth.auth_failed') }
+      return { ok: false, message: authResponseText(payload?.message, 'api.auth.auth_failed') }
     }
     return { ok: true, ssoToken: payload?.data?.sso_token }
   } catch (error: any) {
-    return { ok: false, message: error?.response?.data?.message || error?.message || t('api.auth.auth_failed') }
+    return { ok: false, message: authResponseText(error?.response?.data?.message || error?.message, 'api.auth.auth_failed') }
   }
 }

@@ -1,5 +1,6 @@
 import { computed, markRaw, reactive, ref } from 'vue'
 import { fetchOrgBilling } from '../api/auth'
+import { chatRuntimeMessages } from '../locales/chatRuntimeMessages'
 import { uploadChatDocument, uploadChatImage, type UploadedDocument, type UploadedImage } from '../api/chat'
 import { getSession, type ChatMessage, type ChatMessageAuthor, type SessionDetail, type SessionSummary } from '../api/sessions'
 import { fetchChatMessageEvents, startChatStream, ChatStreamHttpError, SESSION_ALREADY_RUNNING, type ChatStreamHandle } from './useChatStream'
@@ -741,9 +742,7 @@ async function sendMessage(key: string, input: SendInput, callbacks: RuntimeCall
       pane.messages.push({
         _id: nextMessageId(),
         role: 'assistant',
-        content: isEnterprise
-          ? '当前企业分派额度已用尽，请联系企业管理员调整额度。'
-          : '个人赠送额度已用尽，请升级或切换到有可用额度的空间。',
+        content: chatRuntimeMessages[isEnterprise ? 'enterpriseQuota' : 'personalQuota'][input.locale],
       })
       setPaneRunning(pane, false)
       return
@@ -756,7 +755,7 @@ async function sendMessage(key: string, input: SendInput, callbacks: RuntimeCall
     pane.messages.push({
       _id: nextMessageId(),
       role: 'assistant',
-      content: `[Error: ${input.locale === 'zh' ? '附件上传失败' : 'Failed to upload attachments'}: ${uploadErr}]`,
+      content: `[Error: ${chatRuntimeMessages.uploadFailed[input.locale]}: ${uploadErr}]`,
     })
     setPaneRunning(pane, false)
     pane.activeAuthToken = null
@@ -829,7 +828,7 @@ async function sendMessage(key: string, input: SendInput, callbacks: RuntimeCall
         item_id: `recover_${messageId}`,
         revision: 1,
         payload: {
-          message: input.locale === 'zh' ? '连接中断，正在恢复进度' : 'Connection interrupted, recovering progress',
+          message: chatRuntimeMessages.recovering[input.locale],
         },
       })
     }
@@ -965,10 +964,8 @@ async function sendMessage(key: string, input: SendInput, callbacks: RuntimeCall
       const recovered = await recoverDisconnectedStream().catch(() => false)
       if (!recovered && !ctrl.signal.aborted) {
         const errText = error instanceof ChatStreamHttpError && error.code === 'topic_admission_denied'
-          ? (input.locale === 'zh'
-            ? '当前任务被准入规则拦截，请联系管理员。'
-            : 'This topic is outside the allowed scope. Contact your administrator to update the topic rules.')
-          : String(error?.message || error || (input.locale === 'zh' ? '请求失败' : 'Request failed'))
+          ? chatRuntimeMessages.admissionDenied[input.locale]
+          : String(error?.message || error || chatRuntimeMessages.requestFailed[input.locale])
         const localErrorId = 'err_' + Math.random().toString(36).slice(2)
         ensureExecV3(assistantMsg).applyEvent({
           v: 3,

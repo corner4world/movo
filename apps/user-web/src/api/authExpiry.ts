@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios'
+import { getLocale } from '../composables/i18n'
 
 export const AUTH_EXPIRED_EVENT = 'askai:auth-expired'
 
@@ -22,6 +23,10 @@ export function notifyAuthExpiredFromResponse(response: Response, authenticated:
 }
 
 export function installAuthExpiryInterceptor(client: AxiosInstance): void {
+  client.interceptors.request.use((request) => {
+    request.headers['Accept-Language'] = getLocale() === 'en' ? 'en-US' : 'zh-CN'
+    return request
+  })
   client.interceptors.response.use(
     (response) => response,
     (error) => {

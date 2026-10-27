@@ -99,7 +99,7 @@ var random = function () {
     return parseInt(Math.random() * 10000) + (new Date()).valueOf();
 };
 
-// bind 函数polify, 不带new功能的bind
+// Bind polyfill without constructor behavior.
 
 var bind = function(target,context){
     if(typeof target !== 'function'){
@@ -174,14 +174,14 @@ var loadScript = function (url, cb, timeout) {
     script.charset = "UTF-8";
     script.async = true;
 
-    // 对geetest的静态资源添加 crossOrigin
+    // Set crossOrigin for Geetest static assets.
     if ( /static\.geetest\.com/g.test(url)) {
         script.crossOrigin = "anonymous";
     }
 
     script.onerror = function () {
         cb(true);
-        // 错误触发了，超时逻辑就不用了
+        // An error occurred, so the timeout path is no longer needed.
         loaded = true;
     };
     var loaded = false;
@@ -249,17 +249,17 @@ var makeURL = function (protocol, domain, path, query) {
 
 var load = function (config, protocol, domains, path, query, cb, handleCb) {
     var tryRequest = function (at) {
-        // 处理jsonp回调，这里为了保证每个不同jsonp都有唯一的回调函数
+        // Give each JSONP request a unique callback.
         if(handleCb){
             var cbName = "captcha4_" + random();
-            // 需要与预先定义好cbname参数，删除对象
+            // Remove the object using the predefined cbname parameter.
             window[cbName] = bind(handleCb, null, cbName);
             query.callback = cbName;
         }
         var url = makeURL(protocol, domains[at], path, query);
         loadScript(url, function (err) {
             if (err) {
-                // 超时或者出错的时候 移除回调
+                // Remove the callback on timeout or error.
                 if(cbName){
                   try {
                      window[cbName] = function(){
@@ -287,14 +287,14 @@ var jsonp = function (domains, path, config, callback) {
 
     var handleCb = function (cbName, data) {
 
-        // 保证只执行一次，全部超时的情况下不会再触发;
+        // Run only once, even if every request times out.
 
         if (data.status == 'success') {
             callback(data.data);
         } else if (!data.status) {
             callback(data);
         } else {
-            //接口有返回，但是返回了错误状态，进入报错逻辑
+            // The request returned an error status; enter the error path.
             callback(data);
         }
         window[cbName] = undefined;
@@ -313,10 +313,10 @@ var jsonp = function (domains, path, config, callback) {
         call_type: config.callType,
         lang: config.language? config.language : navigator.appName === 'Netscape' ? navigator.language.toLowerCase() : navigator.userLanguage.toLowerCase()
     }, function (err) {
-        // 网络问题接口没有返回，直接使用本地验证码，走宕机模式
-        // 这里可以添加用户的逻辑
+        // If the request fails due to network issues, use the local captcha fallback.
+        // Add application-specific handling here.
             if(err && typeof config.offlineCb === 'function'){
-                // 执行自己的宕机
+                // Run the application's fallback handler.
                 config.offlineCb();
                 return;
             }
@@ -390,7 +390,7 @@ window.initAlicom4 = function (userConfig,callback) {
 
     jsonp(config.apiServers , config.typePath, config, function (newConfig) {
             
-            //错误捕获，第一个load请求可能直接报错
+            // Catch errors from the first load request.
             var newConfig = camelizeKeys(newConfig);
 
             if(newConfig.status === 'error'){
@@ -452,7 +452,7 @@ window.initAlicom4 = function (userConfig,callback) {
                     }
                 });
             } else if (s === "loaded") {
-                // 判断gct是否需要重新加载
+                // Check whether gct needs to reload.
                 if(newConfig.gctPath && !Captcha4IsLoad(newConfig.gctPath)){
 
                 // if(!Captcha4IsLoad(newConfig.gctPath)){

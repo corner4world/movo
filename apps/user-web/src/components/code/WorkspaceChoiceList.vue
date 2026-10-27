@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { DshWorkspace } from '../../platform/types'
+import { workspaceChoiceMessages } from '../../locales/codeWorkspaceMessages'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   workspaces?: readonly DshWorkspace[]
   currentWorkspaceId?: string
   loading?: boolean
   locale?: 'zh' | 'en'
 }>(), { workspaces: () => [], locale: 'zh' })
+
+const copy = (key: keyof typeof workspaceChoiceMessages) => workspaceChoiceMessages[key][props.locale]
 
 const emit = defineEmits<{
   (event: 'select', workspace: DshWorkspace): void
@@ -17,11 +20,11 @@ const emit = defineEmits<{
 <template>
   <div class="workspace-choices">
     <div class="choice-heading">
-      <strong>{{ locale === 'en' ? 'Choose a project' : '选择已有项目' }}</strong>
-      <span>{{ locale === 'en' ? 'Projects only need to be added once.' : '项目只需添加一次，后续可直接选择。' }}</span>
+      <strong>{{ copy('chooseProject') }}</strong>
+      <span>{{ copy('addOnce') }}</span>
     </div>
-    <div v-if="loading" class="choice-state">{{ locale === 'en' ? 'Loading projects…' : '正在加载项目…' }}</div>
-    <div v-else-if="!workspaces.length" class="choice-state">{{ locale === 'en' ? 'No projects added yet.' : '还没有添加过项目。' }}</div>
+    <div v-if="loading" class="choice-state">{{ copy('loading') }}</div>
+    <div v-else-if="!workspaces.length" class="choice-state">{{ copy('empty') }}</div>
     <div v-else class="choice-list" role="listbox">
       <button
         v-for="item in workspaces"
@@ -36,12 +39,12 @@ const emit = defineEmits<{
         @click="emit('select', item)"
       >
         <span class="folder-mark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5h6l2 2h10v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z"/></svg></span>
-        <span class="choice-copy"><strong>{{ item.title }}</strong><small>{{ item.status === 'ok' ? item.path : (locale === 'en' ? 'Folder unavailable on this device' : '此设备上的目录不可用') }}</small></span>
+        <span class="choice-copy"><strong>{{ item.title }}</strong><small>{{ item.status === 'ok' ? item.path : copy('unavailable') }}</small></span>
         <svg v-if="item.workspace_id === currentWorkspaceId" class="check" aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 10 4 4 8-8"/></svg>
       </button>
     </div>
     <button type="button" class="add-project" @click="emit('add')">
-      <span aria-hidden="true">＋</span>{{ locale === 'en' ? 'Add a new project…' : '添加新项目…' }}
+      <span aria-hidden="true">＋</span>{{ copy('addProject') }}
     </button>
   </div>
 </template>

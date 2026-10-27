@@ -87,9 +87,9 @@ let skillPickerRequestSeq = 0
 let skillPickerSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const skillScopeOptions = computed<Array<{ key: 'all' | 'user' | 'organization'; label: string }>>(() => [
-  { key: 'all', label: locale.value === 'zh' ? '全部' : 'All' },
-  { key: 'user', label: locale.value === 'zh' ? '我的' : 'Mine' },
-  { key: 'organization', label: locale.value === 'zh' ? '企业' : 'Org' },
+  { key: 'all', label: t('composer.scope.all') },
+  { key: 'user', label: t('composer.scope.mine') },
+  { key: 'organization', label: t('composer.scope.organization') },
 ])
 
 function autoResizeComposerInput() {
@@ -232,9 +232,7 @@ function onDocumentSelected(event: Event) {
     pendingDocuments.value.push({ file, kind })
   }
   if (unsupportedNames.length) {
-    message.error(locale.value === 'zh'
-      ? `不支持的文件类型：${unsupportedNames.join('、')}`
-      : `Unsupported file type: ${unsupportedNames.join(', ')}`)
+    message.error(t('composer.unsupportedFiles', { names: unsupportedNames.join(locale.value === 'zh' ? '、' : ', ') }))
   }
   input.value = ''
 }
@@ -274,15 +272,15 @@ function onGlobalPointerDown(event: Event) {
 }
 
 function skillTypeLabel(type: SelectableSkillItem['type']) {
-  if (type === 'workflow') return locale.value === 'zh' ? '工作流' : 'Workflow'
-  if (type === 'ordinary') return locale.value === 'zh' ? '普通 Skill' : 'Standard Skill'
-  if (type === 'expert_package') return locale.value === 'zh' ? '专家包' : 'Expert Package'
-  return locale.value === 'zh' ? '写作规范' : 'Writing'
+  if (type === 'workflow') return t('composer.skill.workflow')
+  if (type === 'ordinary') return t('composer.skill.ordinary')
+  if (type === 'expert_package') return t('composer.skill.expert')
+  return t('composer.skill.writing')
 }
 
 function skillSourceLabel(source: SelectableSkillItem['sourceScope']) {
-  if (source === 'organization') return locale.value === 'zh' ? '企业' : 'Org'
-  return locale.value === 'zh' ? '我的' : 'Mine'
+  if (source === 'organization') return t('composer.scope.organization')
+  return t('composer.scope.mine')
 }
 
 function normalizeSlashKeyword(value: string, cursor = value.length) {
@@ -680,7 +678,7 @@ watch(() => props.allowSkills, (allowed) => {
             <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"></path>
             <path d="M9 12l2 2 4-5"></path>
           </svg>
-          <span class="shrink-0">{{ locale === 'zh' ? '已选择' : 'Selected' }}</span>
+          <span class="shrink-0">{{ t('composer.selected') }}</span>
           <span class="min-w-0 truncate">{{ selectedSkill.name }}</span>
           <span class="shrink-0 rounded-full bg-white/70 px-1.5 py-0.5 text-[11px] text-indigo-600">{{ skillSourceLabel(selectedSkill.sourceScope) }}</span>
           <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
@@ -700,7 +698,7 @@ watch(() => props.allowSkills, (allowed) => {
           class="absolute bottom-[calc(100%+10px)] left-3 z-30 w-[420px] max-w-[calc(100vw-40px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/12"
         >
           <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-            <div class="text-sm font-semibold text-slate-800">{{ locale === 'zh' ? '选择 Skill' : 'Select Skill' }}</div>
+            <div class="text-sm font-semibold text-slate-800">{{ t('composer.selectSkill') }}</div>
             <div class="flex rounded-full bg-slate-100 p-0.5">
               <button
                 v-for="option in skillScopeOptions"
@@ -717,11 +715,11 @@ watch(() => props.allowSkills, (allowed) => {
           <div
             class="max-h-[300px] overflow-y-auto py-1"
             role="listbox"
-            :aria-label="locale === 'zh' ? 'Skill 列表' : 'Skill list'"
+            :aria-label="t('composer.skillList')"
             @scroll="onSkillPickerScroll"
           >
             <div v-if="skillPickerLoading" class="px-4 py-8 text-center text-sm text-slate-400">
-              {{ locale === 'zh' ? '加载中...' : 'Loading...' }}
+              {{ t('composer.loading') }}
             </div>
             <template v-else>
               <button
@@ -758,11 +756,11 @@ watch(() => props.allowSkills, (allowed) => {
                     <span class="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{{ skillSourceLabel(skill.sourceScope) }}</span>
                     <span class="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{{ skillTypeLabel(skill.type) }}</span>
                   </span>
-                  <span class="mt-0.5 block truncate text-xs text-slate-500">{{ skill.description || skill.scenario || (locale === 'zh' ? '暂无描述' : 'No description') }}</span>
+                  <span class="mt-0.5 block truncate text-xs text-slate-500">{{ skill.description || skill.scenario || (t('composer.noDescription')) }}</span>
                 </span>
               </button>
               <div v-if="skillPickerItems.length === 0" class="px-4 py-8 text-center text-sm text-slate-400">
-                {{ locale === 'zh' ? '没有找到可用 Skill' : 'No available skills' }}
+                {{ t('composer.noSkills') }}
               </div>
               <button
                 v-if="skillPickerHasMore"
@@ -771,7 +769,7 @@ watch(() => props.allowSkills, (allowed) => {
                 :disabled="skillPickerLoadingMore"
                 @click="loadSelectableSkills(false)"
               >
-                {{ skillPickerLoadingMore ? (locale === 'zh' ? '加载中...' : 'Loading...') : (locale === 'zh' ? '加载更多' : 'Load more') }}
+                {{ skillPickerLoadingMore ? (t('composer.loading')) : (t('composer.loadMore')) }}
               </button>
             </template>
           </div>
@@ -799,7 +797,7 @@ watch(() => props.allowSkills, (allowed) => {
           <button
             class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
             :disabled="running || blocked"
-            :aria-label="locale === 'zh' ? '添加附件' : 'Add attachment'"
+            :aria-label="t('composer.addAttachment')"
             @click.stop="toggleAttachmentMenu"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

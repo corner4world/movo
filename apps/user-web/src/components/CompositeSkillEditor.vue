@@ -17,6 +17,7 @@ import {
   NTag,
 } from 'naive-ui'
 import { t, useLocale } from '../composables/i18n'
+import { browserSurfaceMessages } from '../locales/browserSurfaceMessages'
 import {
   type SiteProfile,
   type SiteProfileInput,
@@ -370,7 +371,7 @@ function requestRemove() {
                 <div class="flex items-center gap-3">
                   <span class="text-xs font-normal text-gray-400">{{ t('composite.section.steps_hint') }}</span>
                   <n-button size="small" type="primary" ghost @click="openRecording">
-                    ● {{ locale === 'zh' ? '录制' : 'Record' }}
+                    ● {{ browserSurfaceMessages['browser.record'][locale] }}
                   </n-button>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { t } from '../../composables/i18n'
 import type { ExecutionItemV3 } from '../../features/execution-v3/domain/model'
+import { localizedInternalToolLabel } from '../../features/execution-v3/domain/internalToolLabels'
 
 const props = defineProps<{
   item: ExecutionItemV3
@@ -13,7 +14,8 @@ const emit = defineEmits<{
   (event: 'decide', decision: 'approved' | 'rejected', grantScope: 'once' | 'session'): void
 }>()
 
-const toolName = computed(() => String(
+const toolName = computed(() => localizedInternalToolLabel(
+  props.item.payload?.tool_name,
   props.item.payload?.display_name || props.item.payload?.tool_name || t('approval.unknown_tool'),
 ))
 const description = computed(() => String(props.item.payload?.description || '').trim())

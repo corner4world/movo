@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { gitBranchMessages } from '../../locales/gitWorkspaceMessages'
 import { computed, onMounted, ref } from 'vue'
 import GitBranchOutline from '@vicons/ionicons5/es/GitBranchOutline'
 import AddOutline from '@vicons/ionicons5/es/AddOutline'
@@ -13,6 +14,7 @@ const props = defineProps<{
   modelId?: string
   locale?: 'zh' | 'en'
 }>()
+const copy = (key: keyof typeof gitBranchMessages) => gitBranchMessages[key][props.locale === 'en' ? 'en' : 'zh']
 
 const emit = defineEmits<{
   (event: 'select', fullRef: string, branchLabel: string): void
@@ -93,32 +95,32 @@ onMounted(refresh)
 <template>
   <section class="branch-selector" :aria-busy="loading || busy">
     <header>
-      <strong>{{ worktree ? (locale === 'en' ? 'Starting branch' : '起始分支') : (locale === 'en' ? 'Local branch' : '本地分支') }}</strong>
-      <span>{{ worktree ? (locale === 'en' ? 'The isolated Worktree starts here; no branch is created yet.' : '隔离目录从此分支启动，暂不创建新分支。') : (locale === 'en' ? 'Switching changes the selected project directory.' : '切换会直接改变当前项目目录。') }}</span>
+      <strong>{{ worktree ? (copy('startingBranch')) : (copy('localBranch')) }}</strong>
+      <span>{{ worktree ? (copy('worktreeHint')) : (copy('switchHint')) }}</span>
     </header>
-    <label class="branch-search"><SearchOutline /><input v-model="filter" :placeholder="locale === 'en' ? 'Search branches…' : '搜索分支…'" /></label>
-    <div v-if="loading" class="branch-state">{{ locale === 'en' ? 'Loading branches…' : '正在读取分支…' }}</div>
+    <label class="branch-search"><SearchOutline /><input v-model="filter" :placeholder="copy('search')" /></label>
+    <div v-if="loading" class="branch-state">{{ copy('loading') }}</div>
     <div v-else class="branch-list">
       <template v-if="local.length">
-        <small>{{ locale === 'en' ? 'LOCAL' : '本地' }}</small>
+        <small>{{ copy('local') }}</small>
         <button v-for="branch in local" :key="branch.full_ref" type="button" :disabled="busy" :class="{ active: selectedRef === branch.full_ref || (!selectedRef && branch.current) }" @click="selectBranch(branch)">
-          <GitBranchOutline /><span>{{ branch.name }}</span><i v-if="branch.current">{{ locale === 'en' ? 'current' : '当前' }}</i>
+          <GitBranchOutline /><span>{{ branch.name }}</span><i v-if="branch.current">{{ copy('current') }}</i>
         </button>
       </template>
       <template v-if="remote.length">
-        <small>{{ locale === 'en' ? 'REMOTE' : '远程' }}</small>
+        <small>{{ copy('remote') }}</small>
         <button v-for="branch in remote" :key="branch.full_ref" type="button" :disabled="busy" :class="{ active: selectedRef === branch.full_ref }" @click="selectBranch(branch)">
           <GitBranchOutline /><span>{{ branch.name }}</span>
         </button>
       </template>
-      <div v-if="!local.length && !remote.length" class="branch-state">{{ locale === 'en' ? 'No matching branches' : '没有匹配的分支' }}</div>
+      <div v-if="!local.length && !remote.length" class="branch-state">{{ copy('noMatches') }}</div>
     </div>
     <p v-if="error" class="branch-error">{{ error }}</p>
     <div v-if="!worktree" class="branch-create">
-      <button v-if="!creating" type="button" class="create-trigger" @click="creating = true"><AddOutline />{{ locale === 'en' ? 'Create local branch' : '新建本地分支' }}</button>
+      <button v-if="!creating" type="button" class="create-trigger" @click="creating = true"><AddOutline />{{ copy('createLocal') }}</button>
       <form v-else @submit.prevent="createBranch">
-        <label for="new-local-branch">{{ locale === 'en' ? 'New branch name' : '新分支名称' }}</label>
-        <div><input id="new-local-branch" v-model="branchName" autofocus :disabled="busy" placeholder="feature/example" /><button type="submit" :disabled="busy || !branchName.trim()">{{ locale === 'en' ? 'Create' : '创建' }}</button></div>
+        <label for="new-local-branch">{{ copy('newName') }}</label>
+        <div><input id="new-local-branch" v-model="branchName" autofocus :disabled="busy" placeholder="feature/example" /><button type="submit" :disabled="busy || !branchName.trim()">{{ copy('create') }}</button></div>
       </form>
     </div>
   </section>

@@ -3,6 +3,7 @@
 // per line) to match the backend's /browser/recording/stream route.
 
 import { createApiClient } from './client'
+import { t } from '../composables/i18n'
 import type { CompositeStep, Locator } from './compositeSkill'
 
 const api = createApiClient({ baseURL: '/askai-api/api', timeout: 15000 })
@@ -151,17 +152,17 @@ export function eventsToSteps(
     const name = targetObj.name || targetObj.text || targetObj.aria_label || ''
     let instruction = ''
     if (ev.type === 'click') {
-      instruction = name ? `点击 ${name}` : '点击目标控件'
+      instruction = name ? t('api.recording.click', { name }) : t('api.recording.click_target')
     } else if (ev.type === 'fill') {
       const val = ev.value || ''
       const preview = val.length <= 40 ? val : val.slice(0, 40) + '…'
       instruction = val
-        ? `在 ${name || '输入框'} 输入 ${preview}`
-        : `聚焦 ${name || '输入框'}`
+        ? t('api.recording.type', { name: name || t('api.recording.type_placeholder'), val: preview })
+        : t('api.recording.focus', { name: name || t('api.recording.type_placeholder') })
     } else if (ev.type === 'navigate') {
-      instruction = `打开 ${ev.url || '页面'}`
+      instruction = t('api.recording.navigate', { name: ev.url || t('api.recording.navigate_placeholder') })
     } else if (ev.type === 'select') {
-      instruction = name ? `选择 ${name}` : '选择下拉项'
+      instruction = name ? t('api.recording.select', { name }) : t('api.recording.select_placeholder')
     }
 
     const loc: Locator = {}

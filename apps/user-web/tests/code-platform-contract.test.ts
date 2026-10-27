@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { workspaceContextMessages } from '../src/locales/workspaceContextMessages'
+import { branchContextMessages } from '../src/locales/codeWorkspaceMessages'
 
 Object.defineProperty(globalThis, 'navigator', {
   configurable: true,
@@ -87,15 +89,25 @@ assert.deepEqual(diffLines.map(line => [line.oldLine, line.newLine, line.kind]),
 const workspacePicker = readFileSync('src/components/code/WorkspaceContextPicker.vue', 'utf8')
 const branchPicker = readFileSync('src/components/code/BranchContextPicker.vue', 'utf8')
 const draftContext = readFileSync('src/components/code/CodeDraftContextBar.vue', 'utf8')
-assert.match(workspacePicker, /'本地修改'/)
-assert.match(workspacePicker, /'新建本地工作树'/)
-assert.match(workspacePicker, /'复制项目地址'/)
+assert.match(workspacePicker, /copy\('workspaceContext\.editLocally'\)/)
+assert.match(workspacePicker, /copy\('workspaceContext\.newWorktree'\)/)
+assert.match(workspacePicker, /copy\('workspaceContext\.copyProjectPath'\)/)
+assert.equal(workspaceContextMessages['workspaceContext.editLocally'].zh, '本地修改')
+assert.equal(workspaceContextMessages['workspaceContext.editLocally'].en, 'Edit locally')
+assert.equal(workspaceContextMessages['workspaceContext.newWorktree'].zh, '新建本地工作树')
+assert.equal(workspaceContextMessages['workspaceContext.newWorktree'].en, 'New local worktree')
+assert.equal(workspaceContextMessages['workspaceContext.copyProjectPath'].zh, '复制项目地址')
+assert.equal(workspaceContextMessages['workspaceContext.copyProjectPath'].en, 'Copy project path')
 assert.match(workspacePicker, /v-if="!locked" class="mode-options"/)
-assert.match(workspacePicker, /暂不创建新分支/)
+assert.match(workspacePicker, /copy\('workspaceContext\.newWorktreeHint'\)/)
+assert.match(workspaceContextMessages['workspaceContext.newWorktreeHint'].zh, /暂不创建新分支/)
+assert.match(workspaceContextMessages['workspaceContext.newWorktreeHint'].en, /no branch is created yet/)
 assert.match(workspacePicker, /max-height: calc\(50vh - 24px\)/)
 assert.doesNotMatch(workspacePicker, /<GitBranchSelector/)
 assert.match(branchPicker, /<GitBranchSelector/)
-assert.match(branchPicker, /基于 \$\{sourceLabel\.value\} · 未建分支/)
+assert.match(branchPicker, /branchContextMessages\.noBranch\[props\.locale\]\(sourceLabel\.value\)/)
+assert.equal(branchContextMessages.noBranch.zh('main'), '基于 main · 未建分支')
+assert.equal(branchContextMessages.noBranch.en('main'), 'Based on main · no branch')
 assert.match(draftContext, /<WorkspaceContextPicker/)
 assert.match(draftContext, /<BranchContextPicker/)
 

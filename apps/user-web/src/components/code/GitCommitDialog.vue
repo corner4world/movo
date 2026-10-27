@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { gitCommitMessages } from '../../locales/gitWorkspaceMessages'
 import { nextTick, ref, watch } from 'vue'
 import CloseOutline from '@vicons/ionicons5/es/CloseOutline'
 
@@ -14,6 +15,7 @@ const props = defineProps<{
   error?: string
   locale?: 'zh' | 'en'
 }>()
+const copy = (key: keyof typeof gitCommitMessages) => gitCommitMessages[key][props.locale === 'en' ? 'en' : 'zh']
 const emit = defineEmits<{
   (event: 'close'): void
   (event: 'commit', message: string, push: boolean, branchName?: string): void
@@ -42,32 +44,32 @@ function submit(push: boolean) {
 <template>
   <Teleport to="body">
     <div v-if="show" class="commit-backdrop" role="presentation" @mousedown.self="close">
-      <section class="commit-dialog" role="dialog" aria-modal="true" :aria-label="locale === 'en' ? 'Commit changes' : '提交代码变更'" @keydown.esc="close">
+      <section class="commit-dialog" role="dialog" aria-modal="true" :aria-label="copy('title')" @keydown.esc="close">
         <header>
           <div>
-            <strong>{{ locale === 'en' ? 'Commit changes' : '提交代码变更' }}</strong>
-            <span>{{ locale === 'en' ? `All ${fileCount} changed files will be committed` : `将提交当前工作区的全部 ${fileCount} 个变更文件` }}</span>
+            <strong>{{ copy('title') }}</strong>
+            <span>{{ copy('fileCount').replace('{count}', String(fileCount)) }}</span>
           </div>
-          <button type="button" class="icon-button" :disabled="busy" :aria-label="locale === 'en' ? 'Close' : '关闭'" @click="close"><CloseOutline /></button>
+          <button type="button" class="icon-button" :disabled="busy" :aria-label="copy('close')" @click="close"><CloseOutline /></button>
         </header>
         <div class="commit-body">
           <div v-if="detached" class="branch-field">
-            <label for="git-commit-branch">{{ locale === 'en' ? 'Branch for these changes' : '保存到新分支' }}</label>
+            <label for="git-commit-branch">{{ copy('branch') }}</label>
             <input id="git-commit-branch" v-model="branchName" :disabled="busy" maxlength="240" placeholder="feature/example" />
-            <span>{{ locale === 'en' ? 'This isolated Worktree has no branch yet. It will be created when you commit.' : '当前隔离 Worktree 尚无分支；提交时才会创建。' }}</span>
+            <span>{{ copy('branchHint') }}</span>
           </div>
           <div class="field-heading">
-            <label for="git-commit-message">{{ locale === 'en' ? 'Commit message (optional)' : '提交说明（可选）' }}</label>
+            <label for="git-commit-message">{{ copy('message') }}</label>
           </div>
-          <textarea id="git-commit-message" ref="textarea" v-model="message" maxlength="2000" rows="4" :disabled="busy" :placeholder="locale === 'en' ? 'Enter a message, or leave blank to generate one automatically' : '输入提交说明；留空将根据本次变更自动生成'" @keydown.meta.enter.prevent="submit(false)" @keydown.ctrl.enter.prevent="submit(false)"></textarea>
-          <div class="field-foot"><span>{{ locale === 'en' ? 'Leave blank to generate from the changed files.' : '不填写也可以直接提交。' }}</span><span>{{ message.length }}/2000</span></div>
+          <textarea id="git-commit-message" ref="textarea" v-model="message" maxlength="2000" rows="4" :disabled="busy" :placeholder="copy('messagePlaceholder')" @keydown.meta.enter.prevent="submit(false)" @keydown.ctrl.enter.prevent="submit(false)"></textarea>
+          <div class="field-foot"><span>{{ copy('messageHint') }}</span><span>{{ message.length }}/2000</span></div>
           <p v-if="error" class="commit-error">{{ error }}</p>
         </div>
         <footer>
-          <button type="button" class="cancel" :disabled="busy" @click="close">{{ locale === 'en' ? 'Cancel' : '取消' }}</button>
+          <button type="button" class="cancel" :disabled="busy" @click="close">{{ copy('cancel') }}</button>
           <span class="footer-spacer"></span>
-          <button type="button" class="secondary" :disabled="busy || blocked || (detached && !branchName.trim())" @click="submit(false)">{{ busy && busyAction === 'commit' ? (locale === 'en' ? 'Committing…' : '正在提交…') : (locale === 'en' ? 'Commit' : '提交') }}</button>
-          <button type="button" class="primary" :disabled="busy || blocked || !pushAvailable || (detached && !branchName.trim())" :title="!pushAvailable ? (locale === 'en' ? 'No Git remote is configured' : '当前仓库尚未配置远程地址') : ''" @click="submit(true)">{{ busy && busyAction === 'commit-push' ? (locale === 'en' ? 'Committing and pushing…' : '正在提交并推送…') : (locale === 'en' ? 'Commit & Push' : '提交并推送') }}</button>
+          <button type="button" class="secondary" :disabled="busy || blocked || (detached && !branchName.trim())" @click="submit(false)">{{ busy && busyAction === 'commit' ? (copy('committing')) : (copy('commit')) }}</button>
+          <button type="button" class="primary" :disabled="busy || blocked || !pushAvailable || (detached && !branchName.trim())" :title="!pushAvailable ? (copy('noRemote')) : ''" @click="submit(true)">{{ busy && busyAction === 'commit-push' ? (copy('pushing')) : (copy('commitPush')) }}</button>
         </footer>
       </section>
     </div>

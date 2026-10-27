@@ -9,8 +9,9 @@ import WorkspaceContextPicker from '../code/WorkspaceContextPicker.vue'
 import BranchContextPicker from '../code/BranchContextPicker.vue'
 import type { DshWorkspace } from '../../platform/types'
 import type { DesktopToolTabKind } from './desktopToolTabs'
+import { desktopChromeMessages } from '../../locales/desktopChromeMessages'
 
-defineProps<{
+const props = defineProps<{
   title: string
   navigationWidth?: number
   windowsTitleBar?: boolean
@@ -43,6 +44,8 @@ defineProps<{
   workspaces?: readonly DshWorkspace[]
   workspacesLoading?: boolean
 }>()
+
+const copy = (key: keyof typeof desktopChromeMessages) => desktopChromeMessages[key][props.locale === 'en' ? 'en' : 'zh']
 
 const emit = defineEmits<{
   (event: 'toggle-sidebar'): void
@@ -79,8 +82,8 @@ const emit = defineEmits<{
         v-if="!windowsTitleBar && secondaryNavigationAvailable && !sidebarCollapsed"
         type="button"
         class="desktop-window-chrome__sidebar-toggle desktop-window-chrome__sidebar-toggle--beside-brand"
-        :aria-label="locale === 'en' ? 'Hide sidebar' : '收起侧栏'"
-        :title="locale === 'en' ? 'Hide sidebar' : '收起侧栏'"
+        :aria-label="copy('hideSidebar')"
+        :title="copy('hideSidebar')"
         :aria-expanded="true"
         @click="emit('toggle-sidebar')"
       >
@@ -100,8 +103,8 @@ const emit = defineEmits<{
           v-if="!windowsTitleBar && secondaryNavigationAvailable && sidebarCollapsed"
           type="button"
           class="desktop-window-chrome__sidebar-toggle"
-          :aria-label="sidebarCollapsed ? (locale === 'en' ? 'Show sidebar' : '展开侧栏') : (locale === 'en' ? 'Hide sidebar' : '收起侧栏')"
-          :title="sidebarCollapsed ? (locale === 'en' ? 'Show sidebar' : '展开侧栏') : (locale === 'en' ? 'Hide sidebar' : '收起侧栏')"
+          :aria-label="sidebarCollapsed ? (copy('showSidebar')) : (copy('hideSidebar'))"
+          :title="sidebarCollapsed ? (copy('showSidebar')) : (copy('hideSidebar'))"
           :aria-expanded="!sidebarCollapsed"
           @click="emit('toggle-sidebar')"
         >
@@ -178,8 +181,8 @@ const emit = defineEmits<{
             type="button"
             class="desktop-window-chrome__icon-button"
             :class="{ active: activeTool === 'changes' }"
-            :aria-label="locale === 'en' ? 'Open changes' : '打开变更'"
-            :title="locale === 'en' ? 'Changes' : '变更'"
+            :aria-label="copy('openChanges')"
+            :title="copy('changes')"
             @click="emit('toggle-code-panel', 'changes')"
           >
             <GitCompareOutline /><span v-if="changeCount" class="desktop-window-chrome__badge">{{ changeCount > 99 ? '99+' : changeCount }}</span>
@@ -189,8 +192,8 @@ const emit = defineEmits<{
             type="button"
             class="desktop-window-chrome__icon-button"
             :class="{ active: activeTool === 'files' }"
-            :aria-label="locale === 'en' ? 'Open files' : '打开文件'"
-            :title="locale === 'en' ? 'Files' : '文件'"
+            :aria-label="copy('openFiles')"
+            :title="copy('files')"
             @click="emit('toggle-code-panel', 'files')"
           ><FolderOpenOutline /></button>
           <button
@@ -198,8 +201,8 @@ const emit = defineEmits<{
             type="button"
             class="desktop-window-chrome__icon-button"
             :class="{ active: activeTool === 'terminal' }"
-            :aria-label="locale === 'en' ? 'Open terminal' : '打开终端'"
-            :title="locale === 'en' ? 'Terminal' : '终端'"
+            :aria-label="copy('openTerminal')"
+            :title="copy('terminal')"
             @click="emit('toggle-code-panel', 'terminal')"
           >
             <TerminalOutline />

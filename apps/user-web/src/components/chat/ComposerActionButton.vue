@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { chatChromeMessages } from '../../locales/chatChromeMessages'
 const props = defineProps<{
   running: boolean
   stopping?: boolean
@@ -11,9 +12,9 @@ const emit = defineEmits<{
 }>()
 
 function actionLabel() {
-  if (props.stopping) return props.locale === 'zh' ? '正在停止…' : 'Stopping…'
-  if (props.running) return props.locale === 'zh' ? '停止' : 'Stop'
-  return props.locale === 'zh' ? '发送' : 'Send'
+  if (props.stopping) return chatChromeMessages.stopping[props.locale]
+  if (props.running) return chatChromeMessages.stop[props.locale]
+  return chatChromeMessages.send[props.locale]
 }
 </script>
 

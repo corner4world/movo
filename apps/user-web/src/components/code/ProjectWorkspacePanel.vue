@@ -10,6 +10,7 @@ import WorkspaceFilePreview from './WorkspaceFilePreview.vue'
 import WorkspaceDiffPreview from './WorkspaceDiffPreview.vue'
 import type { DshTaskChangeSet } from '../../platform/types'
 import { useDesktopToolPanelSize } from '../../composables/desktop/useDesktopToolPanelSize'
+import { taskReviewMessages } from '../../locales/codeWorkspaceMessages'
 
 export type ProjectPanelMode = 'changes' | 'files' | 'terminal' | 'file' | 'diff'
 const props = defineProps<{ session: DshCodeSession; activeId: string; tabs: DesktopToolTab[]; availableTabs: DesktopToolLauncherKind[]; locale?: 'zh' | 'en'; running?: boolean; reviewPath?: string; reviewChanges?: DshTaskChangeSet | null; filePath?: string }>()
@@ -19,7 +20,7 @@ const panel = useDesktopToolPanelSize()
 
 <template>
   <aside class="project-panel" :class="{ dragging: panel.dragging.value }" :style="{ width: panel.width.value }">
-    <button type="button" class="resize-handle" :aria-label="locale === 'en' ? 'Resize panel' : '调整面板宽度'" @pointerdown="panel.beginDrag" @keydown="panel.adjustByKeyboard"></button>
+    <button type="button" class="resize-handle" :aria-label="taskReviewMessages.resizePanel[locale === 'en' ? 'en' : 'zh']" @pointerdown="panel.beginDrag" @keydown="panel.adjustByKeyboard"></button>
     <DesktopToolTabBar :tabs="tabs" :active="activeId" :available="availableTabs" :locale="locale" @select="emit('select-tab', $event)" @close="emit('close-tab', $event)" @open="emit('open-tab', $event)" @close-panel="emit('close')" />
     <div class="panel-body">
       <template v-for="tab in tabs" :key="tab.id">

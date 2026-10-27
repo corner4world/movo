@@ -38,6 +38,9 @@ import { useDshToolApprovals } from '../composables/useDshToolApprovals'
 import { useUserQuestions } from '../composables/useUserQuestions'
 import { mergeEvidenceBundles } from '../composables/evidenceBundles'
 import { t, translateSourceText, useLocale } from '../composables/i18n'
+import { chatChromeMessages } from '../locales/chatChromeMessages'
+import { legacyDocumentMarkers } from '../locales/legacyDocumentMarkers'
+import { internalKnowledgeBaseName } from '../locales/legacyRecognitionValues'
 import { formatAppTime } from '../composables/appTimezone'
 import { useChatModels } from '../composables/useChatModels'
 import { useBrowserWorkspace } from '../composables/browser/useBrowserWorkspace'
@@ -233,12 +236,7 @@ function shouldShowEvidenceTrigger(idx: number, msg: Message): boolean {
 
 function evidenceTriggerText(bundle: EvidenceBundleItem): string {
   const stats = evidenceSourceStats(bundle.sources)
-  if (locale.value === 'zh') {
-    if (stats.fragments) return `查看依据 · ${stats.total} 个来源 / ${stats.fragments} 个片段`
-    return stats.total ? `查看依据 · ${stats.total} 个来源` : '查看依据'
-  }
-  if (stats.fragments) return `View sources · ${stats.total} sources / ${stats.fragments} excerpts`
-  return stats.total ? `View sources · ${stats.total}` : 'View sources'
+  return chatChromeMessages.evidence[locale.value](stats.total, stats.fragments)
 }
 
 function evidenceTriggerTextForMessage(msg: Message): string {
@@ -533,8 +531,8 @@ function selectPromptGuideCategory(key: string) {
   if (!category) return
   promptGuideNotice.value = category?.requiresConfig
     ? {
-      title: category.configTitle || '需要先配置',
-      description: category.configDescription || '配置完成后才能稳定使用这类能力。',
+      title: category.configTitle || t('legacy.setup_required_d047e4f'),
+      description: category.configDescription || t('legacy.complete_setup_before_using_this_capability'),
       target: category.configTarget || 'tools',
     }
     : null
@@ -599,7 +597,7 @@ async function usePromptGuideItem(item: PromptGuideItem) {
   let prompt = translateSourceText(item.prompt)
   if (knowledgeSourceSummary.value.mode === 'external'
     && (item.categoryKey === 'internal' || activePromptGuideCategory.value?.key === 'internal')) {
-    prompt = prompt.replaceAll(locale.value === 'zh' ? '内部知识库' : 'internal knowledge base', knowledgeSourceSummary.value.displayName)
+    prompt = prompt.replaceAll(internalKnowledgeBaseName[locale.value], knowledgeSourceSummary.value.displayName)
   }
   await composerRef.value?.setTextAndFocus(prompt)
 }
@@ -1377,7 +1375,7 @@ function updateSpacerHeight() {
   const userMsgHeight = userMsgEl.offsetHeight
   const aiMsgHeight = aiMsgEl?.offsetHeight || 0
   
-  // 如果AI回复已经超过可视区域,解锁并滚动到底部
+  // If the AI reply exceeds the viewport, unlock scrolling and move to the bottom.
   if (aiMsgHeight >= viewportHeight - userMsgHeight - 100) {
     // Content has reached the lower viewport bound.
     // Keep sticky state, but collapse spacer to zero instead of unlocking immediately.
@@ -1391,7 +1389,7 @@ function updateSpacerHeight() {
     return
   }
   
-  // 否则调整占位块高度
+  // Otherwise, adjust the placeholder height.
   const newHeight = Math.max(0, viewportHeight - userMsgHeight - aiMsgHeight - 60)
   stickySpacerHeight.value = newHeight
 }
@@ -1893,8 +1891,8 @@ async function renderChartBlocks() {
       if (renderAsTable) {
         const container = canvas.parentElement
         if (container) {
-          const header1 = payload.xField || (locale.value === 'zh' ? '项' : 'Item')
-          const header2 = payload.yField || (locale.value === 'zh' ? '内容' : 'Content')
+          const header1 = payload.xField || chatChromeMessages.chartItem[locale.value]
+          const header2 = payload.yField || chatChromeMessages.chartContent[locale.value]
           const rowsHtml = tableRows
             .map(([a, b]) => `<tr><td class="border border-gray-300 px-3 py-2">${a}</td><td class="border border-gray-300 px-3 py-2">${b}</td></tr>`)
             .join('')
@@ -2066,7 +2064,7 @@ function parseChartPayload(raw: string): any | null {
 
 function normalizeUserContent(content: string): string {
   const text = String(content || '')
-  const markers = ['[文档处理状态]', '[文档语义摘要]', '[文档Markdown]']
+  const markers = legacyDocumentMarkers
   let cutIndex = -1
   for (const marker of markers) {
     const idx = text.indexOf(marker)
@@ -2284,7 +2282,7 @@ function formatErrorMessage(raw: string): string {
               <div class="rounded-2xl rounded-br-sm bg-blue-50 p-4 shadow-sm">
                 <div v-if="msg.trigger_source === 'scheduled'" class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
                   <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                  定时任务自动发送
+                  {{ t('scheduled.autoSent') }}
                 </div>
                 <AnsweredQuestionMessage v-if="msg.question_answer" :entry="msg.question_answer" />
                 <div v-else class="whitespace-pre-wrap leading-7">{{ normalizeUserContent(msg.content) }}</div>
@@ -2318,7 +2316,7 @@ function formatErrorMessage(raw: string): string {
                       {{ doc.title || doc.filename || t('chat.upload_document') }}
                     </div>
                     <div class="truncate text-xs text-slate-500">
-                      {{ doc.filename || (locale === 'zh' ? `${doc.type.toUpperCase()} 文档` : `${doc.type.toUpperCase()} Document`) }}
+                      {{ doc.filename || chatChromeMessages.document[locale](doc.type.toUpperCase()) }}
                     </div>
                   </div>
                 </div>

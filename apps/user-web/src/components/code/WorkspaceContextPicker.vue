@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { DshWorkspace } from '../../platform/types'
 import WorkspaceChoiceList from './WorkspaceChoiceList.vue'
+import { workspaceContextMessages } from '../../locales/workspaceContextMessages'
 
 const props = withDefaults(defineProps<{
   workspace: DshWorkspace | null
@@ -27,10 +28,11 @@ const copied = ref(false)
 const pickerRef = ref<HTMLElement | null>(null)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 const generatedTitleSuffix = /\s+·\s+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const label = computed(() => props.workspace?.title.replace(generatedTitleSuffix, '') || (props.locale === 'en' ? 'Choose project' : '选择项目'))
+const copy = (key: keyof typeof workspaceContextMessages) => workspaceContextMessages[key][props.locale]
+const label = computed(() => props.workspace?.title.replace(generatedTitleSuffix, '') || copy('workspaceContext.chooseProject'))
 const modeLabel = computed(() => props.worktree
-  ? (props.locale === 'en' ? 'New local worktree' : '新建本地工作树')
-  : (props.locale === 'en' ? 'Edit locally' : '本地修改'))
+  ? copy('workspaceContext.newWorktree')
+  : copy('workspaceContext.editLocally'))
 
 function closeOnOutsidePointer(event: PointerEvent) {
   const target = event.target as Node | null
@@ -113,7 +115,7 @@ onBeforeUnmount(() => {
     <div v-else class="composer-context" aria-label="Project context">
       <button type="button" class="context-segment project" :disabled="busy" :title="workspace?.path || label" @click="openMenu">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5h6l2 2h10v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z"/></svg>
-        <span>{{ busy && !workspace ? (locale === 'en' ? 'Preparing…' : '准备中…') : label }}</span>
+        <span>{{ busy && !workspace ? copy('workspaceContext.preparing') : label }}</span>
         <svg v-if="workspace" class="chevron" aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 8 4 4 4-4"/></svg>
       </button>
       <button v-if="workspace && !locked" type="button" class="context-segment" :disabled="busy" :title="modeLabel" @click="openDetails">
@@ -122,7 +124,7 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <div v-if="open" class="workspace-menu" role="dialog" :aria-label="locale === 'en' ? 'Project selection' : '项目选择'">
+    <div v-if="open" class="workspace-menu" role="dialog" :aria-label="copy('workspaceContext.selection')">
       <WorkspaceChoiceList
         v-if="choosing || !workspace"
         :workspaces="workspaces"
@@ -135,29 +137,29 @@ onBeforeUnmount(() => {
       <template v-else-if="workspace">
       <div class="workspace-heading">
         <div class="project-mark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5h6l2 2h10v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z"/></svg></div>
-        <div class="project-title"><strong>{{ label }}</strong><span>{{ locale === 'en' ? 'Project folder' : '项目目录' }}</span></div>
-        <button class="heading-copy" type="button" :title="workspace.path" :aria-label="locale === 'en' ? 'Copy project path' : '复制项目地址'" @click="copyPath">
+        <div class="project-title"><strong>{{ label }}</strong><span>{{ copy('workspaceContext.folder') }}</span></div>
+        <button class="heading-copy" type="button" :title="workspace.path" :aria-label="copy('workspaceContext.copyProjectPath')" @click="copyPath">
           <svg v-if="!copied" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
           <svg v-else aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
-          <span>{{ copied ? (locale === 'en' ? 'Copied' : '已复制') : (locale === 'en' ? 'Copy path' : '复制路径') }}</span>
+          <span>{{ copied ? copy('workspaceContext.copied') : copy('workspaceContext.copyPath') }}</span>
         </button>
       </div>
       <div class="detail-grid detail-grid--single">
-        <div><span>{{ locale === 'en' ? 'Run mode' : '修改方式' }}</span><strong>{{ modeLabel }}</strong></div>
+        <div><span>{{ copy('workspaceContext.runMode') }}</span><strong>{{ modeLabel }}</strong></div>
       </div>
       <fieldset v-if="!locked" class="mode-options">
-        <legend>{{ locale === 'en' ? 'Choose how this task changes files' : '选择本任务的文件修改方式' }}</legend>
-        <button type="button" :class="{ active: !worktree }" @click="setMode(false)"><span class="radio"><i></i></span><span><strong>{{ locale === 'en' ? 'Edit locally' : '本地修改' }}</strong><small>{{ locale === 'en' ? 'Make changes directly in the current project and branch.' : '直接在当前项目和当前分支中修改。' }}</small></span></button>
-        <button type="button" :class="{ active: worktree }" @click="setMode(true)"><span class="radio"><i></i></span><span><strong>{{ locale === 'en' ? 'New local worktree' : '新建本地工作树' }}</strong><small>{{ locale === 'en' ? 'Create an isolated folder from the selected starting branch; no branch is created yet.' : '从所选起始分支创建隔离目录，暂不创建新分支。' }}</small></span></button>
+        <legend>{{ copy('workspaceContext.changeMode') }}</legend>
+        <button type="button" :class="{ active: !worktree }" @click="setMode(false)"><span class="radio"><i></i></span><span><strong>{{ copy('workspaceContext.editLocally') }}</strong><small>{{ copy('workspaceContext.editLocallyHint') }}</small></span></button>
+        <button type="button" :class="{ active: worktree }" @click="setMode(true)"><span class="radio"><i></i></span><span><strong>{{ copy('workspaceContext.newWorktree') }}</strong><small>{{ copy('workspaceContext.newWorktreeHint') }}</small></span></button>
       </fieldset>
       <div v-if="!locked" class="menu-actions">
-        <button type="button" @click="choosing = true">{{ locale === 'en' ? 'Switch project…' : '切换项目…' }}</button>
+        <button type="button" @click="choosing = true">{{ copy('workspaceContext.switchProject') }}</button>
         <button
           type="button"
           class="regular-chat"
-          :title="locale === 'en' ? 'Disconnect this draft only; project files are not deleted.' : '仅解除当前草稿的项目关联，不会删除项目或本地文件。'"
+          :title="copy('workspaceContext.disconnectHint')"
           @click="emit('clear'); open = false"
-        >{{ locale === 'en' ? 'Use regular chat' : '设为普通对话' }}</button>
+        >{{ copy('workspaceContext.regularChat') }}</button>
       </div>
       </template>
     </div>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { getDshTaskFileDiff, getDshWorkspaceFileDiff } from '../../platform'
 import type { DshTaskChangeSet } from '../../platform/types'
+import { workspacePreviewMessages } from '../../locales/codeWorkspaceMessages'
 import CodeFileTypeIcon from './CodeFileTypeIcon.vue'
 import UnifiedDiffView from './UnifiedDiffView.vue'
 
@@ -10,6 +11,7 @@ const diff = ref('')
 const truncated = ref(false)
 const loading = ref(false)
 const error = ref('')
+const copy = (key: keyof typeof workspacePreviewMessages) => workspacePreviewMessages[key][props.locale === 'en' ? 'en' : 'zh']
 const name = computed(() => props.path.split('/').pop() || props.path)
 const directory = computed(() => props.path.includes('/') ? props.path.slice(0, props.path.lastIndexOf('/')) : '')
 
@@ -35,10 +37,10 @@ onMounted(load)
   <section class="diff-preview">
     <div class="diff-heading"><CodeFileTypeIcon :path="path" /><div><strong>{{ name }}</strong><span v-if="directory">{{ directory }}</span></div></div>
     <div v-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="loading" class="state">{{ locale === 'en' ? 'Loading diff…' : '正在读取变更…' }}</div>
+    <div v-else-if="loading" class="state">{{ copy('loadingDiff') }}</div>
     <UnifiedDiffView v-else-if="diff" :diff="diff" :path="path" />
-    <div v-else class="state">{{ locale === 'en' ? 'No diff is available.' : '暂无可显示的变更。' }}</div>
-    <div v-if="truncated" class="notice">{{ locale === 'en' ? 'Diff truncated for safety.' : '变更较大，仅显示安全范围内的内容。' }}</div>
+    <div v-else class="state">{{ copy('noDiff') }}</div>
+    <div v-if="truncated" class="notice">{{ copy('truncatedDiff') }}</div>
   </section>
 </template>
 

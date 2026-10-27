@@ -1,0 +1,15 @@
+export const projectDialogMessages = {
+  'ui.quota_enterprise_allocation': { zh: '企业分派', en: 'Enterprise allocation' },
+  'projectDialog.projectsLabel': { zh: '项目对话', en: 'Project chats' },
+  'projectDialog.scheduledRunning': { zh: '定时任务正在运行', en: 'Scheduled task is running' },
+  'projectDialog.create': { zh: '创建项目', en: 'Create project' },
+  'projectDialog.localFolder': { zh: '本地目录', en: 'Local folder' },
+  'projectDialog.noFolder': { zh: '尚未选择目录', en: 'No folder selected' },
+  'projectDialog.folderNameHint': { zh: '项目将自动使用目录名称', en: 'The project will use the folder name' },
+  'projectDialog.chooseFolder': { zh: '选择文件夹', en: 'Choose folder' },
+  'projectDialog.changeMode': { zh: '修改方式', en: 'Change mode' },
+  'projectDialog.editLocally': { zh: '本地修改', en: 'Edit locally' },
+  'projectDialog.currentBranch': { zh: '直接在当前分支中修改', en: 'Use the current branch' },
+  'projectDialog.newWorktree': { zh: '新建本地工作树', en: 'New local worktree' },
+  'projectDialog.worktreeHint': { zh: '创建隔离目录；保留成果时再创建分支', en: 'Create an isolated folder; create a branch only when keeping changes' },
+} as const

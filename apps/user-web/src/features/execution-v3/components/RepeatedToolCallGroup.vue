@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { ExecutionItemV3 } from '../domain/model'
 import { toolCallSummary, toolName } from '../domain/repeatedToolCalls'
 import { t } from '../../../composables/i18n'
+import { localizedInternalToolLabel } from '../domain/internalToolLabels'
 import ActivityIcon from './ActivityIcon.vue'
 
 const props = defineProps<{ items: ExecutionItemV3[]; statusItems: ExecutionItemV3[] }>()
@@ -11,8 +12,9 @@ const hasFailure = computed(() => props.statusItems.some(item => item.status ===
 const isRunning = computed(() => props.statusItems.some(item => item.status === 'running'))
 const showsProgress = computed(() => !hasFailure.value && isRunning.value)
 const activeTool = computed(() => [...props.items].reverse().find(item => item.status === 'running'))
+const localizedToolName = (item: ExecutionItemV3) => localizedInternalToolLabel(item.payload?.name, toolName(item))
 const label = computed(() => activeTool.value
-  ? t('execution.v3.tool_group_running', { name: toolName(activeTool.value) })
+  ? t('execution.v3.tool_group_running', { name: localizedToolName(activeTool.value) })
   : showsProgress.value ? t('execution.v3.tool_group_waiting') : t('execution.v3.tool_group_completed'))
 
 function syncExpanded(event: Event) {
@@ -31,7 +33,7 @@ function syncExpanded(event: Event) {
     <ol>
       <li v-for="item in items" :key="item.id" :class="`status-${item.status}`">
         <ActivityIcon category="tool" kind="tool" />
-        <span class="tool-call-name">{{ toolName(item) }}</span>
+        <span class="tool-call-name">{{ localizedToolName(item) }}</span>
         <span class="tool-call-summary">{{ toolCallSummary(item) || t(item.status === 'running' ? 'execution.v3.processing' : 'execution.v3.tool_call_completed') }}</span>
         <span v-if="item.status === 'failed'" class="repeated-tool-error">{{ String(item.payload?.error || t('ui.failed')) }}</span>
       </li>

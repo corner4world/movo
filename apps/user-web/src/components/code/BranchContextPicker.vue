@@ -4,6 +4,7 @@ import GitBranchOutline from '@vicons/ionicons5/es/GitBranchOutline'
 import ChevronDownOutline from '@vicons/ionicons5/es/ChevronDownOutline'
 import GitBranchSelector from './GitBranchSelector.vue'
 import type { DshWorkspace } from '../../platform/types'
+import { branchContextMessages } from '../../locales/codeWorkspaceMessages'
 
 const props = withDefaults(defineProps<{
   workspace: DshWorkspace
@@ -32,18 +33,18 @@ const currentLabel = computed(() => props.branch || props.workspace.git_branch |
 const label = computed(() => {
   if (props.worktree) {
     if (props.locked && props.detached && !currentLabel.value) {
-      return props.locale === 'en' ? `Based on ${sourceLabel.value} · no branch` : `基于 ${sourceLabel.value} · 未建分支`
+      return branchContextMessages.noBranch[props.locale](sourceLabel.value)
     }
     if (props.locked && currentLabel.value) return currentLabel.value
-    return props.locale === 'en' ? `Start: ${sourceLabel.value}` : `起始：${sourceLabel.value}`
+    return branchContextMessages.start[props.locale](sourceLabel.value)
   }
-  return currentLabel.value || (props.locale === 'en' ? 'Branch' : '分支')
+  return currentLabel.value || branchContextMessages.branch[props.locale]
 })
 const title = computed(() => props.locked
-  ? (props.locale === 'en' ? 'The branch context is fixed after this task starts.' : '任务开始后，分支上下文保持固定。')
+  ? branchContextMessages.locked[props.locale]
   : (props.worktree
-    ? (props.locale === 'en' ? 'Choose the Worktree starting branch' : '选择 Worktree 的起始分支')
-    : (props.locale === 'en' ? 'Switch or create a local branch' : '切换或创建本地分支')))
+    ? branchContextMessages.worktree[props.locale]
+    : branchContextMessages.local[props.locale]))
 
 function closeOnOutside(event: PointerEvent) {
   const target = event.target as Node | null

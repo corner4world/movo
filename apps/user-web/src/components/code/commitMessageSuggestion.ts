@@ -1,4 +1,5 @@
 import type { DshWorkspaceSummary } from '../../platform/types'
+import { commitSuggestionMessages } from '../../locales/codePresentationMessages'
 
 function displayPath(path: string): string {
   const parts = path.split('/').filter(Boolean)
@@ -6,6 +7,8 @@ function displayPath(path: string): string {
 }
 
 export function suggestCommitMessage(summary: DshWorkspaceSummary, locale: 'zh' | 'en' = 'zh'): string {
+  const copy = (key: keyof typeof commitSuggestionMessages, values: Record<string, string | number>) =>
+    commitSuggestionMessages[key][locale].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? `{${name}}`))
   const changes = summary.changes
   if (!changes.length) return ''
   const first = displayPath(changes[0].path)
@@ -15,13 +18,11 @@ export function suggestCommitMessage(summary: DshWorkspaceSummary, locale: 'zh' 
   const onlyDeleted = deleted === changes.length
 
   if (changes.length === 1) {
-    if (onlyAdded) return locale === 'en' ? `Add ${first}` : `新增 ${first}`
-    if (onlyDeleted) return locale === 'en' ? `Remove ${first}` : `删除 ${first}`
-    return locale === 'en' ? `Update ${first}` : `更新 ${first}`
+    if (onlyAdded) return copy('addOne', { name: first })
+    if (onlyDeleted) return copy('removeOne', { name: first })
+    return copy('updateOne', { name: first })
   }
-  if (onlyAdded) return locale === 'en' ? `Add ${changes.length} project files` : `新增 ${changes.length} 个项目文件`
-  if (onlyDeleted) return locale === 'en' ? `Remove ${changes.length} obsolete files` : `删除 ${changes.length} 个旧文件`
-  return locale === 'en'
-    ? `Update ${first} and ${changes.length - 1} related files`
-    : `更新 ${first} 等 ${changes.length} 个文件`
+  if (onlyAdded) return copy('addMany', { count: changes.length })
+  if (onlyDeleted) return copy('removeMany', { count: changes.length })
+  return copy('updateMany', { name: first, count: changes.length, related: changes.length - 1 })
 }

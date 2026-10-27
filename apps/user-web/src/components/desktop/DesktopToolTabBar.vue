@@ -8,6 +8,7 @@ import GlobeOutline from '@vicons/ionicons5/es/GlobeOutline'
 import TerminalOutline from '@vicons/ionicons5/es/TerminalOutline'
 import DocumentTextOutline from '@vicons/ionicons5/es/DocumentTextOutline'
 import type { DesktopToolLauncherKind, DesktopToolTab } from './desktopToolTabs'
+import { desktopChromeMessages } from '../../locales/desktopChromeMessages'
 
 const props = defineProps<{
   tabs: DesktopToolTab[]
@@ -22,14 +23,9 @@ const emit = defineEmits<{
   (event: 'close-panel'): void
 }>()
 const menuOpen = ref(false)
-const labels: Record<DesktopToolLauncherKind, { zh: string; en: string }> = {
-  browser: { zh: '浏览器', en: 'Browser' },
-  changes: { zh: '变更', en: 'Changes' },
-  files: { zh: '文件', en: 'Files' },
-  terminal: { zh: '终端', en: 'Terminal' },
-}
+const copy = (key: keyof typeof desktopChromeMessages) => desktopChromeMessages[key][props.locale === 'en' ? 'en' : 'zh']
 const choices = computed(() => props.available.filter(kind => kind === 'terminal' || !props.tabs.some(tab => tab.kind === kind)))
-function label(kind: DesktopToolLauncherKind): string { return labels[kind][props.locale === 'en' ? 'en' : 'zh'] }
+function label(kind: DesktopToolLauncherKind): string { return copy(kind) }
 function open(kind: DesktopToolLauncherKind): void { menuOpen.value = false; emit('open', kind) }
 function navigate(event: KeyboardEvent, index: number): void {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !props.tabs.length) return
@@ -41,7 +37,7 @@ function navigate(event: KeyboardEvent, index: number): void {
 
 <template>
   <header class="tool-tab-bar">
-    <div class="tool-tab-scroll" role="tablist" :aria-label="locale === 'en' ? 'Workspace tools' : '工作区工具'">
+    <div class="tool-tab-scroll" role="tablist" :aria-label="copy('workspaceTools')">
       <div v-for="(tab, index) in tabs" :key="tab.id" class="tool-tab" :class="{ active: active === tab.id }" @auxclick.middle.prevent="emit('close', tab.id)">
         <button type="button" role="tab" class="tool-tab-select" :aria-selected="active === tab.id" :tabindex="active === tab.id ? 0 : -1" @click="emit('select', tab.id)" @keydown="navigate($event, index)">
           <GlobeOutline v-if="tab.kind === 'browser'" />
@@ -52,17 +48,17 @@ function navigate(event: KeyboardEvent, index: number): void {
           <DocumentTextOutline v-else />
           <span :title="tab.resource?.path || tab.title">{{ tab.title }}</span>
         </button>
-        <button type="button" class="tab-close" :aria-label="`${locale === 'en' ? 'Close' : '关闭'} ${tab.title}`" @click="emit('close', tab.id)"><CloseOutline /></button>
+        <button type="button" class="tab-close" :aria-label="`${copy('close')} ${tab.title}`" @click="emit('close', tab.id)"><CloseOutline /></button>
       </div>
     </div>
     <div class="tool-tab-actions">
       <div v-if="choices.length" class="new-tab-wrap">
-        <button type="button" class="new-tab" :aria-label="locale === 'en' ? 'New tool tab' : '新建工具标签页'" :title="locale === 'en' ? 'New tab' : '新建标签页'" @click="menuOpen = !menuOpen"><AddOutline /></button>
+        <button type="button" class="new-tab" :aria-label="copy('newToolTab')" :title="copy('newTab')" @click="menuOpen = !menuOpen"><AddOutline /></button>
         <div v-if="menuOpen" class="new-tab-menu">
           <button v-for="kind in choices" :key="kind" type="button" @click="open(kind)">{{ label(kind) }}</button>
         </div>
       </div>
-      <button type="button" class="panel-close" :aria-label="locale === 'en' ? 'Close tool panel' : '关闭工具面板'" @click="emit('close-panel')"><CloseOutline /></button>
+      <button type="button" class="panel-close" :aria-label="copy('closeToolPanel')" @click="emit('close-panel')"><CloseOutline /></button>
     </div>
   </header>
 </template>

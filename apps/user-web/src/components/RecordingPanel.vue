@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// Line B: recording panel. User enters a start URL, clicks "开始录制",
+// Line B: recording panel. User enters a start URL and starts recording,
 // the agent opens a headed browser, the user walks through the flow,
 // and each click/input streams back as a RecordingEvent. When done,
 // the user reviews the step list (delete / variable-ize values) and
 // commits — emit('done', steps) appends steps to the parent editor.
 //
-// Variable-ize: click the "变量" button next to a fill step's value
+// Variable-ize: use the variable button next to a fill step's value
 // to replace the literal with ${name}; the same name becomes an
 // editable default in locator_vars. This is how one recording turns
 // into a parameterised skill.
@@ -48,7 +48,10 @@ const steps = computed<CompositeStep[]>(() => {
     if (deletedIdx.value.has(i)) continue
     const varName = varByIdx.value[i]
     if (varName && events.value[i].type === 'fill' && out[liveIdx]) {
-      out[liveIdx].instruction = `在 ${events.value[i].target?.name || '输入框'} 输入 \${${varName}}`
+      out[liveIdx].instruction = t('api.recording.type', {
+        name: events.value[i].target?.name || t('api.recording.type_placeholder'),
+        val: `\${${varName}}`,
+      })
       out[liveIdx].locator_vars = { ...(out[liveIdx].locator_vars || {}), [varName]: events.value[i].value || '' }
     }
     liveIdx++

@@ -6,6 +6,7 @@ import type { DshTaskChangeSet, DshTaskFileDiff } from '../../platform/types'
 import CodeFileTypeIcon from './CodeFileTypeIcon.vue'
 import UnifiedDiffView from './UnifiedDiffView.vue'
 import { changeStatusPresentation } from './changePresentation'
+import { taskReviewMessages } from '../../locales/codeWorkspaceMessages'
 
 const props = defineProps<{
   sessionId: string
@@ -19,6 +20,7 @@ const fileDiff = ref<DshTaskFileDiff | null>(null)
 const filter = ref('')
 const loading = ref(false)
 const error = ref('')
+const copy = (key: keyof typeof taskReviewMessages) => taskReviewMessages[key][props.locale === 'en' ? 'en' : 'zh']
 const visibleFiles = computed(() => props.changes.files.filter(file => file.path.toLowerCase().includes(filter.value.trim().toLowerCase())))
 const selectedChange = computed(() => props.changes.files.find(file => file.path === selected.value))
 const selectedName = computed(() => selected.value.split('/').pop() || selected.value)
@@ -44,11 +46,11 @@ watch(() => [props.changes.task_id, props.requestedPath] as const, selectRequest
   <div class="task-review">
     <nav>
       <div class="overview">
-        <strong>{{ locale === 'en' ? 'This task' : '本次任务' }}</strong>
-        <span>{{ changes.files.length }} {{ locale === 'en' ? 'files' : '个文件' }}</span>
+        <strong>{{ copy('title') }}</strong>
+        <span>{{ changes.files.length }} {{ copy('files') }}</span>
         <code><b>+{{ changes.additions }}</b><i>-{{ changes.deletions }}</i></code>
       </div>
-      <label class="filter"><SearchOutline /><input v-model="filter" :placeholder="locale === 'en' ? 'Filter files…' : '筛选变更文件…'" /></label>
+      <label class="filter"><SearchOutline /><input v-model="filter" :placeholder="copy('filter')" /></label>
       <div class="file-list">
         <button v-for="file in visibleFiles" :key="file.path" type="button" :class="{ selected: selected === file.path }" @click="select(file.path)" @dblclick="emit('open-diff', file.path)">
           <CodeFileTypeIcon :path="file.path" />
@@ -56,7 +58,7 @@ watch(() => [props.changes.task_id, props.requestedPath] as const, selectRequest
           <code v-if="file.binary">BIN</code>
           <code v-else><b>+{{ file.additions || 0 }}</b><i>-{{ file.deletions || 0 }}</i></code>
         </button>
-        <div v-if="!visibleFiles.length" class="empty">{{ locale === 'en' ? 'No matching files' : '没有匹配的文件' }}</div>
+        <div v-if="!visibleFiles.length" class="empty">{{ copy('noMatch') }}</div>
       </div>
     </nav>
     <main>
@@ -66,9 +68,9 @@ watch(() => [props.changes.task_id, props.requestedPath] as const, selectRequest
         <span class="status" :class="`tone-${selectedStatus.tone}`">{{ selectedStatus.label }}</span>
       </div>
       <div v-if="error" class="empty error">{{ error }}</div>
-      <div v-else-if="loading" class="empty">{{ locale === 'en' ? 'Loading task diff…' : '正在读取本次任务的变更…' }}</div>
+      <div v-else-if="loading" class="empty">{{ copy('loading') }}</div>
       <UnifiedDiffView v-else-if="fileDiff?.diff" :diff="fileDiff.diff" :path="selected" />
-      <div v-else class="empty">{{ locale === 'en' ? 'Select a file to review.' : '选择文件后查看本次任务的具体变更。' }}</div>
+      <div v-else class="empty">{{ copy('select') }}</div>
     </main>
   </div>
 </template>

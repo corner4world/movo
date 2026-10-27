@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useLocale } from '../../composables/i18n'
+import { t } from '../../composables/i18n'
 
 const props = defineProps<{ url: string }>()
 const emit = defineEmits<{ (event: 'navigate', url: string): void }>()
 const value = ref('')
 const focused = ref(false)
-const { locale } = useLocale()
 
 watch(
   () => props.url,
@@ -37,8 +36,8 @@ function focusAddress(event: FocusEvent) {
     <input
       v-model="value"
       class="address-input"
-      aria-label="浏览器地址"
-      :placeholder="locale === 'zh' ? '输入 URL' : 'Enter URL'"
+      :aria-label="t('browser.addressLabel')"
+      :placeholder="t('browser.addressPlaceholder')"
       autocomplete="off"
       spellcheck="false"
       @focus="focusAddress"

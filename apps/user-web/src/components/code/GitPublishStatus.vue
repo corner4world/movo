@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import CloudUploadOutline from '@vicons/ionicons5/es/CloudUploadOutline'
 import type { DshGitCommitResult, DshGitPushResult, DshWorkspaceSummary } from '../../platform/types'
+import { gitPublishMessages } from '../../locales/codeWorkspaceMessages'
 
 const props = defineProps<{
   commit?: DshGitCommitResult | null
@@ -19,21 +20,22 @@ const unpublished = computed(() => Boolean(
   || (props.summary?.ahead || 0) > 0,
 ))
 const remoteAvailable = computed(() => Boolean(props.summary?.remote_names.length))
+const copy = <K extends keyof typeof gitPublishMessages>(key: K) => gitPublishMessages[key][props.locale === 'en' ? 'en' : 'zh']
 </script>
 
 <template>
   <div v-if="pushed" class="publish-state success">
-    <span>{{ locale === 'en' ? 'Committed and pushed' : '已提交并推送' }} <code>{{ pushed.commit_hash.slice(0, 8) }}</code></span>
+    <span>{{ copy('pushed') }} <code>{{ pushed.commit_hash.slice(0, 8) }}</code></span>
     <small>{{ pushed.upstream }}</small>
   </div>
   <div v-else-if="commit || (summary?.ahead || 0) > 0 || error" class="publish-state" :class="commit?.push_error || error ? 'warning' : 'success'">
     <div class="publish-copy">
-      <span v-if="commit">{{ locale === 'en' ? 'Committed locally' : '已提交到本地' }} <code>{{ commit.short_hash }}</code></span>
-      <span v-else>{{ locale === 'en' ? `${summary?.ahead} local commit(s) not pushed` : `有 ${summary?.ahead} 个本地提交尚未推送` }}</span>
+      <span v-if="commit">{{ copy('committed') }} <code>{{ commit.short_hash }}</code></span>
+      <span v-else>{{ gitPublishMessages.ahead[locale === 'en' ? 'en' : 'zh'](summary?.ahead) }}</span>
       <small v-if="commit?.push_error || error">{{ commit?.push_error || error }}</small>
-      <small v-else-if="!remoteAvailable">{{ locale === 'en' ? 'No Git remote is configured' : '当前仓库尚未配置远程地址' }}</small>
+      <small v-else-if="!remoteAvailable">{{ copy('noRemote') }}</small>
     </div>
-    <button v-if="unpublished && remoteAvailable && expectedHash" type="button" :disabled="busy" @click="emit('push', expectedHash)"><CloudUploadOutline />{{ busy ? (locale === 'en' ? 'Pushing…' : '正在推送…') : (commit?.push_error || error ? (locale === 'en' ? 'Retry push' : '重新推送') : (locale === 'en' ? 'Push' : '推送')) }}</button>
+    <button v-if="unpublished && remoteAvailable && expectedHash" type="button" :disabled="busy" @click="emit('push', expectedHash)"><CloudUploadOutline />{{ busy ? copy('pushing') : (commit?.push_error || error ? copy('retry') : copy('push')) }}</button>
   </div>
 </template>
 

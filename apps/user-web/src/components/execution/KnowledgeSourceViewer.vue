@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { EvidenceBundleItem, EvidenceSourceItem } from '../../features/execution-v3/domain/delivery'
 import { t } from '../../composables/i18n'
+import { tableTargetNumberPattern } from '../../locales/legacyRecognitionValues'
 import { loadPdfjs } from '../../utils/pdfjs'
 import NativeSourcePreview from './NativeSourcePreview.vue'
 import productUiExtension from '@movo-product-extension'
@@ -631,7 +632,7 @@ function buildTableTarget(raw: string): TableTarget | null {
 
 function tableTargetTokens(normalized: string): string[] {
   const tokens = new Set<string>()
-  for (const match of normalized.matchAll(/\d+(?:\.\d+)?(?:天|年|月|日|个|次|%|元)?/g)) {
+  for (const match of normalized.matchAll(tableTargetNumberPattern)) {
     if (match[0].length >= 2) tokens.add(match[0])
   }
   if (normalized.length <= 4) {
