@@ -1,6 +1,6 @@
 <template>
   <div class="preview-page">
-    <!-- 将返回按钮、类型图标、文档名字与大小传送到顶部全局 Header 左侧 -->
+    <!-- Teleport the back button, file icon, name, and size to the left header area -->
     <Teleport v-if="headerTeleportReady" to="#header-title-teleport-target">
       <div v-if="document" class="header-doc-title-block">
         <n-button size="small" secondary @click="closePage" style="margin-right: 4px;">
@@ -17,7 +17,7 @@
       </div>
     </Teleport>
 
-    <!-- 将下载操作按钮传送到顶部全局 Header 右侧 -->
+    <!-- Teleport download actions to the right header area -->
     <Teleport v-if="headerTeleportReady" to="#header-actions-teleport-target">
       <n-space :size="8">
         <n-button size="small" secondary :loading="downloading" :disabled="!objectUrl || downloading" @click="downloadFile">
@@ -338,6 +338,7 @@ import {
   type KnowledgeDocumentItem,
 } from '@/api/knowledge-documents';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 import { formatAdminDateTime } from '@/composables/adminTimezone';
 import FileIcon from '@/components/FileIcon.vue';
 import DocumentStatus from '@/components/DocumentStatus.vue';
@@ -533,7 +534,7 @@ function formatFileSize(bytes: number) {
 
 function readError(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
-    return String(error.response?.data?.detail || error.message || fallback);
+    return localizedServerText(error.response?.data?.detail || error.message, fallback);
   }
   if (error instanceof Error) {
     return error.message || fallback;

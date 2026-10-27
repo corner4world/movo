@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { expireAdminSession, isAdminLoginRequest } from './adminSessionExpiry';
+import { useLocale } from '@/composables/i18n';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_ADMIN_API_BASE_URL || '/admin-api',
@@ -8,6 +9,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  config.headers['Accept-Language'] = useLocale().locale.value;
   const authStore = useAuthStore();
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`;

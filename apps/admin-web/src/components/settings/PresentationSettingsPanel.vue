@@ -65,6 +65,7 @@ import {
   savePresentationSettings,
 } from '@/api/presentation-settings';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 
 const message = useMessage();
 const loading = ref(false);
@@ -85,7 +86,7 @@ function applySettings(settings: Awaited<ReturnType<typeof fetchPresentationSett
 
 function errorText(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return String(error.response?.data?.detail || error.message || t('legacy.failed_to_save_configuration'));
+    return localizedServerText(error.response?.data?.detail || error.message, t('legacy.failed_to_save_configuration'));
   }
   return error instanceof Error ? error.message : String(error || t('legacy.failed_to_save_configuration'));
 }

@@ -151,6 +151,7 @@ import { apiClient } from '@/api/client';
 import { t, translateSourceText, useLocale } from '@/composables/i18n';
 import { formatAdminShortDateTime } from '@/composables/adminTimezone';
 import { translateDashboardText } from './dashboardText';
+import { compactNumberUnits } from '@/locales/compactNumberUnits';
 import adminProductUiExtension from '@movo-admin-product-extension';
 
 type HealthStatus = 'healthy' | 'warning' | 'critical';
@@ -398,8 +399,8 @@ function formatCompact(value: number) {
     if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
     return formatNumber(amount);
   }
-  if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)} 亿`;
-  if (amount >= 10000) return `${(amount / 10000).toFixed(1)} 万`;
+  if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)} ${compactNumberUnits.hundredMillion}`;
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1)} ${compactNumberUnits.tenThousand}`;
   return formatNumber(amount);
 }
 

@@ -14,9 +14,9 @@
     </span>
   </button>
   <div v-else class="doc-status-wrapper" :style="{ color: displayColor }">
-    <!-- SVG 图标 -->
+    <!-- SVG icon -->
     <span class="status-icon-box" v-html="state.icon"></span>
-    <!-- 状态文本 -->
+    <!-- Status text -->
     <span class="status-label">{{ state.label }}</span>
   </div>
 </template>
@@ -48,8 +48,8 @@ const displayColor = computed(() => {
 const state = computed(() => {
   const row = props.row;
 
-  // 1. 学习失败
-  // 上传成功，但在后续的解析 (parse) 或索引 (index) 阶段发生失败
+  // 1. Learning failed.
+  // Upload succeeded, but parsing or indexing failed later.
   if (row.parseStatus === 'failed' || row.indexStatus === 'failed') {
     return {
       label: t('legacy.learning_failed'),
@@ -62,8 +62,8 @@ const state = computed(() => {
     };
   }
 
-  // 2. 上传失败
-  // 当主文件状态为 failed 且未进入学习阶段时，定义为上传阶段的失败
+  // 2. Upload failed.
+  // Treat a failed file that never entered learning as an upload failure.
   if (row.status === 'failed') {
     return {
       label: t('legacy.upload_failed'),
@@ -76,8 +76,8 @@ const state = computed(() => {
     };
   }
 
-  // 3. 学习未开始
-  // 两个子状态均为未开始 (not_started)
+  // 3. Learning has not started.
+  // Both substatuses are not_started.
   if (row.parseStatus === 'not_started' && row.indexStatus === 'not_started') {
     return {
       label: t('legacy.learning_not_started'),
@@ -90,8 +90,8 @@ const state = computed(() => {
     };
   }
 
-  // 4. 学习完成
-  // 解析状态与索引状态均成功 (succeeded)
+  // 4. Learning completed.
+  // Both parsing and indexing succeeded.
   if (row.parseStatus === 'succeeded' && row.indexStatus === 'succeeded') {
     return {
       label: t('legacy.learning_complete'),
@@ -116,8 +116,8 @@ const state = computed(() => {
     };
   }
 
-  // 5. 学习中
-  // 其它任意处理中状态 (如 queued 或 running)
+  // 5. Learning in progress.
+  // Any other processing status, such as queued or running.
   return {
     label: t('legacy.learning'),
     color: '#1890FF',

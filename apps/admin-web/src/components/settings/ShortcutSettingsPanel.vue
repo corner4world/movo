@@ -282,7 +282,7 @@ function saveEntry() {
       entry.label = draft.value.label.trim()
       entry.type = draft.value.type
       entry.resourceId = draft.value.resourceId
-      entry.prompt = draft.value.prompt.trim() || `请使用 Skill「${entry.label}」完成以下任务：`
+      entry.prompt = draft.value.prompt.trim() || t('shortcuts.skillPromptDefault', { name: entry.label })
       moveEntryToGroup(entry, draft.value.groupKey)
     }
     editingEntryId.value = null
@@ -306,7 +306,7 @@ function saveEntry() {
     iconKey: draft.value.type === 'skill' ? 'build' : 'document',
     categoryIconKey: group.iconKey,
     categoryIconSvg: group.iconSvg || '',
-    prompt: draft.value.prompt.trim() || `请使用 Skill「${draft.value.label.trim()}」完成以下任务：`,
+    prompt: draft.value.prompt.trim() || t('shortcuts.skillPromptDefault', { name: draft.value.label.trim() }),
     resourceId: draft.value.resourceId,
     enabled: true,
     locked: false,

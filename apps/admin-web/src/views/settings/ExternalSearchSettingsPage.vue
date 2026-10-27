@@ -655,6 +655,8 @@ import { NAlert, useMessage } from 'naive-ui';
 import axios from 'axios';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { t, useLocale } from '@/composables/i18n';
+import { adminLanguageNames, adminTimezoneOptions } from '@/locales/adminRegionOptions';
+import { localizedServerText } from '@/utils/serverText';
 import { useTheme } from '@/composables/theme';
 import { getAdminTimezone, getBrowserTimezone, setAdminTimezone } from '@/composables/adminTimezone';
 import SearchProviderGuide from '@/components/search-provider/SearchProviderGuide.vue';
@@ -776,66 +778,11 @@ const { setLocale, locale: currentLocale } = useLocale();
 const { setTheme, theme: currentTheme } = useTheme();
 
 const languageSelectOptions = [
-  { label: '简体中文', value: 'zh-CN' },
-  { label: 'English', value: 'en-US' },
+  { label: adminLanguageNames['zh-CN'], value: 'zh-CN' },
+  { label: adminLanguageNames['en-US'], value: 'en-US' },
 ];
 
-const timezoneSelectOptions = computed(() => [
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'China Standard Time (GMT+8) - Asia/Shanghai'
-      : '中国标准时间 (GMT+8) - Asia/Shanghai',
-    value: 'Asia/Shanghai',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Japan Standard Time (GMT+9) - Asia/Tokyo'
-      : '日本标准时间 (GMT+9) - Asia/Tokyo',
-    value: 'Asia/Tokyo',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Coordinated Universal Time (UTC) - UTC'
-      : '协调世界时 (UTC) - UTC',
-    value: 'UTC',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Central European Time (GMT+1) - Europe/Berlin'
-      : '欧洲中部时间 (GMT+1) - Europe/Berlin',
-    value: 'Europe/Berlin',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Greenwich Mean Time (GMT) - Europe/London'
-      : '格林威治标准时间 (GMT) - Europe/London',
-    value: 'Europe/London',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Eastern Standard Time (GMT-5) - America/New_York'
-      : '美国东部标准时间 (GMT-5) - America/New_York',
-    value: 'America/New_York',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Central Standard Time (GMT-6) - America/Chicago'
-      : '美国中部标准时间 (GMT-6) - America/Chicago',
-    value: 'America/Chicago',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Pacific Standard Time (GMT-8) - America/Los_Angeles'
-      : '太平洋标准时间 (GMT-8) - America/Los_Angeles',
-    value: 'America/Los_Angeles',
-  },
-  {
-    label: currentLocale.value === 'en-US'
-      ? 'Australian Eastern Standard Time (GMT+10) - Australia/Sydney'
-      : '澳大利亚东部标准时间 (GMT+10) - Australia/Sydney',
-    value: 'Australia/Sydney',
-  },
-]);
+const timezoneSelectOptions = computed(() => adminTimezoneOptions(currentLocale.value));
 
 function getLocalTimezone(): string {
   return getBrowserTimezone();
@@ -1166,7 +1113,7 @@ async function runTest() {
       provider: result?.provider || selectedProvider.value,
       resultCount: Number(result?.resultCount || 0),
       sampleResults: Array.isArray(result?.sampleResults) ? result.sampleResults : [],
-      message: String(result?.message || (result?.ok ? t('legacy.connection_successful') : t('legacy.test_completed_but_returned_no_displayable_result'))),
+      message: localizedServerText(result?.message, result?.ok ? t('legacy.connection_successful') : t('legacy.test_completed_but_returned_no_displayable_result')),
     };
     testResult.value = normalizedResult;
     if (normalizedResult.ok) {
@@ -1188,7 +1135,7 @@ async function runTest() {
       : error instanceof Error
         ? error.message
         : String(error);
-    const errorMessage = String(detail || t('legacy.connection_test_failed'));
+    const errorMessage = localizedServerText(detail, t('legacy.connection_test_failed'));
     testResult.value = {
       ok: false,
       provider: selectedProvider.value,
@@ -1299,7 +1246,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
   width: 100%;
 }
 
-/* 暗色模式下设置页的外容器及各局部块的精美适配 */
+/* Dark mode styles for the settings page and its sections. */
 html.dark .settings-page {
   background: #0f1117;
 }

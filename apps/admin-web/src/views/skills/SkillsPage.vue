@@ -167,7 +167,7 @@
     <SkillPackageDetails v-if="selectedPackage" :skill="selectedPackage" />
   </n-modal>
 
-  <n-modal v-model:show="feedbackVisible" preset="card" :title="`${feedbackSkill?.name || 'Skill'} · 评价`" style="width: 640px">
+  <n-modal v-model:show="feedbackVisible" preset="card" :title="t('skills.feedbackTitle', { name: feedbackSkill?.name || 'Skill' })" style="width: 640px">
     <OrganizationSkillFeedback v-if="feedbackVisible && feedbackSkill" :key="feedbackSkill.id" :skill-id="feedbackSkill.id" />
   </n-modal>
 

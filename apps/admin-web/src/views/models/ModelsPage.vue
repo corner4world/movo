@@ -196,7 +196,7 @@
           </n-grid-item>
           <n-grid-item v-if="isAzureProvider && !form.groupId">
             <n-form-item label="API Version">
-              <n-input v-model:value="form.apiVersion" placeholder="如: 2024-10-21" />
+              <n-input v-model:value="form.apiVersion" :placeholder="t('models.apiVersionExample')" />
             </n-form-item>
           </n-grid-item>
           <n-grid-item v-if="!form.groupId">
@@ -305,6 +305,7 @@ import axios from 'axios';
 import { NAlert, useDialog, useMessage } from 'naive-ui';
 import PageIntro from '@/components/PageIntro.vue';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 import { formatAdminDateTime } from '@/composables/adminTimezone';
 import ImageModelRuntimeFields from '@/components/models/ImageModelRuntimeFields.vue';
 import ModelPricingFields from '@/components/models/ModelPricingFields.vue';
@@ -717,7 +718,7 @@ async function runEditorTest() {
   try {
     if (modelTestKind.value === 'image') {
       const result = await testImageModelInstance(form.value.id, testPrompt.value);
-      testResultText.value = result.message || (result.success ? t('additional.image_generation_test_succeeded') : t('additional.image_generation_test_failed'));
+      testResultText.value = localizedServerText(result.message, result.success ? t('additional.image_generation_test_succeeded') : t('additional.image_generation_test_failed'));
       testResultType.value = result.success ? 'success' : 'failed';
       testImageUrl.value = result.imageUrl || '';
       await reload();
@@ -725,14 +726,14 @@ async function runEditorTest() {
     }
     if (modelTestKind.value === 'embedding' || modelTestKind.value === 'rerank') {
       const result = await testKnowledgeModelInstance(form.value.id, modelTestKind.value);
-      testResultText.value = result.message || (result.success ? t('legacy.model_connection_tested_successfully') : t('legacy.test_failed'));
+      testResultText.value = localizedServerText(result.message, result.success ? t('legacy.model_connection_tested_successfully') : t('legacy.test_failed'));
       testResultType.value = result.success ? 'success' : 'failed';
       await reload();
       return;
     }
     await streamModelInstanceTest(form.value.id, testPrompt.value, (event) => {
       if (event.type === 'start') {
-        testResultText.value = event.message || t('legacy.connecting_to_model');
+        testResultText.value = localizedServerText(event.message, t('legacy.connecting_to_model'));
         return;
       }
       if (event.type === 'delta') {
@@ -743,13 +744,13 @@ async function runEditorTest() {
         return;
       }
       if (event.type === 'error') {
-        testResultText.value = event.message || t('legacy.test_failed');
+        testResultText.value = localizedServerText(event.message, t('legacy.test_failed'));
         testResultType.value = 'failed';
         return;
       }
       if (event.type === 'done') {
         if (!testResultText.value) {
-          testResultText.value = event.message || t('legacy.model_connection_tested_successfully');
+          testResultText.value = localizedServerText(event.message, t('legacy.model_connection_tested_successfully'));
         }
         testResultType.value = 'success';
       }
@@ -828,7 +829,7 @@ async function reload() {
 
 function readError(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
-    return String(error.response?.data?.detail || error.message || fallback);
+    return localizedServerText(error.response?.data?.detail || error.message, fallback);
   }
   return fallback;
 }

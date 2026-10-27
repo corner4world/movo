@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { expireAdminSession } from './adminSessionExpiry';
 import { useAuthStore } from '@/stores/auth';
+import { t, useLocale } from '@/composables/i18n';
 
 export type ModelStatus = 'active' | 'disabled';
 export type HealthStatus = 'unknown' | 'healthy' | 'failed';
@@ -202,12 +203,13 @@ export async function streamModelInstanceTest(
     headers: {
       Authorization: `Bearer ${authStore.token}`,
       'Content-Type': 'application/json',
+      'Accept-Language': useLocale().locale.value,
     },
     body: JSON.stringify({ prompt }),
   });
   if (response.status === 401) {
     expireAdminSession();
-    throw new Error('认证已过期，请重新登录');
+    throw new Error(t('models.sessionExpired'));
   }
   if (!response.ok || !response.body) {
     const text = await response.text();

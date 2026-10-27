@@ -172,6 +172,7 @@ import { useMessage } from 'naive-ui';
 import { computed, h, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { t, translateSourceText } from '@/composables/i18n';
+import { accountRoleValues, legacyEnglishRoleValues } from '@/locales/legacyRecognitionValues';
 import { formatAdminDateTime } from '@/composables/adminTimezone';
 import {
   createAccount,
@@ -212,23 +213,16 @@ const groups = ref<AccountGroupItem[]>([]);
 const accounts = ref<AccountItem[]>([]);
 
 const roleOptions = computed(() => [
-  { label: t('legacy.platform_admin'), value: '平台管理员' },
-  { label: t('legacy.organization_administrator'), value: '组织管理员' },
-  { label: t('legacy.auditor'), value: '审计员' },
-  { label: t('legacy.operator'), value: '运营人员' },
+  { label: t('legacy.platform_admin'), value: accountRoleValues.platformAdmin },
+  { label: t('legacy.organization_administrator'), value: accountRoleValues.organizationAdmin },
+  { label: t('legacy.auditor'), value: accountRoleValues.auditor },
+  { label: t('legacy.operator'), value: accountRoleValues.operator },
 ]);
 
 // Keep compatibility with accounts created by older API versions that persisted
 // the English role label instead of the stable Chinese message key.
-const roleMessageKeys: Record<string, string> = {
-  'Platform Admin': '平台管理员',
-  'Organization Admin': '组织管理员',
-  Auditor: '审计员',
-  Operator: '运营人员',
-};
-
 function roleLabel(value: string) {
-  return t(roleMessageKeys[value] || value);
+  return t(legacyEnglishRoleValues[value] || value);
 }
 
 const statusOptions = computed(() => [
@@ -500,7 +494,7 @@ function openEditAccount(row: AccountItem) {
     email: row.email,
     phone: row.phone,
     groupCode: row.groupCode,
-    roleName: roleMessageKeys[row.roleName] || row.roleName,
+    roleName: legacyEnglishRoleValues[row.roleName] || row.roleName,
     status: row.status,
     initialPassword: '',
   };

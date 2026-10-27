@@ -1,4 +1,5 @@
 import { t } from '@/composables/i18n'
+import { customProviderNameFragment, qwenNameFragment } from '@/locales/legacyRecognitionValues'
 
 type ProviderLike = {
   code?: string
@@ -25,10 +26,10 @@ export function providerLabel(provider?: Partial<ProviderLike> | null): string {
   const name = String(provider.name || '').toLowerCase()
   const key = providerMessageKeys[code]
   if (key) return t(key)
-  if (name.includes('qwen') || name.includes('通义') || name.includes('dashscope')) return t('legacy.qwen')
+  if (name.includes('qwen') || name.includes(qwenNameFragment) || name.includes('dashscope')) return t('legacy.qwen')
   if (name.includes('deepseek')) return t('provider.deepseek')
   if (name.includes('azure')) return t('provider.azureOpenAI')
-  if (name.includes('custom') || name.includes('自定义')) return t('legacy.custom_compatible_api')
+  if (name.includes('custom') || name.includes(customProviderNameFragment)) return t('legacy.custom_compatible_api')
   if (provider.providerType === 'azure_openai') return t('provider.azureOpenAI')
   return provider.name || t('legacy.custom')
 }

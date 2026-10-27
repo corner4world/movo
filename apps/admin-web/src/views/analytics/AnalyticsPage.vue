@@ -165,15 +165,15 @@
               :key="msg.id"
               :class="['message-card-wrapper', msg.role === 'user' ? 'msg-align-right' : 'msg-align-left']"
             >
-              <!-- 消息气泡 -->
+              <!-- Message bubble -->
               <div :class="['message-bubble', msg.role === 'user' ? 'bubble-user' : 'bubble-assistant']" style="width: 100%;">
-                <!-- 角色标头 -->
+                <!-- Role header -->
                 <div class="bubble-header">
                   <span class="role-badge">{{ msg.role === 'user' ? t('legacy.user') : t('legacy.assistant') }}</span>
                   <span class="msg-time">{{ formatTime(msg.createdAt) }}</span>
                 </div>
 
-                <!-- 进度步骤 Timeline (仅在 assistant 角色且有 progress 时显示) -->
+                <!-- Progress timeline for assistant messages with progress -->
                 <div v-if="msg.role === 'assistant' && msg.progress && msg.progress.length" class="assistant-timeline-box">
                   <div class="timeline-title">{{ t('legacy.execution_steps_progress') }}</div>
                   <n-timeline size="medium" style="margin-top: 8px;">
@@ -187,7 +187,7 @@
                   </n-timeline>
                 </div>
 
-                <!-- 回复内容 (Markdown) -->
+                <!-- Markdown reply -->
                 <div
                   v-if="msg.role === 'assistant'"
                   class="markdown-body"
@@ -197,7 +197,7 @@
                   {{ msg.content }}
                 </div>
 
-                <!-- 生成的文件下载卡片 -->
+                <!-- Generated file download card -->
                 <div v-if="msg.role === 'assistant' && msg.documents && msg.documents.length" class="assistant-documents-box">
                   <div
                     v-for="(doc, docIdx) in msg.documents"
@@ -205,7 +205,7 @@
                     class="doc-download-card"
                   >
                     <div class="doc-icon-box">
-                      <!-- 专属直角 SVG 文件图标 -->
+                      <!-- Square SVG file icon -->
                       <svg v-if="isDocWord(doc.type || doc.kind)" viewBox="0 0 24 24" class="svg-doc-icon word-color">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <path d="M14 2v6h6" />
@@ -414,7 +414,7 @@ function downloadDocument(doc: any) {
   }
 }
 
-// 简易 Markdown 解析器，支持列表、粗体、斜体、代码块及表格转换
+// Lightweight Markdown parser for lists, emphasis, code blocks, and tables.
 function renderMarkdown(text?: string): string {
   if (!text) return '';
   let html = text;
@@ -426,7 +426,7 @@ function renderMarkdown(text?: string): string {
     return key;
   };
 
-  // 1. 处理代码块 (```)
+  // 1. Process fenced code blocks.
   html = html.replace(/```([a-zA-Z0-9_-]*)\s*([\s\S]*?)```/g, (_m, lang, code) => {
     const content = String(code || '').trim();
     const escaped = content
@@ -449,16 +449,16 @@ function renderMarkdown(text?: string): string {
     return stashBlock(blockHtml);
   });
 
-  // 2. 行内代码
+  // 2. Process inline code.
   html = html.replace(/`([^`]+)`/g, '<code style="font-family: monospace; font-size: 12px; background-color: #f5f5f5; color: #c7254e; padding: 2px 4px; border: 1px solid #e1e1e8; border-radius: 0px;">$1</code>');
 
-  // 3. 粗体
+  // 3. Process bold text.
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-  // 4. 斜体
+  // 4. Process italic text.
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-  // 5. 表格处理
+  // 5. Process tables.
   html = html.replace(/\|(.+)\|/g, (match, content) => {
     const cells = content.split('|').map((c: string) => c.trim()).filter((c: string) => c);
     const cellTags = cells.map((c: string) => `<td style="border: 1px solid #ddd; padding: 6px 12px;">${c}</td>`).join('');
@@ -474,13 +474,13 @@ function renderMarkdown(text?: string): string {
     return `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">${match}</table>`;
   });
 
-  // 6. 标题 (H1-H4)
+  // 6. Process H1-H4 headings.
   html = html.replace(/^\s*####\s+(.+)$/gim, '<h4 style="font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 6px;">$1</h4>');
   html = html.replace(/^\s*###\s+(.+)$/gim, '<h3 style="font-size: 16px; font-weight: bold; margin-top: 16px; margin-bottom: 8px;">$1</h3>');
   html = html.replace(/^\s*##\s+(.+)$/gim, '<h2 style="font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 4px;">$1</h2>');
   html = html.replace(/^\s*#\s+(.+)$/gim, '<h1 style="font-size: 22px; font-weight: bold; margin-top: 24px; margin-bottom: 12px;">$1</h1>');
 
-  // 7. 列表处理
+  // 7. Process lists.
   html = html.replace(/^- (.*$)/gim, '<li style="margin-left: 20px; list-style-type: disc;">$1</li>');
   html = html.replace(/^\d+\. (.*$)/gim, '<li style="margin-left: 20px; list-style-type: decimal;">$1</li>');
 
@@ -491,11 +491,11 @@ function renderMarkdown(text?: string): string {
     return `<ol style="margin: 8px 0; padding-left: 0;">${match.replace(/\n/g, '')}</ol>`;
   });
 
-  // 8. 换行
+  // 8. Process line breaks.
   html = html.replace(/\n\n/g, '<br/><br/>');
   html = html.replace(/\n/g, '<br/>');
 
-  // 还原占位代码块
+  // Restore placeholder code blocks.
   blockPlaceholders.forEach((block, idx) => {
     html = html.replace(`__BLOCK_PLACEHOLDER_${idx}__`, block);
   });
@@ -875,10 +875,10 @@ function recalcTableHeight() {
   const pageStyle = window.getComputedStyle(pageEl);
   const rowGap = Number.parseFloat(pageStyle.rowGap || pageStyle.gap || '0') || 0;
 
-  // metrics 和 tableCard 之间有 1 个竖向 gap。
+  // Leave one vertical gap between metrics and tableCard.
   const sectionGaps = rowGap;
 
-  // 获得 list-filter-row 的真实高度
+  // Measure the actual list-filter-row height.
   const filterRowEl = tableRootEl.querySelector('.list-filter-row') as HTMLElement | null;
   const filterHeight = filterRowEl ? filterRowEl.offsetHeight : 0;
 
@@ -899,7 +899,7 @@ function recalcTableHeight() {
     - contentPaddingTop
     - contentPaddingBottom
     - tablePaginationEl.offsetHeight
-    - 60; // 减去表头及预留安全高度，适当缩小 n-scrollbar-container 高度防止极小像素溢出
+    - 60; // Reserve space for the header and avoid scrollbar overflow.
 
   tableBodyHeight.value = Math.max(220, Math.floor(available));
 }
@@ -1297,7 +1297,7 @@ watch(
   border: 1px solid #e2e8f0;
   padding: 14px 16px;
   background-color: #fff;
-  border-radius: 0 !important; /* 直角要求 */
+  border-radius: 0 !important; /* Square corners. */
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
@@ -1305,7 +1305,7 @@ watch(
   background-color: #f0f7ff;
   border-color: #bfdbfe;
   color: #1e3a8a;
-  border-left: 4px solid #3b82f6; /* 加强边缘区分 */
+  border-left: 4px solid #3b82f6; /* Distinguish the bubble edge. */
 }
 
 .bubble-assistant {
@@ -1354,7 +1354,7 @@ watch(
   border: 1px solid #f1f5f9;
   padding: 12px;
   font-size: 13px;
-  border-radius: 0 !important; /* 直角要求 */
+  border-radius: 0 !important; /* Square corners. */
 }
 
 .timeline-title {
@@ -1398,7 +1398,7 @@ watch(
   border: 1px solid #bfdbfe;
   background-color: #f0f9ff;
   padding: 10px 14px;
-  border-radius: 0 !important; /* 直角要求 */
+  border-radius: 0 !important; /* Square corners. */
 }
 
 .doc-icon-box {

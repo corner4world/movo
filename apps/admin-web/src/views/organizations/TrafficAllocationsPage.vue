@@ -154,8 +154,9 @@
 import { computed, h, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NButton, NPagination, NProgress, NSpace, NSpin, NTimeline, NTimelineItem, useMessage, type DataTableColumns } from 'naive-ui';
-import { t } from '@/composables/i18n';
+import { t, useLocale } from '@/composables/i18n';
 import { formatAdminShortDateTime } from '@/composables/adminTimezone';
+import { compactNumberUnits } from '@/locales/compactNumberUnits';
 import {
   fetchAllocationLogs,
   fetchTrafficAllocationOverview,
@@ -200,8 +201,14 @@ const periodOptions = computed(() => [
 ]);
 function formatTokens(value: number) {
   const amount = Number(value || 0);
-  if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)} 亿`;
-  if (amount >= 10000) return `${(amount / 10000).toFixed(1)} 万`;
+  if (useLocale().locale.value === 'en-US') {
+    if (amount >= 1000000000) return `${(amount / 1000000000).toFixed(1)}B`;
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
+    return amount.toLocaleString('en-US');
+  }
+  if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)} ${compactNumberUnits.hundredMillion}`;
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1)} ${compactNumberUnits.tenThousand}`;
   return amount.toLocaleString('zh-CN');
 }
 

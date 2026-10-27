@@ -13,7 +13,7 @@
         {{ loadingMore ? t('additional.loading') : t('legacy.scroll_up_to_load_earlier_pages') }}
       </div>
       <article v-for="page in loadedPages" :key="page" class="pdf-page" :data-page-number="page">
-        <canvas :ref="element => setCanvasRef(page, element)" :aria-label="`${title} 第 ${page} 页`"></canvas>
+        <canvas :ref="element => setCanvasRef(page, element)" :aria-label="t('knowledge.page_aria', { title, page })"></canvas>
         <span>{{ page }}</span>
       </article>
       <div v-if="lastLoadedPage < pageCount" ref="bottomSentinelRef" class="load-more">

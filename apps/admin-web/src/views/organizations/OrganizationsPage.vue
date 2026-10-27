@@ -26,22 +26,23 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { t } from '@/composables/i18n';
 import PageIntro from '@/components/PageIntro.vue';
 
-const columns = [
+const columns = computed(() => [
   { title: t('legacy.organization_a3540e8'), key: 'name' },
   { title: t('legacy.code'), key: 'code' },
   { title: t('legacy.admin'), key: 'owner' },
   { title: t('legacy.policy'), key: 'policy' },
   { title: t('legacy.status'), key: 'status' },
-];
+]);
 
-const rows = [
-  { name: '集团总部', code: 'hq', owner: '刘颖', policy: t('legacy.shared_models_own_capabilities'), status: t('legacy.active') },
-  { name: '销售中心', code: 'sales', owner: '陈诚', policy: t('legacy.organization_isolation'), status: t('legacy.active') },
-  { name: '交付中心', code: 'delivery', owner: '李威', policy: t('legacy.privileged_browser_automation'), status: t('legacy.pilot') },
-];
+const rows = computed(() => [
+  { name: t('organizations.demo.hq'), code: 'hq', owner: t('organizations.demo.ownerLiu'), policy: t('legacy.shared_models_own_capabilities'), status: t('legacy.active') },
+  { name: t('organizations.demo.sales'), code: 'sales', owner: t('organizations.demo.ownerChen'), policy: t('legacy.organization_isolation'), status: t('legacy.active') },
+  { name: t('organizations.demo.delivery'), code: 'delivery', owner: t('organizations.demo.ownerLi'), policy: t('legacy.privileged_browser_automation'), status: t('legacy.pilot') },
+]);
 
-const items = [t('legacy.organization_a3540e8'), t('legacy.dept'), t('legacy.user_9ba763e'), t('legacy.role'), t('legacy.user_groups'), t('legacy.sign_in_methods')];
+const items = computed(() => [t('legacy.organization_a3540e8'), t('legacy.dept'), t('legacy.user_9ba763e'), t('legacy.role'), t('legacy.user_groups'), t('legacy.sign_in_methods')]);
 </script>

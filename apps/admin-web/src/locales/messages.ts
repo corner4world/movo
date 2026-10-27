@@ -1,6 +1,7 @@
 import { additionalMessages } from './additionalMessages';
 import { uncoveredMessages } from './uncoveredMessages';
 import { deepseekSearchMessages } from './modules/deepseekSearch';
+import { schemaDescriptionMessages } from './schemaDescriptionMessages';
 
 export type Locale = 'zh-CN' | 'en-US';
 export type MessageKey = keyof typeof messages;
@@ -13,6 +14,7 @@ export const messages = {
   ...uncoveredMessages,
   ...additionalMessages,
   ...deepseekSearchMessages,
+  ...schemaDescriptionMessages,
   'directoryScope.scope': { 'zh-CN': '范围', 'en-US': 'Scope' },
   'directoryScope.title': { 'zh-CN': '选择统计范围', 'en-US': 'Select scope' },
   'directoryScope.organization': { 'zh-CN': '全员', 'en-US': 'All employees' },
@@ -86,7 +88,7 @@ export const messages = {
   'skills.workflow.selectKnowledgeDocument': { 'zh-CN': '请先选择要读取的知识文档', 'en-US': 'Select the knowledge document to read first' },
   'skills.workflow.selectTool': { 'zh-CN': '请先选择要调用的工具', 'en-US': 'Select the tool to call first' },
   'skills.workflow.toolRequiredPlaceholder': { 'zh-CN': '选择 Tool / MCP（必选）', 'en-US': 'Select a Tool / MCP (required)' },
-  // === 路由与侧边栏菜单 ===
+  // Routes and sidebar menu.
   'legacy.dashboard': { 'zh-CN': '工作台', 'en-US': 'Dashboard' },
   'legacy.organizations_users': { 'zh-CN': '组织与用户', 'en-US': 'Organizations & Users' },
   'legacy.accounts_org_groups': { 'zh-CN': '账号组与账号', 'en-US': 'Accounts & Org Groups' },
@@ -177,7 +179,7 @@ export const messages = {
   'legacy.fail_directly_on_failure': { 'zh-CN': '失败时直接报错', 'en-US': 'Fail directly on failure' },
   'legacy.configuration_saved': { 'zh-CN': '配置已保存', 'en-US': 'Configuration saved' },
 
-  // === 布局 (BasicLayout.vue) ===
+  // Layout (BasicLayout.vue).
   'legacy.enter_admin': { 'zh-CN': '进入管理后台', 'en-US': 'Enter Admin' },
   'legacy.movo_agent_console': { 'zh-CN': 'MOVO 智能体控制台', 'en-US': 'MOVO Agent Console' },
   'legacy.entering_admin': { 'zh-CN': '正在进入后台...', 'en-US': 'Entering Admin...' },
@@ -192,7 +194,7 @@ export const messages = {
   'legacy.language_switched_to_chinese': { 'zh-CN': '语言已切换为简体中文', 'en-US': 'Language switched to Chinese' },
   'Language switched to English': { 'zh-CN': 'Language switched to English', 'en-US': 'Language switched to English' },
 
-  // === 仪表盘页面 (DashboardPage.vue) ===
+  // Dashboard (DashboardPage.vue).
   'legacy.admin_dashboard': { 'zh-CN': '管理员工作台', 'en-US': 'Admin Dashboard' },
   'legacy.org_space': { 'zh-CN': '组织空间', 'en-US': 'Org Space' },
   'legacy.plus_personal': { 'zh-CN': 'Plus 个人版', 'en-US': 'Plus Personal' },
@@ -265,7 +267,7 @@ export const messages = {
   'legacy.unknown_user': { 'zh-CN': '未知用户', 'en-US': 'Unknown User' },
   'legacy.llm_call': { 'zh-CN': 'LLM 调用', 'en-US': 'LLM Call' },
 
-  // === 流量分配页面 (TrafficAllocationsPage.vue) ===
+  // Traffic allocations (TrafficAllocationsPage.vue).
   'legacy.traffic_allocation': { 'zh-CN': '流量分配', 'en-US': 'Traffic Allocation' },
   'legacy.quota_settings': { 'zh-CN': '额度设置', 'en-US': 'Quota Settings' },
   'legacy.set_enterprise_quota': { 'zh-CN': '设置企业额度', 'en-US': 'Set Enterprise Quota' },
@@ -312,7 +314,7 @@ export const messages = {
   'legacy.enterprise_quota_is_0_so_member_quota_cannot_be': { 'zh-CN': '企业总额度为 0，不能为成员分配额度', 'en-US': 'Enterprise quota is 0, so member quota cannot be allocated.' },
   'legacy.enterprise_quota_is_0_so_user_quota_cannot_be': { 'zh-CN': '企业总额度为 0，不能为用户分配额度', 'en-US': 'Enterprise quota is 0, so user quota cannot be allocated.' },
 
-  // === 登录 / 接受邀请 / 系统初始化 ===
+  // Sign in, invitation acceptance, and setup.
   'legacy.username_email': { 'zh-CN': '账号', 'en-US': 'Username / Email' },
   'legacy.password': { 'zh-CN': '密码', 'en-US': 'Password' },
   'legacy.signing_in': { 'zh-CN': '登录中...', 'en-US': 'Signing in...' },
@@ -330,13 +332,13 @@ export const messages = {
   'legacy.system_initialized_successfully': { 'zh-CN': '系统初始化成功', 'en-US': 'System initialized successfully' },
   'legacy.invitation_code_is_invalid_or_has_been_used': { 'zh-CN': '邀请码失效或已被使用', 'en-US': 'Invitation code is invalid or has been used' },
 
-  // === 数据统计页面 (AnalyticsPage.vue) ===
+  // Analytics (AnalyticsPage.vue).
   'legacy.token_usage_analytics': { 'zh-CN': 'Token 使用分析', 'en-US': 'Token Usage Analytics' },
   'legacy.calls_24h_e64d34b': { 'zh-CN': '近 24 小时调用量', 'en-US': 'Calls (24h)' },
   'legacy.total_tokens': { 'zh-CN': '总 Token 消耗', 'en-US': 'Total Tokens' },
   'legacy.users_ef68fea': { 'zh-CN': '用户数', 'en-US': 'Users' },
 
-  // === 模型中心 (ModelsPage.vue) ===
+  // Model center (ModelsPage.vue).
   'legacy.model_name': { 'zh-CN': '模型名称', 'en-US': 'Model Name' },
   'legacy.type': { 'zh-CN': '类型', 'en-US': 'Type' },
   'legacy.provider': { 'zh-CN': '提供商', 'en-US': 'Provider' },
@@ -376,7 +378,7 @@ export const messages = {
   'legacy.use_the_azure_deployment_name_as_the_model_id': { 'zh-CN': '模型 ID 请填写 Azure Deployment 名称；GPT Image 1 系列推荐 1536x1024，GPT Image 2 可使用 1536x864。', 'en-US': 'Use the Azure deployment name as the model ID. GPT Image 1 recommends 1536x1024; GPT Image 2 can use 1536x864.' },
   'legacy.for_openai_compatible_image_services_implementing_images_generations': { 'zh-CN': '适用于实现 /images/generations 的 OpenAI 兼容图片服务。', 'en-US': 'For OpenAI-compatible image services implementing /images/generations.' },
 
-  // === 组织用户页面 (OrganizationUsersPage.vue) ===
+  // Organization users (OrganizationUsersPage.vue).
   'legacy.org_structure': { 'zh-CN': '组织架构', 'en-US': 'Org Structure' },
   'legacy.add': { 'zh-CN': '新增', 'en-US': 'Add' },
   'legacy.move': { 'zh-CN': '移动', 'en-US': 'Move' },
@@ -520,7 +522,7 @@ export const messages = {
   'legacy.enum': { 'zh-CN': '枚举', 'en-US': 'Enum' },
   'JSON': { 'zh-CN': 'JSON', 'en-US': 'JSON' },
 
-  // === 附加布局词条 ===
+  // Additional layout labels.
   'legacy.language': { 'zh-CN': '语言', 'en-US': 'Language' },
   'legacy.admin': { 'zh-CN': '管理员', 'en-US': 'Admin' },
   'legacy.system_upgrade_window_starts_at_23_00_tonight': { 'zh-CN': '系统升级窗口将于今晚 23:00 开始', 'en-US': 'System upgrade window starts at 23:00 tonight' },
@@ -556,7 +558,7 @@ export const messages = {
   'legacy.select_an_image_generation_model_and_a_vision_rebuild': { 'zh-CN': '请选择图片生成模型和视觉重建模型', 'en-US': 'Select an image generation model and a vision rebuild model' },
   'legacy.ppt_generation_settings_saved': { 'zh-CN': 'PPT 生成配置已保存', 'en-US': 'PPT generation settings saved' },
 
-  // === 步骤和工具编辑词条 ===
+  // Step and tool editor labels.
   'legacy.step': { 'zh-CN': '第 {step} / {total} 步', 'en-US': 'Step {step} / {total}' },
   'legacy.previous': { 'zh-CN': '上一步', 'en-US': 'Previous' },
   'legacy.next': { 'zh-CN': '下一步', 'en-US': 'Next' },
@@ -577,7 +579,7 @@ export const messages = {
   'legacy.mcp_service': { 'zh-CN': 'MCP 服务', 'en-US': 'MCP Service' },
   'legacy.http_tool': { 'zh-CN': 'HTTP 工具', 'en-US': 'HTTP Tool' },
 
-  // === 数据统计分析页面 (AnalyticsPage.vue) ===
+  // Analytics labels (AnalyticsPage.vue).
   'legacy.cost_statistics': { 'zh-CN': '成本统计', 'en-US': 'Cost Statistics' },
   'legacy.avg_24h': { 'zh-CN': '平均单次 {avg} | 近24h {last24h}', 'en-US': 'Avg {avg} | 24h {last24h}' },
   'legacy.avg_per_call': { 'zh-CN': '平均每次请求 {count}', 'en-US': 'Avg {count} per call' },
@@ -614,7 +616,7 @@ export const messages = {
   'legacy.runtime_error': { 'zh-CN': '运行错误', 'en-US': 'Runtime Error' },
   'legacy.network_error': { 'zh-CN': '网络故障', 'en-US': 'Network Error' },
 
-  // === 登录 / 注册 / 邀请 (LoginPage, SetupPage, InviteAcceptPage) ===
+  // Sign in, registration, and invitations.
   'legacy.unified_operations_console': { 'zh-CN': '统一运营控制台', 'en-US': 'Unified Operations Console' },
   'legacy.manage_organizations_models_and_process_configurations_to_ensure_stable': { 'zh-CN': '管理组织、模型与流程配置，确保平台运行稳定、可控、可追踪。', 'en-US': 'Manage organizations, models and process configurations to ensure stable, controlled and traceable operations.' },
   'legacy.enter_password': { 'zh-CN': '输入密码', 'en-US': 'Enter password' },
@@ -629,7 +631,7 @@ export const messages = {
   'legacy.organization': { 'zh-CN': '企业', 'en-US': 'Organization' },
   'legacy.failed_to_enter_organization_please_sign_in_again': { 'zh-CN': '进入企业失败，请重新登录', 'en-US': 'Failed to enter organization, please sign in again.' },
 
-  // === 初始化页面 (SetupPage.vue) ===
+  // Setup page (SetupPage.vue).
   'legacy.initialize_organization_account': { 'zh-CN': '初始化组织与账号', 'en-US': 'Initialize Organization & Account' },
   'legacy.first_time_deployment_requires_initialization_the_system_will_automatically': { 'zh-CN': '首次部署需要完成一次初始化：系统会自动生成租户 ID 与安全参数，你只需要填写企业名称、管理员账号和初始员工账号。', 'en-US': 'First-time deployment requires initialization: the system will automatically generate a tenant ID and security parameters. You only need to fill in the company name, admin account, and initial employee account.' },
   'legacy.organization_name': { 'zh-CN': '企业名称', 'en-US': 'Organization Name' },
@@ -786,7 +788,7 @@ export const messages = {
   'legacy.desktop_connection_url': { 'zh-CN': '桌面端连接地址', 'en-US': 'Desktop Connection URL' },
   'legacy.enter_only_the_organization_service_url_in_the_desktop': { 'zh-CN': '桌面端只需填写企业服务地址，系统会自动连接 API 与浏览器 Agent，无需单独配置 WebSocket。', 'en-US': 'Enter only the organization service URL in the desktop app. MOVO connects to the API and Browser Agent automatically; no WebSocket setup is needed.' },
 
-  // === 接受邀请页面 (InviteAcceptPage.vue) ===
+  // Invitation acceptance (InviteAcceptPage.vue).
   'legacy.organization_invitation': { 'zh-CN': '企业邀请', 'en-US': 'Organization Invitation' },
   'legacy.join_s_movo_workspace': { 'zh-CN': '加入 {org} 的 MOVO 工作空间', 'en-US': 'Join {org}\'s MOVO Workspace' },
   'legacy.activate_your_account_to_sign_in_and_start_using': { 'zh-CN': '完成账号激活后，即可登录 MOVO 前台系统开始使用。', 'en-US': 'Activate your account to sign in and start using MOVO.' },
@@ -813,7 +815,7 @@ export const messages = {
   'legacy.please_enter_login_name': { 'zh-CN': '请填写登录名', 'en-US': 'Please enter login name' },
   'legacy.passwords_do_not_match': { 'zh-CN': '两次密码不一致', 'en-US': 'Passwords do not match' },
 
-  // === Skill 配置页面 (SkillConfigPage.vue) ===
+  // Skill configuration (SkillConfigPage.vue).
   'legacy.read_material': { 'zh-CN': '读取材料', 'en-US': 'Read Material' },
   'legacy.material': { 'zh-CN': '材料', 'en-US': 'Material' },
   'legacy.read_uploaded_material': { 'zh-CN': '读取上传材料', 'en-US': 'Read Uploaded Material' },
@@ -1010,7 +1012,7 @@ export const messages = {
   'legacy.words': { 'zh-CN': '{min}-{max} 字', 'en-US': '{min}-{max} words' },
   'legacy.step_result': { 'zh-CN': '步骤 {index} 结果', 'en-US': 'Step {index} Result' },
 
-  // === 账号组与账号配置页面 (OrganizationAccountsPage.vue) ===
+  // Account groups and account settings.
   'legacy.search_by_username_name_email': { 'zh-CN': '搜索账号/姓名/邮箱', 'en-US': 'Search by Username/Name/Email' },
   'legacy.account_group': { 'zh-CN': '账号组', 'en-US': 'Account Group' },
   'legacy.manage_groups': { 'zh-CN': '账号组管理', 'en-US': 'Manage Groups' },

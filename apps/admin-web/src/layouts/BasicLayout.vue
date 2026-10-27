@@ -147,6 +147,7 @@ import { useAuthStore } from '@/stores/auth';
 import movoLogo from '@/assets/images/movo-logo.png';
 import { resolveAdminAssetUrlWithVersion } from '@/composables/adminAsset';
 import { isLocale, useLocale, t, translateSourceText } from '@/composables/i18n';
+import { adminLanguageChangedMessages, adminLanguageNames } from '@/locales/adminRegionOptions';
 import { displayAdminName, isMobileLike } from '@/composables/privacy';
 
 const router = useRouter();
@@ -187,10 +188,8 @@ const profileDisplayName = computed(() => displayAdminName(authStore.profile, t(
 const profileAvatarUrl = computed(() => resolveAdminAssetUrlWithVersion(authStore.profile?.avatarUrl, authStore.profile?.avatarUpdatedAt));
 const profileAvatarFailedUrl = ref('');
 const showProfileAvatar = computed(() => Boolean(profileAvatarUrl.value) && profileAvatarFailedUrl.value !== profileAvatarUrl.value);
-const profileInitial = computed(() => (isMobileLike(profileDisplayName.value) || profileDisplayName.value.includes('****') ? '管' : profileDisplayName.value.slice(0, 1).toUpperCase()));
-const currentLanguageLabel = computed(() =>
-  currentLanguage.value === 'en-US' ? 'English' : '简体中文',
-);
+const profileInitial = computed(() => (isMobileLike(profileDisplayName.value) || profileDisplayName.value.includes('****') ? t('profile.adminInitial') : profileDisplayName.value.slice(0, 1).toUpperCase()));
+const currentLanguageLabel = computed(() => adminLanguageNames[currentLanguage.value]);
 
 const profileOptions = computed(() => [
   {
@@ -204,8 +203,8 @@ const profileOptions = computed(() => [
 ]);
 
 const languageOptions = [
-  { label: '简体中文', key: 'zh-CN' },
-  { label: 'English', key: 'en-US' },
+  { label: adminLanguageNames['zh-CN'], key: 'zh-CN' },
+  { label: adminLanguageNames['en-US'], key: 'en-US' },
 ];
 
 const noticeOptions = computed(() => [
@@ -237,7 +236,7 @@ function handleBack() {
 function handleLanguageSelect(key: string) {
   if (!isLocale(key)) return;
   setLocale(key);
-  message.success(key === 'en-US' ? 'Language switched to English' : '语言已切换为简体中文');
+  message.success(adminLanguageChangedMessages[key]);
 }
 
 function handleNoticeSelect() {
@@ -613,7 +612,7 @@ html.dark .profile-text {
   overflow: hidden !important;
 }
 
-/* ==================== 暗色模式框架自适应适配 ==================== */
+/* Dark mode layout adjustments. */
 html.dark .app-shell {
   background-color: #101014 !important;
 }
@@ -674,7 +673,7 @@ html.dark .header-title-teleport {
   border-color: #334155;
 }
 
-/* 当传送容器不为空时，自动隐藏原本的全局路由标题，并去除左侧分界线 */
+/* Hide the global route title and divider when the teleported header is present. */
 .header-title-row:has(.header-title-teleport > *) .header-title {
   display: none;
 }

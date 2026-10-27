@@ -263,10 +263,10 @@ const metricCards = computed(() => {
   const mcpCount = rows.value.filter((row) => row.type === 'mcp').length;
   const passedCount = rows.value.filter((row) => row.lastTestStatus === 'passed').length;
   return [
-    { key: 'total', icon: '工', label: t('legacy.total_tools'), value: total, note: t('legacy.includes_http_tools_mcp_services') },
-    { key: 'enabled', icon: '启', label: t('legacy.active_25d2843'), value: enabled, note: total ? t('legacy.enabled_rate', { count: Math.round((enabled / total) * 100) }) : t('legacy.no_tools_currently') },
-    { key: 'mcp', icon: '服', label: t('legacy.mcp_service'), value: mcpCount, note: total ? t('legacy.share', { count: Math.round((mcpCount / total) * 100) }) : t('legacy.no_mcp_services_currently') },
-    { key: 'pass', icon: '测', label: t('legacy.passed'), value: passedCount, note: t('legacy.number_of_recently_passed_tests') },
+    { key: 'total', icon: 'T', label: t('legacy.total_tools'), value: total, note: t('legacy.includes_http_tools_mcp_services') },
+    { key: 'enabled', icon: '✓', label: t('legacy.active_25d2843'), value: enabled, note: total ? t('legacy.enabled_rate', { count: Math.round((enabled / total) * 100) }) : t('legacy.no_tools_currently') },
+    { key: 'mcp', icon: 'M', label: t('legacy.mcp_service'), value: mcpCount, note: total ? t('legacy.share', { count: Math.round((mcpCount / total) * 100) }) : t('legacy.no_mcp_services_currently') },
+    { key: 'pass', icon: '●', label: t('legacy.passed'), value: passedCount, note: t('legacy.number_of_recently_passed_tests') },
   ];
 });
 

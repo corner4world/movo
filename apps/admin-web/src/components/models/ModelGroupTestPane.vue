@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 import { streamModelInstanceTest, testImageModelInstance, testKnowledgeModelInstance, type ModelInstanceItem } from '@/api/models';
 import { resolveModelTestKind } from './modelTestKind';
 import { useVisionCapabilitySuggestion } from '@/composables/useVisionCapabilitySuggestion';
@@ -28,7 +29,7 @@ watch(() => [props.models, props.selectedId] as const, () => {
 watch(modelId, () => { result.value = ''; resultType.value = 'idle'; imageUrl.value = ''; });
 
 function errorText(error: unknown) {
-  return axios.isAxiosError(error) ? String(error.response?.data?.detail || error.message) : String(error);
+  return localizedServerText(axios.isAxiosError(error) ? error.response?.data?.detail || error.message : String(error), t('legacy.test_failed'));
 }
 
 async function run() {
@@ -41,24 +42,24 @@ async function run() {
   try {
     if (kind.value === 'image') {
       const response = await testImageModelInstance(selectedId, prompt.value);
-      result.value = response.message || (response.success ? t('additional.image_generation_test_succeeded') : t('additional.image_generation_test_failed'));
+      result.value = localizedServerText(response.message, response.success ? t('additional.image_generation_test_succeeded') : t('additional.image_generation_test_failed'));
       resultType.value = response.success ? 'success' : 'failed';
       imageUrl.value = response.imageUrl || '';
     } else if (kind.value === 'embedding' || kind.value === 'rerank') {
       const response = await testKnowledgeModelInstance(selectedId, kind.value);
-      result.value = response.message || (response.success ? t('legacy.model_connection_tested_successfully') : t('legacy.test_failed'));
+      result.value = localizedServerText(response.message, response.success ? t('legacy.model_connection_tested_successfully') : t('legacy.test_failed'));
       resultType.value = response.success ? 'success' : 'failed';
     } else {
       let receivedDelta = false;
       await streamModelInstanceTest(selectedId, prompt.value, (event) => {
-        if (event.type === 'start') result.value = event.message || t('legacy.connecting_to_model');
+        if (event.type === 'start') result.value = localizedServerText(event.message, t('legacy.connecting_to_model'));
         if (event.type === 'delta') {
           if (!receivedDelta) { result.value = ''; receivedDelta = true; }
           result.value += event.content || '';
         }
-        if (event.type === 'error') { result.value = event.message || t('legacy.test_failed'); resultType.value = 'failed'; }
+        if (event.type === 'error') { result.value = localizedServerText(event.message, t('legacy.test_failed')); resultType.value = 'failed'; }
         if (event.type === 'done' && resultType.value !== 'failed') {
-          result.value ||= event.message || t('legacy.model_connection_tested_successfully');
+          result.value ||= localizedServerText(event.message, t('legacy.model_connection_tested_successfully'));
           resultType.value = 'success';
         }
       });

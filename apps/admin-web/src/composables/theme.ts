@@ -12,7 +12,7 @@ const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
 const _theme = ref<ThemeMode>(
   storedTheme === 'dark' || storedTheme === 'light' || storedTheme === 'system'
     ? storedTheme
-    : 'system' // 默认跟随系统
+    : 'system' // Follow the system theme by default.
 );
 
 const activeThemeMode = ref<'light' | 'dark'>('light');
@@ -54,7 +54,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// 首次初始化
+// Initial setup.
 updateActiveTheme();
 
 export function useTheme() {

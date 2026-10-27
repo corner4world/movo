@@ -22,7 +22,7 @@
 
     <div class="list-workspace">
       <div class="knowledge-layout">
-        <!-- 左侧目录树 -->
+        <!-- Left directory tree -->
         <aside class="dept-panel">
           <div class="panel-head">
             <span class="panel-title">{{ t('legacy.knowledge_directories') }}</span>
@@ -90,7 +90,7 @@
           </n-space>
         </aside>
 
-        <!-- 右侧列表 -->
+        <!-- Right document list -->
         <section class="list-panel">
           <div class="list-filter-row">
             <div class="filter-toolbar">
@@ -275,7 +275,7 @@
     :directory-name="permissionDirectoryName"
   />
 
-  <!-- 目录新建/编辑 Modal -->
+  <!-- Directory create/edit modal -->
   <n-modal v-model:show="dirEditorVisible" preset="card" :title="dirEditorTitle" style="width: 520px">
     <n-form :model="dirForm" label-placement="left" label-width="90">
       <n-form-item :label="t('legacy.directory_name')">
@@ -293,7 +293,7 @@
     </template>
   </n-modal>
 
-  <!-- 目录移动 Modal -->
+  <!-- Directory move modal -->
   <n-modal v-model:show="dirMoveVisible" preset="card" :title="t('legacy.move_directory')" style="width: 520px">
     <n-form :model="moveForm" label-placement="left" label-width="90">
       <n-form-item :label="t('legacy.target_parent')">
@@ -447,6 +447,7 @@ import adminProductUiExtension from '@movo-admin-product-extension';
 import FileIcon from '@/components/FileIcon.vue';
 import DocumentStatus from '@/components/DocumentStatus.vue';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 import { formatAdminDateTime } from '@/composables/adminTimezone';
 import {
   deleteKnowledgeDocument,
@@ -874,7 +875,7 @@ function formatDirectoryPath(directoryId?: string) {
 
 function readError(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
-    return String(error.response?.data?.detail || error.message || fallback);
+    return localizedServerText(error.response?.data?.detail || error.message, fallback);
   }
   if (error instanceof Error) {
     return error.message || fallback;
@@ -1268,7 +1269,7 @@ async function retryParse(row: KnowledgeDocumentItem) {
   }
 }
 
-// ================== 知识目录相关的业务状态与逻辑 ==================
+// Knowledge directory state and behavior.
 const directories = ref<KnowledgeDirectoryNode[]>([]);
 const treeKeyword = ref('');
 const selectedDirKeys = ref<string[]>(['root']);

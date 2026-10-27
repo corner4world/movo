@@ -218,7 +218,7 @@ const profileAvatarFailedUrl = ref('');
 const showProfileAvatar = computed(() => Boolean(profileAvatarUrl.value) && profileAvatarFailedUrl.value !== profileAvatarUrl.value);
 const profileInitial = computed(() =>
   isMobileLike(profileDisplayName.value) || profileDisplayName.value.includes('****')
-    ? '管'
+    ? t('profile.adminInitial')
     : profileDisplayName.value.slice(0, 1).toUpperCase(),
 );
 const maskedUsername = computed(() => maskMobile(authStore.profile?.username, authStore.profile?.username || '-'));

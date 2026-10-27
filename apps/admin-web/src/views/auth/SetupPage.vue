@@ -115,6 +115,7 @@ import type {
   SetupSearchForm,
 } from '@/components/setup/types';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 import { getBrowserTimezone } from '@/composables/adminTimezone';
 import { useSetupStore } from '@/stores/setup';
 
@@ -189,7 +190,7 @@ const heroDescription = computed(() => setupCompleted.value
   : t('legacy.employees_can_sign_in_after_deployment_accounts_and_models'));
 
 function parseError(error: unknown, fallback: string) {
-  if (axios.isAxiosError(error)) return String(error.response?.data?.detail || error.message || fallback);
+  if (axios.isAxiosError(error)) return localizedServerText(error.response?.data?.detail || error.message, fallback);
   return fallback;
 }
 
@@ -276,7 +277,7 @@ async function runSearchTest() {
   try {
     const result = await testSetupSearch({ ...searchForm });
     searchTestState.value = 'success';
-    searchTestMessage.value = result.message || t('legacy.search_connection_test_succeeded');
+    searchTestMessage.value = localizedServerText(result.message, t('legacy.search_connection_test_succeeded'));
   } catch (error) {
     searchTestState.value = 'failed';
     searchTestMessage.value = parseError(error, t('legacy.search_connection_test_failed'));
@@ -291,7 +292,7 @@ async function runModelTest() {
   try {
     const result = await testSetupModel({ ...modelForm });
     modelTestState.value = result.success ? 'success' : 'failed';
-    modelTestMessage.value = result.success ? t('legacy.model_connection_tested_successfully') : result.message;
+    modelTestMessage.value = result.success ? t('legacy.model_connection_tested_successfully') : localizedServerText(result.message, t('legacy.model_connection_test_failed'));
   } catch (error) {
     modelTestState.value = 'failed';
     modelTestMessage.value = parseError(error, t('legacy.model_connection_test_failed'));

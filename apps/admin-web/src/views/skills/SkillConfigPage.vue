@@ -797,10 +797,14 @@
 </template>
 
 <script setup lang="ts">
+import { workflowTextInferenceRules } from '@/locales/workflowTextInferenceRules';
+import { publishChannelSuggestions, contentFormSuggestions, targetAudienceSuggestions, preferredStyleSuggestions, type LocalizedSelectOption } from '@/locales/workflowSelectOptions';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { t, translateSourceText, useLocale } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
+import { localizeWorkflowDefaults } from './workflowDefaultLocale';
 import { useTheme } from '@/composables/theme';
 import { workflowAccent, workflowButtonColors } from '@/theme/workflow-colors';
 import { formatAdminDateTime } from '@/composables/adminTimezone';
@@ -977,9 +981,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#2f6bff',
     bg: '#eef4ff',
     icon: readMaterialIcon,
-    defaultTitle: '读取上传材料',
+    defaultTitle: t('legacy.read_uploaded_material'),
     placeholder: t('legacy.example_read_communication_data_documents_and_raw_materials_uploaded'),
-    defaultConfig: { sourceType: 'upload', source: '上传材料', outputAlias: '原始材料' },
+    defaultConfig: { sourceType: 'upload', source: t('legacy.uploaded_material'), outputAlias: t('legacy.raw_material') },
     usageDescription: t('legacy.read_uploaded_material_or_an_authorized_organization_knowledge_document'),
     usageExample: t('legacy.read_the_uploaded_east_china_project_progress_report_and'),
   },
@@ -990,9 +994,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#0891b2',
     bg: '#ecfeff',
     icon: extractResourcesIcon,
-    defaultTitle: '提取可处理资源',
+    defaultTitle: t('legacy.extract_processable_resources'),
     placeholder: t('legacy.example_extract_images_urls_and_attachments_from_uploaded_documents'),
-    defaultConfig: { resourceTypes: ['images', 'urls', 'attachments'], outputAlias: '资源列表' },
+    defaultConfig: { resourceTypes: ['images', 'urls', 'attachments'], outputAlias: t('legacy.resource_list') },
     usageDescription: t('legacy.separate_images_web_links_and_attachments_from_upstream_materials'),
     usageExample: t('legacy.extract_all_embedded_screenshots_http_https_links_and_attachment'),
   },
@@ -1003,9 +1007,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#4f46e5',
     bg: '#eef2ff',
     icon: understandImageIcon,
-    defaultTitle: '理解图片内容',
+    defaultTitle: t('legacy.understand_image_content'),
     placeholder: t('legacy.example_perform_multimodal_recognition_on_the_images_extracted_from'),
-    defaultConfig: { input: '上游图片资源', outputAlias: '图片理解结果' },
+    defaultConfig: { input: t('legacy.upstream_image_resources'), outputAlias: t('legacy.image_understanding_results') },
     usageDescription: t('legacy.recognize_text_objects_interfaces_charts_and_key_visual_details'),
     usageExample: t('legacy.analyze_eight_upstream_social_platform_screenshots_and_extract_the'),
   },
@@ -1016,9 +1020,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#2563eb',
     bg: '#edf5ff',
     icon: extractInfoIcon,
-    defaultTitle: '抽取关键信息',
+    defaultTitle: t('legacy.extract_key_info'),
     placeholder: t('legacy.example_extract_total_readership_plays_and_interactions_from_uploaded'),
-    defaultConfig: { target: '关键字段 / 事实 / 指标', method: '自动识别', outputAlias: '抽取结果' },
+    defaultConfig: { target: t('legacy.key_fields_facts_metrics'), method: t('legacy.auto_identify'), outputAlias: t('legacy.extraction_results') },
     usageDescription: t('legacy.extract_specified_fields_facts_and_metrics_from_upstream_text'),
     usageExample: t('legacy.extract_the_project_name_owner_dates_contract_amount_current'),
   },
@@ -1029,9 +1033,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#16a36f',
     bg: '#effaf4',
     icon: computeMetricIcon,
-    defaultTitle: '计算核心指标',
+    defaultTitle: t('legacy.calculate_core_metrics'),
     placeholder: t('legacy.example_aggregate_data_from_various_channels_calculate_proportions_sort'),
-    defaultConfig: { method: '求和 / 占比 / 排序 / 异常识别', outputAlias: '指标分析' },
+    defaultConfig: { method: t('legacy.sum_share_sort_anomaly_detection'), outputAlias: t('legacy.metrics_analysis') },
     usageDescription: t('legacy.run_defined_calculations_on_upstream_structured_data_such_as'),
     usageExample: t('legacy.aggregate_q1_2026_contract_and_collection_amounts_by_region'),
   },
@@ -1042,9 +1046,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#0d9488',
     bg: '#ecfdf5',
     icon: dataCollectIcon,
-    defaultTitle: '采集网页数据',
+    defaultTitle: t('legacy.collect_web_data'),
     placeholder: t('legacy.example_collect_body_text_from_the_web_links_extracted'),
-    defaultConfig: { source: '网页链接 / 上游 URL', outputAlias: '采集内容' },
+    defaultConfig: { source: t('legacy.web_links_upstream_urls'), outputAlias: t('legacy.collected_content') },
     usageDescription: t('legacy.visit_upstream_web_links_and_collect_page_titles_body'),
     usageExample: t('legacy.collect_news_pages_from_the_upstream_url_list_keeping'),
   },
@@ -1055,9 +1059,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#a16207',
     bg: '#fff8e8',
     icon: internalSearchIcon,
-    defaultTitle: '查询内部口径',
+    defaultTitle: t('legacy.query_internal_information'),
     placeholder: t('legacy.example_search_for_company_history_review_caliber_and_internal'),
-    defaultConfig: { source: '知识库 / 制度库 / 历史材料', outputAlias: '内部依据' },
+    defaultConfig: { source: t('legacy.knowledge_regulation_base_history'), outputAlias: t('legacy.internal_basis') },
     usageDescription: t('legacy.search_configured_enterprise_knowledge_bases_policy_libraries_or_historical'),
     usageExample: t('legacy.search_the_project_management_policy_library_for_project_delay'),
   },
@@ -1068,9 +1072,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#d97706',
     bg: '#fff7ed',
     icon: externalSearchIcon,
-    defaultTitle: '搜索外部资料',
+    defaultTitle: t('legacy.search_external_info'),
     placeholder: t('legacy.example_search_public_industry_data_and_news_background_to'),
-    defaultConfig: { source: '公开网页 / 新闻 / 行业资料', outputAlias: '外部资料' },
+    defaultConfig: { source: t('legacy.public_webpages_news_industry_info'), outputAlias: t('legacy.external_info') },
     usageDescription: t('legacy.search_public_web_pages_news_and_industry_materials_by'),
     usageExample: t('legacy.search_official_statistics_and_industry_reports_on_china_s'),
   },
@@ -1081,9 +1085,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#0f83a5',
     bg: '#eefbff',
     icon: callToolIcon,
-    defaultTitle: '调用业务工具',
+    defaultTitle: t('legacy.call_business_tool'),
     placeholder: t('legacy.example_call_mcp_or_corporate_tools_to_query_channel'),
-    defaultConfig: { preferredToolId: '', preferredToolName: '', preferredMcpToolName: '', outputAlias: '工具数据' },
+    defaultConfig: { preferredToolId: '', preferredToolName: '', preferredMcpToolName: '', outputAlias: t('legacy.tool_data') },
     usageDescription: t('legacy.call_connected_tools_or_mcp_services_to_query_business'),
     usageExample: t('legacy.call_the_order_query_tool_for_completed_east_china'),
   },
@@ -1094,11 +1098,11 @@ const workflowNodeTypes = computed<Array<{
     color: '#475569',
     bg: '#f1f5f9',
     icon: dataProcessingIcon,
-    defaultTitle: '处理数据',
+    defaultTitle: t('legacy.process_data'),
     placeholder: t('legacy.example_clean_up_an_uploaded_docx_organize_image_links'),
     defaultConfig: {
       runtime: 'python',
-      outputAlias: '处理结果',
+      outputAlias: t('legacy.processing_result'),
       processingInstruction: '',
       selectedInputSource: 'all',
       selectedInputTypes: ['files', 'documents', 'images', 'urls', 'texts', 'data'],
@@ -1114,9 +1118,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#7c3aed',
     bg: '#f4f0ff',
     icon: generateContentIcon,
-    defaultTitle: '生成业务内容',
+    defaultTitle: t('legacy.generate_business_content'),
     placeholder: t('legacy.example_generate_formal_review_draft_based_on_metrics_analysis_2288fbd'),
-    defaultConfig: { input: '上游结果', outputAlias: '生成稿' },
+    defaultConfig: { input: t('legacy.upstream_result'), outputAlias: t('legacy.draft') },
     usageDescription: t('legacy.write_reports_articles_summaries_and_plans_from_upstream_materials'),
     usageExample: t('legacy.write_a_project_review_under_1_500_chinese_characters'),
   },
@@ -1127,9 +1131,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#9333ea',
     bg: '#faf0ff',
     icon: translateRewriteIcon,
-    defaultTitle: '翻译文档',
+    defaultTitle: t('legacy.translate_document_427cb1b'),
     placeholder: t('legacy.example_translate_report_into_target_language_while_keeping_terminology'),
-    defaultConfig: { mode: '翻译 / 润色 / 扩写 / 压缩', outputAlias: '改写稿' },
+    defaultConfig: { mode: t('legacy.translate_polish_expand_compress'), outputAlias: t('legacy.rewritten_draft') },
     usageDescription: t('legacy.translate_or_rewrite_upstream_documents_while_preserving_meaning_and'),
     usageExample: t('legacy.translate_the_product_release_notes_into_english_while_preserving'),
   },
@@ -1140,9 +1144,9 @@ const workflowNodeTypes = computed<Array<{
     color: '#0f766e',
     bg: '#effdfa',
     icon: fillTableIcon,
-    defaultTitle: '填表或制表',
+    defaultTitle: t('legacy.fill_or_create_table'),
     placeholder: t('legacy.example_fill_statistical_results_into_designated_excel_or_generate'),
-    defaultConfig: { target: 'Word / Excel / PDF / 表格', outputAlias: '表格结果' },
+    defaultConfig: { target: t('legacy.word_excel_pdf_table'), outputAlias: t('legacy.table_result') },
     usageDescription: t('legacy.write_upstream_structured_results_into_a_specified_spreadsheet_template'),
     usageExample: t('legacy.fill_the_june_ledger_sheet_in_the_monthly_project'),
   },
@@ -1168,61 +1172,13 @@ const workflowNodeTypes = computed<Array<{
     color: '#ea580c',
     bg: '#fff4ed',
     icon: exportDeliveryIcon,
-    defaultTitle: '导出交付文件',
+    defaultTitle: t('legacy.export_delivery_file'),
     placeholder: t('legacy.example_export_review_draft_as_word_and_pdf_for'),
-    defaultConfig: { format: 'Word / PDF / Excel / PPT', outputAlias: '交付文件' },
+    defaultConfig: { format: 'Word / PDF / Excel / PPT', outputAlias: t('legacy.delivery_file') },
     usageDescription: t('legacy.export_upstream_final_content_to_deliverables_such_as_word'),
     usageExample: t('legacy.export_the_east_china_q1_project_review_as_word'),
   },
 ]);
-
-type LocalizedSelectOption = {
-  value: string;
-  zh: string;
-  en: string;
-  aliases?: string[];
-};
-
-const publishChannelSuggestions: LocalizedSelectOption[] = [
-  { value: 'generic', zh: '通用', en: 'Generic' },
-  { value: 'website', zh: '官网', en: 'Website' },
-  { value: 'docs', zh: '产品文档', en: 'Docs' },
-  { value: 'knowledge_base', zh: '知识库', en: 'Knowledge Base' },
-  { value: 'email', zh: '邮件', en: 'Email' },
-  { value: 'wechat_official', zh: '微信公众号', en: 'WeChat Official Account' },
-  { value: 'zhihu', zh: '知乎', en: 'Zhihu' },
-  { value: 'xiaohongshu', zh: '小红书', en: 'Xiaohongshu' },
-];
-
-const contentFormSuggestions: LocalizedSelectOption[] = [
-  { value: 'article', zh: '文章', en: 'Article' },
-  { value: 'report', zh: '报告', en: 'Report' },
-  { value: 'brief', zh: '简报', en: 'Brief' },
-  { value: 'memo', zh: '备忘录', en: 'Memo' },
-  { value: 'guide', zh: '指南', en: 'Guide' },
-  { value: 'faq', zh: '问答', en: 'FAQ' },
-  { value: 'presentation_outline', zh: '演示大纲', en: 'Presentation Outline' },
-];
-
-const targetAudienceSuggestions: LocalizedSelectOption[] = [
-  { value: 'general_public', zh: '大众读者', en: 'General Public' },
-  { value: 'professionals', zh: '专业人士', en: 'Professionals' },
-  { value: 'decision_makers', zh: '决策者', en: 'Decision Makers' },
-  { value: 'developers', zh: '开发者', en: 'Developers' },
-  { value: 'students', zh: '学生', en: 'Students' },
-  { value: 'internal_team', zh: '内部团队', en: 'Internal Team' },
-];
-
-const preferredStyleSuggestions: LocalizedSelectOption[] = [
-  { value: 'professional', zh: '专业', en: 'Professional' },
-  { value: 'formal', zh: '正式', en: 'Formal' },
-  { value: 'concise', zh: '简洁', en: 'Concise' },
-  { value: 'analytical', zh: '分析型', en: 'Analytical' },
-  { value: 'objective', zh: '客观', en: 'Objective' },
-  { value: 'authoritative', zh: '权威', en: 'Authoritative' },
-  { value: 'practical', zh: '实用', en: 'Practical' },
-  { value: 'storytelling', zh: '故事化', en: 'Storytelling' },
-];
 
 const localizedOptionLabel = (item: LocalizedSelectOption) => (locale.value === 'zh-CN' ? item.zh : item.en);
 const localizedValueMap = computed(() => {
@@ -1326,12 +1282,12 @@ function serializeWorkflowNodeCatalog() {
 function createWorkflowNode(type: WorkflowNodeType = 'extract_info', seed: Partial<WorkflowStep> = {}): WorkflowStep {
   const meta = workflowTypeMeta(type);
   const businessConfig = {
-    ...(meta.defaultConfig || {}),
+    ...localizeWorkflowDefaults(meta.defaultConfig || {}),
     ...(seed.businessConfig || {}),
   };
   const outputAlias = seed.outputAlias || (seed.businessConfig?.outputAlias
     ? String(businessConfig.outputAlias).trim()
-    : t(String(businessConfig.outputAlias || '')).trim());
+    : translateSourceText(String(businessConfig.outputAlias || '')).trim());
   businessConfig.outputAlias = outputAlias;
   return {
     id: seed.id || createId(),
@@ -1381,7 +1337,7 @@ function normalizeWorkflowNode(value: any, index = 0): WorkflowStep | null {
   if (typeof value === 'string') {
     const text = value.trim();
     const type = inferWorkflowNodeTypeFromText(text);
-    return text ? createWorkflowNode(type, { id: createId(), text, title: workflowTypeMeta(type).defaultTitle }) : null;
+    return text ? createWorkflowNode(type, { id: createId(), text, title: translateSourceText(workflowTypeMeta(type).defaultTitle) }) : null;
   }
   if (!value || typeof value !== 'object') return null;
   const rawText = String(value.description || value.text || value.instruction || '').trim();
@@ -1407,21 +1363,7 @@ function normalizeWorkflowNode(value: any, index = 0): WorkflowStep | null {
 
 function inferWorkflowNodeTypeFromText(text: string): WorkflowNodeType {
   const normalized = text.toLowerCase();
-  const rules: Array<{ type: WorkflowNodeType; keywords: string[] }> = [
-    { type: 'extract_resources', keywords: ['提取资源', '资源提取', '提取图片', '提取链接', '提取url', '提取附件', '图片资源', '内嵌图片'] },
-    { type: 'understand_image', keywords: ['图片理解', '图像理解', '多模态', '识图', '图片识别', '图表识别', '截图理解', '视觉理解'] },
-    { type: 'read_material', keywords: ['读取', '阅读', '上传', '材料', '文档', '原始', 'word', 'pdf', '附件'] },
-    { type: 'extract_info', keywords: ['抽取', '提取', '识别', '字段', '指标', '关键信息', '口径'] },
-    { type: 'compute_metric', keywords: ['统计', '计算', '汇总', '求和', '占比', '排序', '排名', '异常', '波动', '总量'] },
-    { type: 'data_collect', keywords: ['采集', '抓取', '爬取', '网页链接', '链接', 'url', '正文', '页面内容', 'firecrawl'] },
-    { type: 'internal_search', keywords: ['内部', '知识库', '制度', '历史', '过往', '内部口径'] },
-    { type: 'external_search', keywords: ['外部', '搜索', '检索', '公开', '新闻', '网页', '行业', '联网'] },
-    { type: 'call_tool', keywords: ['mcp', '工具', '接口', '调用', '查询系统', '业务系统', 'api'] },
-    { type: 'translate_rewrite', keywords: ['文档翻译', '翻译', '改写', '润色', '压缩', '扩写', '转写', '多语言'] },
-    { type: 'fill_table', keywords: ['填表', '制表', '表格', 'excel', 'sheet', '明细表', '模板'] },
-    { type: 'export_delivery', keywords: ['导出', '交付', '下载', '归档', 'word', 'pdf', 'ppt', '文件'] },
-    { type: 'generate_content', keywords: ['生成', '撰写', '写作', '成稿', '草稿', '报告', '专报', '复盘稿', '内容'] },
-  ];
+  const rules: ReadonlyArray<{ type: WorkflowNodeType; keywords: readonly string[] }> = workflowTextInferenceRules;
   return rules.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)))?.type || 'generate_content';
 }
 
@@ -1854,9 +1796,10 @@ function handleNodeTypeChange(step: WorkflowStep, newType: WorkflowNodeType) {
     if (!step.businessConfig) {
       step.businessConfig = {};
     }
-    for (const key of Object.keys(meta.defaultConfig)) {
+    const defaults = localizeWorkflowDefaults(meta.defaultConfig);
+    for (const key of Object.keys(defaults)) {
       if (step.businessConfig[key] === undefined) {
-        step.businessConfig[key] = JSON.parse(JSON.stringify(meta.defaultConfig[key]));
+        step.businessConfig[key] = JSON.parse(JSON.stringify(defaults[key]));
       }
     }
   }
@@ -1866,7 +1809,7 @@ function appendNodeByType(type: WorkflowNodeType) {
   const text = newStepText.value.trim();
   const next = createWorkflowNode(type, text ? { text } : {});
   const used = new Set(workflowSteps.value.map(item => item.outputAlias || item.businessConfig?.outputAlias));
-  const base = next.outputAlias || next.title || '节点输出';
+  const base = next.outputAlias || next.title || t('skills.nodeOutput');
   let index = 2;
   while (used.has(next.outputAlias)) next.outputAlias = `${base}${index++}`;
   next.businessConfig.outputAlias = next.outputAlias;
@@ -1945,11 +1888,11 @@ async function regenerateSteps() {
       stepGenerationError.value = '';
       message.success(t('legacy.business_logic_steps_generated_successfully'));
     } else {
-      stepGenerationError.value = result.message || t('legacy.no_usable_business_logic_steps_generated');
-      message.warning(result.message || t('legacy.no_business_logic_steps_generated_please_adjust_the_description'));
+      stepGenerationError.value = localizedServerText(result.message, t('legacy.no_usable_business_logic_steps_generated'));
+      message.warning(localizedServerText(result.message, t('legacy.no_business_logic_steps_generated_please_adjust_the_description')));
     }
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('legacy.failed_to_generate_steps_please_try_again_later');
+    stepGenerationError.value = localizedServerText(error?.response?.data?.detail || error?.message, t('legacy.failed_to_generate_steps_please_try_again_later'));
     message.error(stepGenerationError.value);
   } finally {
     generatingSteps.value = false;
@@ -1977,7 +1920,7 @@ async function optimizeSteps() {
     });
     const optimized = mapGeneratedNodes(result.nodes || []);
     if (!optimized.length) {
-      stepGenerationError.value = result.message || t('legacy.no_usable_optimization_results_returned');
+      stepGenerationError.value = localizedServerText(result.message, t('legacy.no_usable_optimization_results_returned'));
       message.warning(stepGenerationError.value);
       return;
     }
@@ -1987,7 +1930,7 @@ async function optimizeSteps() {
     testResult.value = null;
     message.success(t('legacy.optimization_completed_based_on_current_steps'));
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('legacy.failed_to_optimize_please_try_again_later');
+    stepGenerationError.value = localizedServerText(error?.response?.data?.detail || error?.message, t('legacy.failed_to_optimize_please_try_again_later'));
     message.error(stepGenerationError.value);
   } finally {
     optimizing.value = false;
@@ -2011,14 +1954,14 @@ async function supplementStepWithAi() {
     });
     const supplemented = mapGeneratedNodes(result.nodes || []);
     if (!supplemented.length) {
-      stepGenerationError.value = result.message || t('legacy.no_usable_supplemental_results_returned');
+      stepGenerationError.value = localizedServerText(result.message, t('legacy.no_usable_supplemental_results_returned'));
       message.warning(stepGenerationError.value);
       return;
     }
     const nextStep: WorkflowStep = {
       id: createId(),
       type: supplemented[0]?.type || 'generate_content',
-      title: supplemented[0]?.title || '补充业务节点',
+      title: supplemented[0]?.title || t('legacy.supplement_node'),
       text: supplemented[0]?.text || supplement,
       businessConfig: supplemented[0]?.businessConfig || {},
       boundWritingSkillId: supplemented[0]?.boundWritingSkillId || '',
@@ -2031,7 +1974,7 @@ async function supplementStepWithAi() {
     testResult.value = null;
     message.success(t('legacy.new_step_supplemented_and_added'));
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('legacy.failed_to_supplement_step_please_try_again_later');
+    stepGenerationError.value = localizedServerText(error?.response?.data?.detail || error?.message, t('legacy.failed_to_supplement_step_please_try_again_later'));
     message.error(stepGenerationError.value);
   } finally {
     supplementingStep.value = false;
@@ -2066,7 +2009,7 @@ async function polishStepRequirement(step: WorkflowStep) {
     });
     const polished = String(result.text || '').trim();
     if (!polished) {
-      stepGenerationError.value = result.message || t('legacy.no_usable_polish_result_returned');
+      stepGenerationError.value = localizedServerText(result.message, t('legacy.no_usable_polish_result_returned'));
       message.warning(stepGenerationError.value);
       return;
     }
@@ -2080,7 +2023,7 @@ async function polishStepRequirement(step: WorkflowStep) {
     testResult.value = null;
     message.success(t('legacy.node_requirement_polished'));
   } catch (error: any) {
-    stepGenerationError.value = error?.response?.data?.detail || error?.message || t('legacy.failed_to_polish_node_requirement_please_try_again_later');
+    stepGenerationError.value = localizedServerText(error?.response?.data?.detail || error?.message, t('legacy.failed_to_polish_node_requirement_please_try_again_later'));
     message.error(stepGenerationError.value);
   } finally {
     polishingStepId.value = '';

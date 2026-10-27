@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import type { SetupServiceStatus } from '@/api/setup';
 import { t } from '@/composables/i18n';
+import { localizedServerText } from '@/utils/serverText';
 
 const props = defineProps<{
   ready: boolean;
@@ -16,9 +17,9 @@ const readyCount = computed(() => props.services.filter((service) => service.ok)
 const serviceLabels: Record<string, string> = {
   mongo: 'MongoDB',
   redis: 'Redis',
-  storage: '持久化存储',
+  storage: 'setup.service.storage',
   'chat-api': 'Chat API',
-  'document-processing': '文档处理与 Worker',
+  'document-processing': 'setup.service.documentProcessing',
   weaviate: 'Weaviate',
 };
 
@@ -27,7 +28,8 @@ watch(() => props.ready, (ready) => {
 });
 
 function serviceLabel(service: SetupServiceStatus) {
-  return t(serviceLabels[service.key] || service.label);
+  const key = serviceLabels[service.key];
+  return key ? t(key) : localizedServerText(service.label, service.key);
 }
 </script>
 

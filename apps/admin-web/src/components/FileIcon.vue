@@ -73,7 +73,7 @@ const iconSize = computed(() => {
   }
   if (props.size === 'small') return 16;
   if (props.size === 'large') return 32;
-  return 24; // 默认图片大小 24px，比较丰满大方
+  return 24; // Default icon size.
 });
 </script>
 
