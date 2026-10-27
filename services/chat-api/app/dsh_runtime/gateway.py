@@ -24,6 +24,7 @@ from .errors import DshNotFoundError, DshProtocolError, DshTransportError
 from .event_mapper import DshEventMapper
 from .transport import KernelHostTransport
 from .temporal_context import build_temporal_context
+from .profile.plugin_runtime_recovery import profile_without_unavailable_plugins
 
 
 @dataclass(frozen=True)
@@ -83,11 +84,11 @@ class DshAgentKernelGateway(AgentKernelContract):
             )
             payload["modelProfile"] = model_profile
             model_instance_id = self._optional_text(model_profile, "modelInstanceId")
-        response = await self._transport.request(
-            "POST",
-            "/v1/runtimes",
-            json=payload,
-        )
+        try:
+            response = await self._transport.request("POST", "/v1/runtimes", json=payload)
+        except DshTransportError as failure:
+            recovered = await profile_without_unavailable_plugins(self._transport, payload, failure)
+            response = await self._transport.request("POST", "/v1/runtimes", json=recovered)
         runtime_id = self._required_text(response, "runtimeId")
         self._runtimes[runtime_id] = _RuntimeBinding(
             tenant_id=request.tenant_id,
