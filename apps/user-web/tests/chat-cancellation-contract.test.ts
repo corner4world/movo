@@ -8,7 +8,7 @@ import { cancelChat, startChatStream } from '../src/composables/useChatStream'
 const root = process.cwd()
 const runtime = readFileSync(resolve(root, 'src/composables/useChatRuntimeStore.ts'), 'utf8')
 const cancellation = readFileSync(resolve(root, 'src/composables/chatCancellation.ts'), 'utf8')
-const app = readFileSync(resolve(root, 'src/App.vue'), 'utf8')
+const appChatPane = readFileSync(resolve(root, 'src/components/AppChatPane.vue'), 'utf8')
 const actionButton = readFileSync(resolve(root, 'src/components/chat/ComposerActionButton.vue'), 'utf8')
 const executionView = readFileSync(resolve(root, 'src/features/execution-v3/components/ExecutionViewV3.vue'), 'utf8')
 const localeMessages = readFileSync(resolve(root, 'src/locales/messages.ts'), 'utf8')
@@ -24,7 +24,7 @@ assert.ok(
   cancellation.indexOf('const cancelled = await cancelChat') < cancellation.lastIndexOf('releaseStoppedPane(pane, setRunning)'),
   'the composer may unlock only after cancellation is acknowledged',
 )
-assert.ok(app.includes(':stopping="pane.stopping || codeRuntime.stateFor(pane.key).stopping"'), 'chat and Code stopping state must reach the visible composer')
+assert.ok(appChatPane.includes(':stopping="pane.stopping || codeState.stopping"'), 'chat and Code stopping state must reach the visible composer')
 assert.match(actionButton, /v-if="running" class="composer-action__ring"/, 'a running task must render the outer progress ring')
 assert.match(actionButton, /width: 40px;[\s\S]*width: 32px;/, 'the progress ring must remain visible outside the stop button')
 assert.match(executionView, /class="execution-v3-thinking">\{\{ t\('execution\.v3\.thinking'\) \}\}<\/span>/, 'a live task without activity rows must show an explicit thinking label')

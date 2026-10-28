@@ -4,3 +4,16 @@ export interface PendingDocument {
   file: File
   kind: ChatDocumentKind
 }
+
+export interface DocumentInfo {
+  id?: string
+  type: 'pdf' | 'doc' | 'docx' | 'xls' | 'xlsx' | 'ppt' | 'pptx' | 'md' | 'html' | 'presentation_preview_bundle' | 'generic'
+  url: string
+  filename?: string
+  title?: string
+  object_path?: string
+  signed_url?: string
+  content_type?: string
+  size?: number
+  bundle?: Record<string, any>
+}

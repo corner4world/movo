@@ -429,6 +429,8 @@ t08('failure', 'manual-only 409 shows a per-pane transient notice, never a threa
   const root = process.cwd()
   const store = readFileSync(resolve(root, 'src/composables/useChatRuntimeStore.ts'), 'utf8')
   const app = readFileSync(resolve(root, 'src/App.vue'), 'utf8')
+  const appChatPanes = readFileSync(resolve(root, 'src/components/AppChatPanes.vue'), 'utf8')
+  const chatPane = readFileSync(resolve(root, 'src/components/AppChatPane.vue'), 'utf8')
   const chatWindow = readFileSync(resolve(root, 'src/components/ChatWindow.vue'), 'utf8')
   const locales = readFileSync(resolve(root, 'src/locales/messages.ts'), 'utf8')
 
@@ -456,7 +458,9 @@ t08('failure', 'manual-only 409 shows a per-pane transient notice, never a threa
   assert.ok(!store.includes('sessionBusyMessageApi'), 'the old naive-ui discrete toast is replaced')
   assert.ok(!store.includes('createDiscreteApi'), 'the detached toast API is gone from the store')
 
-  assert.ok(app.includes(':busy-notice="pane.busyNotice"'), 'the pane field reaches the visible ChatWindow')
+  assert.ok(app.includes(':panes="visibleChatPanes"'), 'the runtime panes reach the chat area')
+  assert.ok(appChatPanes.includes(':pane="pane"'), 'each runtime pane reaches the chat host')
+  assert.ok(chatPane.includes(':busy-notice="pane.busyNotice"'), 'the pane field reaches the visible ChatWindow')
   assert.ok(chatWindow.includes('busyNotice?: string | null'), 'ChatWindow declares the pane-driven prop')
   assert.ok(chatWindow.includes('role="status"'), 'the notice is a status region')
   assert.ok(chatWindow.includes('aria-live="polite"'), 'the transient notice is politely announced')

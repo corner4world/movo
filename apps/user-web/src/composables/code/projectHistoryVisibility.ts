@@ -2,7 +2,7 @@ import type { SessionSummary } from '../../api/sessions'
 import type { DshWorkspace } from '../../platform/types'
 import { sortSessionsByRecentActivity } from '../../utils/sessionOrdering'
 
-type ProjectGroup = { workspaceId: string; title: string; items: SessionSummary[] }
+export type ProjectGroup = { workspaceId: string; title: string; items: SessionSummary[] }
 
 /** Only folders available on this device belong in the active Projects section. */
 export function projectHistoryVisibility(

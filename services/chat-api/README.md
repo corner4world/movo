@@ -14,3 +14,9 @@ The Chat API owns MOVO's conversation orchestration, runtime profiles, tool acce
 - Do not use Chinese text as an identifier, translation key, or code comment.
 - User-facing Chinese belongs in the localization resources or other explicit presentation data. Keep stable localization keys in English.
 - Existing Chinese content does not authorize adding new Chinese code annotations; update affected annotations when editing nearby code.
+
+## Module boundaries
+
+- Do not create or expand giant files. Separate endpoints, orchestration, integrations, and domain behavior into focused modules.
+- Keep endpoint and entry modules thin; give each extracted module a clear responsibility and interface.
+- When changing a large existing file, extract the affected responsibility instead of adding another large block. Preserve behavior and run relevant tests.

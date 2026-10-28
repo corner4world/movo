@@ -852,6 +852,7 @@ test('T7 threading contract: single stream constructor, single latch writer, clo
   const store = readFileSync(resolve(root, 'src/composables/useChatRuntimeStore.ts'), 'utf8')
   const dialog = readFileSync(resolve(root, 'src/components/session/SessionShareDialog.vue'), 'utf8')
   const header = readFileSync(resolve(root, 'src/components/chat/ChatSessionHeader.vue'), 'utf8')
+  const mainRegion = readFileSync(resolve(root, 'src/components/AppMainRegion.vue'), 'utf8')
   const app = readFileSync(resolve(root, 'src/App.vue'), 'utf8')
   const sessions = readFileSync(resolve(root, 'src/api/sessions.ts'), 'utf8')
 
@@ -866,6 +867,7 @@ test('T7 threading contract: single stream constructor, single latch writer, clo
   assert.match(dialog, /props\.sessionId, props\.mode, props\.membersRevision/, 'the dialog watch key is extended')
   assert.match(header, /refreshToken\?: number/, 'the header gains the optional counter prop')
   assert.match(header, /watch\(\(\) => props\.refreshToken/, 'the header refetches its own detail on the counter')
-  assert.match(app, /:refresh-token="chatRuntime\.membersRevisionFor\(currentSessionId\)"/, 'the single-instance call site threads the counter by session id')
+  assert.match(app, /:members-revision="currentSessionId \? chatRuntime\.membersRevisionFor\(currentSessionId\) : undefined"/, 'the root selects the current session revision')
+  assert.match(mainRegion, /:refresh-token="membersRevision"/, 'the main region threads the revision to the header')
   assert.match(sessions, /live_cursor\?: string/, 'SessionDetail closed shape is extended')
 })

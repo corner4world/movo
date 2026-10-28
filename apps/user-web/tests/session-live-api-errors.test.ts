@@ -482,21 +482,21 @@ test('a non-409 POST failure stops the run with one local failure notice and zer
 })
 
 test('the access-loss notice matrix maps each revoked reason to its intended notice (T10 consumption)', () => {
-  // The headless harness has no .vue loader, so App.vue's notice switch is
-  // pinned by its source-level contract — the same pattern T6's threading test
-  // uses. Rendered wording remains T12's browser proof.
-  const app = readFileSync(resolve(process.cwd(), 'src/App.vue'), 'utf8')
-  assert.match(app, /case 'participant_left':\s*\n\s*return t\('session\.share\.left'\)/,
+  // The headless harness has no .vue loader, so inspect the controller that
+  // owns the access-loss watcher and notice mapping. Browser coverage checks
+  // the rendered wording separately.
+  const controller = readFileSync(resolve(process.cwd(), 'src/composables/useAppSessionController.ts'), 'utf8')
+  assert.match(controller, /case 'participant_left':\s*\n\s*return t\('session\.share\.left'\)/,
     'participant_left reuses the existing share-left notice')
-  assert.match(app, /case 'participant_removed':\s*\n\s*case null:\s*\n\s*return generic/,
+  assert.match(controller, /case 'participant_removed':\s*\n\s*case null:\s*\n\s*return generic/,
     'a removal or an untyped latch gets the generic access-lost notice')
-  assert.match(app, /const _exhaustive: never = reason/,
+  assert.match(controller, /const exhaustive: never = reason/,
     'the reason matrix is exhaustive; a future reason fails typecheck')
-  assert.match(app, /filter\(\(pane\) => pane\.accessLost\)\.map\(\(pane\) => pane\.key\)/,
+  assert.match(controller, /filter\(pane => pane\.accessLost\)\.map\(pane => pane\.key\)/,
     'the notice is driven only by the settled access-loss latch')
-  assert.match(app, /if \(accessLostHandledPanes\.has\(paneKey\)\) continue/,
+  assert.match(controller, /if \(accessLostHandledPanes\.has\(paneKey\)\) continue/,
     'each pane key is handled at most once (no notice loop)')
-  assert.match(app, /shareToast\.warning\(accessLostNoticeMessage\(accessLostReason\)\)/,
+  assert.match(controller, /options\.showAccessLostNotice\(accessLostNoticeMessage\(accessLostReason\)\)/,
     'the latch reason is the only input to the notice mapping')
 })
 

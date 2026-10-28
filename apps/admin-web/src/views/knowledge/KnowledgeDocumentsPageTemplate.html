@@ -1,0 +1,436 @@
+  <div class="page-stack knowledge-page">
+    <div class="metrics-row">
+      <n-card v-for="item in metricCards" :key="item.key" class="metric-card" :bordered="false" size="small">
+        <div class="metric-main">
+          <span class="metric-icon" :class="`metric-icon-${item.key}`" v-html="item.icon"></span>
+          <div class="metric-body">
+            <div class="metric-label">{{ item.label }}</div>
+            <div class="metric-value">{{ item.value }}</div>
+          </div>
+        </div>
+        <span class="metric-help-icon" tabindex="0" :aria-label="item.note">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 8v5"></path>
+            <path d="M12 16h.01"></path>
+          </svg>
+          <span class="metric-help-tooltip">{{ item.note }}</span>
+        </span>
+      </n-card>
+    </div>
+
+    <div class="list-workspace">
+      <div class="knowledge-layout">
+        <!-- Left directory tree -->
+        <aside class="dept-panel">
+          <div class="panel-head">
+            <span class="panel-title">{{ t('legacy.knowledge_directories') }}</span>
+            <n-space :size="6">
+              <n-button size="tiny" @click="openCreateDir(null)">
+                <template #icon>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="M12 5v14" />
+                  </svg>
+                </template>
+                {{ t('legacy.add') }}
+              </n-button>
+              <n-button size="tiny" :disabled="!selectedDirId" @click="openEditDir(null)">
+                <template #icon>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                  </svg>
+                </template>
+                {{ t('legacy.edit') }}
+              </n-button>
+            </n-space>
+          </div>
+          <n-input v-model:value="treeKeyword" :placeholder="t('legacy.search_directories')" clearable size="small" />
+          <div class="tree-wrap">
+            <n-tree
+              block-line
+              selectable
+              :pattern="treeKeyword"
+              :data="treeOptions"
+              :render-label="renderTreeLabel"
+              :selected-keys="selectedDirKeys"
+              :expanded-keys="expandedDirKeys"
+              @update:selected-keys="handleSelectDirectory"
+              @update:expanded-keys="handleExpandDirectories"
+            />
+          </div>
+          <n-space :size="8">
+            <n-button size="tiny" :disabled="!selectedDirId" @click="openMoveDir">
+              <template #icon>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 9-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
+                </svg>
+              </template>
+              {{ t('legacy.move') }}
+            </n-button>
+            <n-button
+              size="tiny"
+              type="error"
+              ghost
+              :disabled="deleteDirectoryDisabled"
+              :title="deleteDirectoryDisabledReason"
+              @click="deleteSelectedDir"
+            >
+              <template #icon>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                </svg>
+              </template>
+              {{ t('legacy.delete') }}
+            </n-button>
+          </n-space>
+        </aside>
+
+        <!-- Right document list -->
+        <section class="list-panel">
+          <div class="list-filter-row">
+            <div class="filter-toolbar">
+              <div class="filter-left">
+                <n-input-group class="document-search-group">
+                  <n-select
+                    v-model:value="effectiveSearchScope"
+                    :options="searchScopeOptions"
+                    class="search-scope-select"
+                    @update:value="handleSearchScopeChange"
+                  />
+                  <n-input
+                    v-model:value="filters.keyword"
+                    :placeholder="t('legacy.search_document_name')"
+                    clearable
+                    class="keyword-input"
+                    @keyup.enter="handleSearch"
+                    @update:value="handleKeywordUpdate"
+                  />
+                </n-input-group>
+                <n-select
+                  v-model:value="filters.fileType"
+                  :options="fileTypeOptions"
+                  :placeholder="t('legacy.file_type')"
+                  clearable
+                  class="compact-filter-select"
+                  @update:value="handleSearch"
+                />
+                <n-select
+                  v-model:value="filters.statusValue"
+                  :options="statusOptions"
+                  :placeholder="t('legacy.status')"
+                  clearable
+                  class="compact-filter-select"
+                  @update:value="handleSearch"
+                />
+              </div>
+              <div class="filter-right">
+                <n-button
+                  type="error"
+                  ghost
+                  :disabled="!selectedDocumentKeys.length"
+                  @click="confirmBatchDelete"
+                >
+                  <template #icon>
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 16h10l1-16" /></svg>
+                    </span>
+                  </template>
+                  {{ batchDeleteButtonText }}
+                </n-button>
+                <n-button type="primary" strong @click="openUpload">
+                  <template #icon>
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M12 3v12" /><path d="M7 8l5-5 5 5" /><path d="M5 21h14" /><path d="M5 17h14" /></svg>
+                    </span>
+                  </template>
+                  {{ t('legacy.upload_document') }}
+                </n-button>
+              </div>
+            </div>
+          </div>
+
+          <div class="list-body">
+            <n-spin :show="loading" class="document-list-spin">
+              <div class="table-scroll-shell">
+                <n-data-table
+                  :columns="columns"
+                  :data="documents"
+                  :bordered="false"
+                  :pagination="false"
+                  :row-key="rowKey"
+                  :checked-row-keys="selectedDocumentKeys"
+                  :scroll-x="documentTableScrollX"
+                  :scrollbar-props="tableScrollbarProps"
+                  @update:checked-row-keys="handleCheckedRowKeys"
+                  flex-height
+                  class="documents-table"
+                />
+              </div>
+              <div class="table-pagination">
+                <n-pagination
+                  v-model:page="pagination.page"
+                  v-model:page-size="pagination.pageSize"
+                  :item-count="pagination.total"
+                  :page-sizes="[10, 12, 20, 50]"
+                  show-size-picker
+                  @update:page="handlePageChange"
+                  @update:page-size="handlePageSizeChange"
+                />
+              </div>
+            </n-spin>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <n-modal v-model:show="uploadVisible" preset="card" :title="t('legacy.upload_knowledge_document')" style="width: 720px">
+    <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">{{ t('additional.destination_folder') }}</div>
+      <n-select v-model:value="uploadDirectoryId" :options="directoryOptionsWithRoot" />
+    </div>
+    <section
+      class="upload-picker"
+      :class="{ 'is-dragging': uploadDragging }"
+      @dragenter.prevent="handleUploadDragEnter"
+      @dragover.prevent="handleUploadDragOver"
+      @dragleave.prevent="handleUploadDragLeave"
+      @drop.prevent="handleUploadDrop"
+    >
+      <input ref="fileInputRef" type="file" class="hidden-file-input" multiple :accept="acceptTypes" @change="handleFileChange" />
+      <button class="upload-drop" type="button" @click="triggerFilePicker">
+        <span class="upload-drop-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M12 18v-6" /><path d="M9 15l3-3 3 3" /></svg>
+        </span>
+        <span class="upload-drop-title">{{ t('legacy.click_to_choose_or_drop_documents_folders') }}</span>
+        <span class="upload-drop-copy">{{ t('additional.select_files_multiple_times_upload_in_batches_or_drag') }}</span>
+      </button>
+      <div v-if="uploadQueue.length" class="upload-queue-panel">
+        <div class="upload-queue-head">
+          <span class="upload-queue-title">{{ t('additional.files_to_upload') }}</span>
+          <span class="upload-queue-count">{{ t('additional.files_selected', { count: uploadQueue.length }) }}</span>
+          <button class="upload-queue-clear" type="button" :disabled="uploading" @click="clearUploadQueue">
+            {{ t('additional.clear') }}
+          </button>
+        </div>
+        <div class="upload-queue-list">
+          <article v-for="item in uploadQueue" :key="item.id" class="upload-queue-item">
+            <span class="upload-queue-file-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+            </span>
+            <div class="upload-queue-file-main">
+              <div class="upload-queue-file-name" :title="item.file.name">{{ item.file.name }}</div>
+              <div v-if="item.relativePath" class="upload-queue-file-path" :title="item.relativePath">{{ item.relativePath }}</div>
+              <div class="upload-queue-file-meta">
+                <span>{{ formatFileSize(item.file.size) }}</span>
+                <span class="meta-divider">·</span>
+                <span :class="['status-text', `status-${item.status}`]">{{ item.error || uploadStatusLabel(item.status) }}</span>
+              </div>
+              <n-progress
+                v-if="item.status !== 'pending'"
+                type="line"
+                :percentage="item.progress"
+                :show-indicator="false"
+                :status="item.status === 'failed' ? 'error' : item.status === 'success' ? 'success' : 'default'"
+                class="upload-queue-progress"
+              />
+            </div>
+            <button
+              class="upload-queue-remove"
+              type="button"
+              :disabled="uploading"
+              :title="t('additional.remove')"
+              @click="removeUploadItem(item.id)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </article>
+        </div>
+      </div>
+    </section>
+    <template #footer>
+      <n-space justify="end">
+        <n-button :disabled="uploading" @click="uploadVisible = false">{{ t('legacy.cancel') }}</n-button>
+        <n-button type="primary" :loading="uploading" :disabled="!uploadQueue.length" @click="submitUpload">
+          <template #icon>
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
+            </span>
+          </template>
+          {{ uploadQueue.length ? t('additional.upload_documents', { count: uploadQueue.length }) : t('legacy.upload_document') }}
+        </n-button>
+      </n-space>
+    </template>
+  </n-modal>
+
+  <ProductKnowledgeDirectoryPermissions
+    v-if="ProductKnowledgeDirectoryPermissions"
+    v-model:show="directoryPermissionVisible"
+    :directory-id="permissionDirectoryId"
+    :directory-name="permissionDirectoryName"
+  />
+
+  <!-- Directory create/edit modal -->
+  <n-modal v-model:show="dirEditorVisible" preset="card" :title="dirEditorTitle" style="width: 520px">
+    <n-form :model="dirForm" label-placement="left" label-width="90">
+      <n-form-item :label="t('legacy.directory_name')">
+        <n-input v-model:value="dirForm.name" :placeholder="t('additional.enter_a_folder_name')" />
+      </n-form-item>
+      <n-form-item v-if="dirEditorMode === 'create'" :label="t('additional.parent_folder')">
+        <n-select v-model:value="dirForm.parentId" :options="directoryOptionsWithRoot" clearable :placeholder="t('legacy.root_folder')" />
+      </n-form-item>
+    </n-form>
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="dirEditorVisible = false">{{ t('legacy.cancel') }}</n-button>
+        <n-button type="primary" :loading="loading" @click="saveDirectory">{{ t('legacy.save') }}</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+
+  <!-- Directory move modal -->
+  <n-modal v-model:show="dirMoveVisible" preset="card" :title="t('legacy.move_directory')" style="width: 520px">
+    <n-form :model="moveForm" label-placement="left" label-width="90">
+      <n-form-item :label="t('legacy.target_parent')">
+        <n-select v-model:value="moveForm.parentId" :options="moveDirectoryOptions" clearable :placeholder="t('legacy.root_folder')" />
+      </n-form-item>
+    </n-form>
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="dirMoveVisible = false">{{ t('legacy.cancel') }}</n-button>
+        <n-button type="primary" :loading="loading" @click="saveMoveDirectory">{{ t('legacy.confirm_move') }}</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+
+  <n-modal v-model:show="deleteConfirmVisible" preset="card" :title="t('additional.delete_knowledge_document')" style="width: 460px">
+    <div class="delete-confirm">
+      <div class="delete-confirm-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M6 6l1 16h10l1-16" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+        </svg>
+      </div>
+      <div class="delete-confirm-body">
+        <div class="delete-confirm-title">{{ deleteTarget?.name || t('legacy.unnamed_document') }}</div>
+        <div class="delete-confirm-copy">
+          {{ t('additional.the_document_will_no_longer_appear_in_the_list') }}
+        </div>
+      </div>
+    </div>
+    <template #footer>
+      <n-space justify="end">
+        <n-button :disabled="deleteSubmitting" @click="closeDeleteConfirm">{{ t('legacy.cancel') }}</n-button>
+        <n-button type="error" :loading="deleteSubmitting" @click="submitDeleteDocument">{{ t('additional.confirm_deletion') }}</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+
+  <n-modal v-model:show="batchDeleteConfirmVisible" preset="card" :title="t('additional.delete_knowledge_documents_in_bulk')" style="width: 480px">
+    <div class="delete-confirm">
+      <div class="delete-confirm-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M6 6l1 16h10l1-16" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+        </svg>
+      </div>
+      <div class="delete-confirm-body">
+        <div class="delete-confirm-title">{{ selectedBatchDeleteTitle }}</div>
+        <div class="delete-confirm-copy">
+          {{ t('additional.the_selected_documents_will_no_longer_appear_in_the') }}
+        </div>
+      </div>
+    </div>
+    <template #footer>
+      <n-space justify="end">
+        <n-button :disabled="batchDeleteSubmitting" @click="closeBatchDeleteConfirm">{{ t('legacy.cancel') }}</n-button>
+        <n-button type="error" :loading="batchDeleteSubmitting" @click="submitBatchDeleteDocuments">{{ t('additional.confirm_deletion') }}</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+
+  <aside v-if="uploadQueue.length && showFloatPanel" class="upload-float-panel">
+    <div class="upload-progress-head">
+      <div class="upload-progress-title-wrap">
+        <span class="upload-progress-icon">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </span>
+        <span class="upload-progress-title">{{ t('additional.upload_progress') }}</span>
+        <span class="upload-progress-count">({{ uploadFinishedCount }}/{{ uploadQueue.length }})</span>
+      </div>
+      <button class="upload-progress-close" type="button" @click="closeFloatPanel" :title="t('legacy.close')">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="upload-progress-list">
+      <article v-for="item in uploadQueue" :key="item.id" class="upload-progress-item">
+        <div class="upload-file-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        </div>
+        <div class="upload-file-main">
+          <div class="upload-file-name" :title="item.file.name">{{ item.file.name }}</div>
+          <div v-if="item.relativePath" class="upload-file-path" :title="item.relativePath">{{ item.relativePath }}</div>
+          <div class="upload-file-meta">
+            <span>{{ formatFileSize(item.file.size) }}</span>
+            <span class="meta-divider">·</span>
+            <span :class="['status-text', `status-${item.status}`]">
+              {{ item.error || uploadStatusLabel(item.status) }}
+            </span>
+          </div>
+          <div class="progress-bar-container">
+            <n-progress
+              type="line"
+              :percentage="item.progress"
+              :show-indicator="false"
+              :status="item.status === 'failed' ? 'error' : item.status === 'success' ? 'success' : 'default'"
+              class="upload-progress-bar"
+            />
+          </div>
+        </div>
+        <div class="upload-item-action">
+          <span v-if="item.status === 'success'" class="status-icon success-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </span>
+          <span v-else-if="item.status === 'failed'" class="status-icon error-icon" :title="item.error">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </span>
+          <span v-else-if="item.status === 'uploading'" class="status-icon spinning-icon">
+            <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="40" stroke-dashoffset="10" />
+            </svg>
+          </span>
+          <span v-else class="status-icon pending-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </span>
+        </div>
+      </article>
+    </div>
+  </aside>
