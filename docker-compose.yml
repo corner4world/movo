@@ -127,6 +127,9 @@ services:
       bootstrap:
         condition: service_completed_successfully
     networks:
+      # DSH installs npm plugins and runs network-backed tools in this container.
+      # Keep backend for private service access and public for outbound traffic.
+      - public
       - backend
     healthcheck:
       test:
