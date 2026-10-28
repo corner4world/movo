@@ -2,6 +2,7 @@ import { additionalMessages } from './additionalMessages';
 import { uncoveredMessages } from './uncoveredMessages';
 import { deepseekSearchMessages } from './modules/deepseekSearch';
 import { schemaDescriptionMessages } from './schemaDescriptionMessages';
+import { sandboxSettingsMessages } from './modules/sandboxSettings';
 
 export type Locale = 'zh-CN' | 'en-US';
 export type MessageKey = keyof typeof messages;
@@ -15,6 +16,7 @@ export const messages = {
   ...additionalMessages,
   ...deepseekSearchMessages,
   ...schemaDescriptionMessages,
+  ...sandboxSettingsMessages,
   'directoryScope.scope': { 'zh-CN': '范围', 'en-US': 'Scope' },
   'directoryScope.title': { 'zh-CN': '选择统计范围', 'en-US': 'Select scope' },
   'directoryScope.organization': { 'zh-CN': '全员', 'en-US': 'All employees' },
@@ -1389,7 +1391,7 @@ export const messages = {
   'skills.install_error.duplicate_archive_path': { 'zh-CN': 'ZIP 中存在重复的文件路径', 'en-US': 'The ZIP contains duplicate file paths' },
   'skills.install_error.file_too_large': { 'zh-CN': '安装包中的单个文件超过 10 MiB 限制', 'en-US': 'A file in the package exceeds the 10 MiB limit' },
   'skills.install_error.suspicious_compression': { 'zh-CN': 'ZIP 中存在压缩比异常的文件', 'en-US': 'The ZIP contains a file with an unsafe compression ratio' },
-  'skills.install_error.too_many_files': { 'zh-CN': 'ZIP 中的文件数量超过 256 个', 'en-US': 'The ZIP contains more than 256 files' },
+  'skills.install_error.too_many_files': { 'zh-CN': 'ZIP 中的文件数量超过 20,000 个', 'en-US': 'The ZIP contains more than 20,000 files' },
   'skills.install_error.expanded_archive_too_large': { 'zh-CN': 'ZIP 解压后的总大小超过 200 MiB', 'en-US': 'The expanded ZIP exceeds the 200 MiB limit' },
   'skills.install_error.missing_skill_md': { 'zh-CN': 'ZIP 中缺少 SKILL.md', 'en-US': 'The ZIP does not contain SKILL.md' },
   'skills.install_error.multiple_skills': { 'zh-CN': '一个 ZIP 只能包含一个 Skill', 'en-US': 'A ZIP must contain exactly one Skill' },

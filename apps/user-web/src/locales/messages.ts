@@ -994,7 +994,7 @@ export const messages = {
   'skills.install_error.duplicate_archive_path': { zh: 'ZIP 中存在重复的文件路径', en: 'The ZIP contains duplicate file paths' },
   'skills.install_error.file_too_large': { zh: '安装包中的单个文件超过 10 MiB 限制', en: 'A file in the package exceeds the 10 MiB limit' },
   'skills.install_error.suspicious_compression': { zh: 'ZIP 中存在压缩比异常的文件', en: 'The ZIP contains a file with an unsafe compression ratio' },
-  'skills.install_error.too_many_files': { zh: 'ZIP 中的文件数量超过 256 个', en: 'The ZIP contains more than 256 files' },
+  'skills.install_error.too_many_files': { zh: 'ZIP 中的文件数量超过 20,000 个', en: 'The ZIP contains more than 20,000 files' },
   'skills.install_error.expanded_archive_too_large': { zh: 'ZIP 解压后的总大小超过 200 MiB', en: 'The expanded ZIP exceeds the 200 MiB limit' },
   'skills.install_error.missing_skill_md': { zh: 'ZIP 中缺少 SKILL.md', en: 'The ZIP does not contain SKILL.md' },
   'skills.install_error.multiple_skills': { zh: '一个 ZIP 只能包含一个 Skill', en: 'A ZIP must contain exactly one Skill' },

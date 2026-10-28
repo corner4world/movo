@@ -37,6 +37,8 @@ source "${ROOT_DIR}/deploy/cli/pull.sh"
 source "${ROOT_DIR}/deploy/cli/backup.sh"
 # shellcheck source=deploy/cli/sequence-fix.sh
 source "${ROOT_DIR}/deploy/cli/sequence-fix.sh"
+# shellcheck source=deploy/cli/sandbox.sh
+source "${ROOT_DIR}/deploy/cli/sandbox.sh"
 
 print_logo() {
   printf '\n'
@@ -169,6 +171,7 @@ show_ready_message() {
 command_up() {
   print_logo
   require_docker
+  movo_sandbox_preflight
   deployment_urls
   if movo_has_build_flag "$@"; then
     if [[ "${MOVO_MIRROR:-global}" == cn ]]; then
@@ -187,6 +190,7 @@ command_up() {
       movo_compose build chat-api
       movo_run_database_upgrade || return 1
     fi
+    movo_sandbox_start --build || return 1
     if ! movo_compose up -d "$@"; then
       movo_msg start_failed >&2
       movo_compose ps >&2 || true
@@ -199,6 +203,7 @@ command_up() {
     fi
     movo_upgrade_database_if_running || return 1
     movo_msg starting
+    movo_sandbox_start --pull never || return 1
     if ! movo_compose up -d --pull never "$@"; then
       movo_msg start_failed >&2
       movo_compose ps >&2 || true
@@ -219,6 +224,7 @@ command_build() {
     return 2
   fi
   require_docker
+  movo_sandbox_preflight
   movo_configure_images true
   movo_msg building
   movo_print_dsh_build_target
@@ -228,6 +234,7 @@ command_build() {
 command_update() {
   print_logo
   require_docker
+  movo_sandbox_preflight
   deployment_urls
   movo_configure_images false
   if [[ "${MOVO_USING_LOCAL_IMAGES:-false}" == "true" ]]; then
@@ -239,6 +246,7 @@ command_update() {
   export MOVO_PULL_POLICY
   movo_pull_images_serially always
   movo_run_database_upgrade || return 1
+  movo_sandbox_start --pull never || return 1
   movo_compose up -d --pull never
   refresh_gateway_resolution
   wait_until_ready

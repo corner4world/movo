@@ -45,6 +45,7 @@ class HttpKernelHostTransport:
             base_url=base_url.rstrip("/"),
             timeout=httpx.Timeout(timeout_seconds),
             headers=headers,
+            trust_env=False,
         )
 
     async def request(

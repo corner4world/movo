@@ -30,6 +30,18 @@ class ImageDefinition:
 
 IMAGES = (
     ImageDefinition(
+        suffix="sandbox-manager",
+        context="services/sandbox-manager",
+        dockerfile="services/sandbox-manager/Dockerfile",
+        inputs=("services/sandbox-manager/**",),
+    ),
+    ImageDefinition(
+        suffix="sandbox-egress",
+        context="services/sandbox-egress",
+        dockerfile="services/sandbox-egress/Dockerfile",
+        inputs=("services/sandbox-egress/**",),
+    ),
+    ImageDefinition(
         suffix="dsh-runtime-host",
         context="services/chat-api/dsh/runtime-host",
         dockerfile="services/chat-api/dsh/runtime-host/Dockerfile",

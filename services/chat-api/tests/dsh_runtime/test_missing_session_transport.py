@@ -1,12 +1,47 @@
 from __future__ import annotations
 
 import asyncio
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 
 import httpx
 import pytest
 
 from app.dsh_runtime.errors import DshSessionMissingError, DshTransportError
 from app.dsh_runtime.transport import HttpKernelHostTransport
+
+
+def test_runtime_host_transport_ignores_process_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    class RuntimeHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"runtime":null}')
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), RuntimeHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("ALL_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
+
+    async def run() -> None:
+        transport = HttpKernelHostTransport(f"http://127.0.0.1:{server.server_port}")
+        try:
+            assert await transport.request("GET", "/v1/runtimes") == {"runtime": None}
+        finally:
+            await transport.close()
+
+    try:
+        asyncio.run(run())
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def test_only_definitive_resume_miss_is_recoverable() -> None:

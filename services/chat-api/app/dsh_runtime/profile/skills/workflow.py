@@ -89,6 +89,12 @@ def compile_workflow_body(
                 f"`scope={config['knowledgeScope']}`, `source_id={config['knowledgeSourceId']}`. "
                 "Continue reading with `next_cursor` until `has_more=false`; never treat a retrieved excerpt as the complete document."
             )
+        if node_type == "script_plugin":
+            line += (
+                "\n   - Execute the configured `pluginCode` as the tool's `code` without rewriting it. "
+                "The sandbox provides the current user message as `inputs['user_text']`; "
+                "do not prepend the Skill path or reconstruct that text from tool data."
+            )
         if node_type == "review_check":
             config = resolved_review_config(nodes, index - 1)
             if str(config.get("outputMode") or "report") in {"annotated_docx", "both"}:

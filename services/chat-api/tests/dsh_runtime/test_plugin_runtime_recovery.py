@@ -50,6 +50,14 @@ def test_unrelated_runtime_failure_is_not_hidden():
         ))
 
 
+def test_sandbox_runtime_failure_does_not_silently_remove_plugins():
+    payload = {"modelProfile": {"plugins": [{"name": "healthy"}]}}
+    with pytest.raises(DshTransportError, match="did not become healthy"):
+        asyncio.run(profile_without_unavailable_plugins(
+            _Transport(), payload, DshTransportError("Container plugin Runtime did not become healthy"),
+        ))
+
+
 def test_gateway_retries_same_profile_with_only_healthy_plugins():
     class Resolver:
         async def resolve(self, profile_version, *, tenant_id=None):

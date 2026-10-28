@@ -6,10 +6,6 @@ import os
 import re
 import resource
 import shutil
-import subprocess
-import sys
-import tempfile
-import textwrap
 import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, Iterable, List, Tuple
@@ -22,6 +18,9 @@ from app.enterprise_capabilities.data.script_engine.message_ops import last_user
 from app.utils.oss_uploader import AliyunOSSUploader
 from app.enterprise_capabilities.data.script_engine.error_summary import execution_error_summary
 from app.enterprise_capabilities.data.script_engine.artifact_export import export_script_artifacts
+from app.execution_isolation.script_backend import child_path, container_backend_enabled, run_script_job, script_workspace
+from app.execution_isolation.skill_bundle import SkillBundle, cache_skill_bundle, stage_skill_bundle
+from app.execution_isolation.runner_source import runner_source
 
 
 class ScriptPluginExecutor(BaseExecutor):
@@ -52,6 +51,7 @@ class ScriptPluginExecutor(BaseExecutor):
                 inputs=inputs,
                 task_id=task_id,
                 run_id=run_id,
+                skill_bundle=skills.get("_movo_selected_skill_bundle"),
             )
         except Exception as exc:
             error = execution_error_summary(exc)
@@ -94,7 +94,8 @@ class ScriptPluginExecutor(BaseExecutor):
             },
         }, artifacts
 
-    def _run_plugin(self, *, node: CapabilityTask, inputs: CapabilityInputs, task_id: str, run_id: str) -> Dict[str, Any]:
+    def _run_plugin(self, *, node: CapabilityTask, inputs: CapabilityInputs, task_id: str, run_id: str,
+                    skill_bundle: SkillBundle | None = None) -> Dict[str, Any]:
         semantic_config = (node.meta or {}).get("semantic_config")
         config = dict(semantic_config or {}) if isinstance(semantic_config, dict) else {}
         plugin_code = str(
@@ -113,14 +114,26 @@ class ScriptPluginExecutor(BaseExecutor):
         if not user_id:
             user_id = str(get_request_context().get("user_id") or "anonymous")
 
-        with tempfile.TemporaryDirectory(prefix="askai_script_plugin_") as tmp:
-            work_dir = Path(tmp)
+        with script_workspace() as work_dir:
+            skill_digest = ""
+            if skill_bundle and container_backend_enabled():
+                skill_digest = cache_skill_bundle(skill_bundle, work_dir.parent)
+                skill_dir = Path("/job/skills") / skill_bundle.root_prefix
+            else:
+                skill_dir = stage_skill_bundle(skill_bundle, work_dir) if skill_bundle else None
             input_dir = work_dir / "inputs"
             output_dir = work_dir / "out"
             input_dir.mkdir(parents=True, exist_ok=True)
             output_dir.mkdir(parents=True, exist_ok=True)
+            if container_backend_enabled():
+                output_dir.chmod(0o777)
 
             files = self._materialize_input_files(input_dir=input_dir, node=node, inputs=inputs)
+            if container_backend_enabled():
+                files = [
+                    {**item, "local_path": child_path(Path(item["local_path"]), work_dir)}
+                    for item in files
+                ]
             plugin_path = work_dir / "plugin.py"
             runner_path = work_dir / "runner.py"
             stdin_path = work_dir / "stdin.json"
@@ -144,23 +157,24 @@ class ScriptPluginExecutor(BaseExecutor):
                     "node_id": node.node_id,
                     "node_goal": getattr(node, "goal", "") or "",
                     "config": config,
-                    "work_dir": str(work_dir),
-                    "input_dir": str(input_dir),
-                    "output_dir": str(output_dir),
+                    "work_dir": child_path(work_dir, work_dir),
+                    "input_dir": child_path(input_dir, work_dir),
+                    "output_dir": child_path(output_dir, work_dir),
+                    "skill_dir": str(skill_dir) if skill_digest else (
+                        child_path(skill_dir, work_dir) if skill_dir else ""
+                    ),
+                    "allow_network": container_backend_enabled(),
                 },
             }
             stdin_path.write_text(json.dumps(payload, ensure_ascii=False, default=str), encoding="utf-8")
 
             started = time.monotonic()
-            completed = subprocess.run(
-                [sys.executable, "-I", str(runner_path), str(plugin_path), str(stdin_path)],
-                cwd=str(work_dir),
-                env=self._safe_env(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=self._TIMEOUT_SECONDS,
-                preexec_fn=self._limit_child_process,
+            completed = run_script_job(
+                work_dir=work_dir, runner_path=runner_path, plugin_path=plugin_path,
+                stdin_path=stdin_path, env=self._safe_env(),
+                timeout_seconds=self._TIMEOUT_SECONDS,
+                limit_child_process=self._limit_child_process,
+                skill_digest=skill_digest,
             )
             duration_ms = int((time.monotonic() - started) * 1000)
             stdout = (completed.stdout or "")[: self._MAX_STDOUT_BYTES]
@@ -553,95 +567,4 @@ class ScriptPluginExecutor(BaseExecutor):
 
     @staticmethod
     def _runner_source() -> str:
-        return textwrap.dedent(
-            r'''
-            import importlib.util
-            import builtins
-            import io
-            import json
-            import os
-            import socket
-            import sys
-            import sysconfig
-
-            def _deny_network(*args, **kwargs):
-                raise RuntimeError("network access is disabled in script_plugin")
-
-            socket.socket = _deny_network
-            socket.create_connection = _deny_network
-
-            plugin_path, stdin_path = sys.argv[1], sys.argv[2]
-            with open(stdin_path, "r", encoding="utf-8") as f:
-                payload = json.load(f)
-
-            spec = importlib.util.spec_from_file_location("askai_user_plugin", plugin_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            run = getattr(module, "run", None)
-            if not callable(run):
-                raise RuntimeError("script plugin must define run(inputs, context)")
-
-            context = payload.get("context") or {}
-            work_dir = os.path.realpath(str(context.get("work_dir") or ""))
-            _open = builtins.open
-            _io_open = io.open
-            _os_open = os.open
-            package_roots = set()
-            for key in ("purelib", "platlib"):
-                value = sysconfig.get_paths().get(key)
-                if value:
-                    package_roots.add(os.path.realpath(value))
-
-            def _is_write_mode(mode):
-                text = str(mode or "r")
-                return any(ch in text for ch in ("w", "a", "x", "+"))
-
-            def _check_path(path, *, write=False):
-                if not work_dir:
-                    return
-                raw = os.fspath(path)
-                if not raw:
-                    return
-                if not os.path.isabs(raw):
-                    raw = os.path.join(work_dir, raw)
-                real = os.path.realpath(raw)
-                if real != work_dir and not real.startswith(work_dir + os.sep):
-                    if not write and any(real == root or real.startswith(root + os.sep) for root in package_roots):
-                        return
-                    raise PermissionError("script_plugin file access is limited to work_dir")
-
-            def _guarded_open(file, *args, **kwargs):
-                mode = args[0] if args else kwargs.get("mode", "r")
-                _check_path(file, write=_is_write_mode(mode))
-                return _open(file, *args, **kwargs)
-
-            def _guarded_io_open(file, *args, **kwargs):
-                # pathlib imported after this hook binds io.open as an accessor
-                # method, passing its accessor instance before the real path.
-                if not isinstance(file, (str, bytes, os.PathLike, int)) and args:
-                    file, args = args[0], args[1:]
-                # io.open also accepts already-open descriptors (e.g. pipes
-                # created by subprocess); no filesystem path is opened here.
-                if isinstance(file, int):
-                    return _io_open(file, *args, **kwargs)
-                mode = args[0] if args else kwargs.get("mode", "r")
-                _check_path(file, write=_is_write_mode(mode))
-                return _io_open(file, *args, **kwargs)
-
-            def _guarded_os_open(file, flags, mode=0o777, *, dir_fd=None):
-                if dir_fd is None:
-                    write = bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
-                    _check_path(file, write=write)
-                return _os_open(file, flags, mode, dir_fd=dir_fd)
-
-            builtins.open = _guarded_open
-            io.open = _guarded_io_open
-            os.open = _guarded_os_open
-            result = run(payload.get("inputs") or {}, context)
-            if result is None:
-                result = {}
-            if not isinstance(result, dict):
-                raise RuntimeError("run(inputs, context) must return a dict")
-            print(json.dumps(result, ensure_ascii=False))
-            '''
-        ).strip()
+        return runner_source()

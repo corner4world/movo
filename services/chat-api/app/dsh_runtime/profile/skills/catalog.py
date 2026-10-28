@@ -16,8 +16,8 @@ class SkillCatalog(Protocol):
 
 class MongoSkillCatalog:
     async def list_enabled(self, tenant_id: str, user_id: str) -> list[dict[str, Any]]:
-        personal = await user_skill_service.list_skills(user_id, main_id=tenant_id)
-        organization = await organization_skill_adapter.list_runtime_skills(main_id=tenant_id)
+        personal = await user_skill_service.list_skills(user_id, main_id=tenant_id, include_package_files=False)
+        organization = await organization_skill_adapter.list_runtime_skills(main_id=tenant_id, include_package_files=False)
         allowed_organization_ids = await filter_allowed_resource_ids(
             "skill",
             main_id=tenant_id,
@@ -43,6 +43,9 @@ class MongoSkillCatalog:
         if package_ids:
             packages = await get_db().skill_packages.find({
                 "_id": {"$in": package_ids}, "main_id": tenant_id,
+            }, {
+                "archive_base64": 1, "archive_gridfs_id": 1, "root_prefix": 1,
+                "files": {"$slice": 3},
             }).to_list(length=len(package_ids))
             by_id = {str(item.get("_id") or ""): item for item in packages}
             for row in rows:

@@ -112,6 +112,8 @@ def test_legacy_personal_workflow_falls_back_to_config_nodes():
     assert compiled.skills[0].capability_refs == ("data.run_script@v1",)
     assert "controlled_script" in compiled.skills[0].content
     assert "执行已配置的数据处理脚本" in compiled.skills[0].content
+    assert "inputs['user_text']" in compiled.skills[0].content
+    assert "without rewriting it" in compiled.skills[0].content
 
 
 def test_imported_bundle_digest_versions_the_native_dsh_skill():

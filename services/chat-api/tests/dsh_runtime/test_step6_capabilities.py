@@ -274,6 +274,23 @@ def test_existing_script_sandbox_runs_data_transform_without_network_or_files() 
     assert result["plugin_result"]["data"]["value"] == 42
 
 
+def test_script_receives_authoritative_current_user_message() -> None:
+    actual_message = "Please summarize this. 标记 MVO-U32-SCRIPT-1028。"
+    result = asyncio.run(run_script({
+        "code": (
+            "def run(inputs, context):\n"
+            "    text = inputs['user_text']\n"
+            "    return {'data': {'text': text, 'length': len(text)}}"
+        ),
+        "data": {"user_text": "/skill-path fabricated message"},
+    }, _context(user_request=actual_message)))
+
+    assert result["plugin_result"]["data"] == {
+        "text": actual_message,
+        "length": len(actual_message),
+    }
+
+
 def test_script_adapter_accepts_ordinary_python_and_returns_stdout() -> None:
     result = asyncio.run(run_script({
         "code": "values = [120 / 133, 80 / 114]\nfor value in values:\n    print(f'{value:.2%}')",

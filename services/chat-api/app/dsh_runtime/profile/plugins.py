@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.db import get_db
+from app.execution_isolation import ExecutionTarget, route_plugin
 from app.product.resource_access import filter_allowed_resource_ids
 
 
@@ -27,6 +28,8 @@ class MongoPluginCatalog:
         }
         effective: dict[str, dict[str, Any]] = {}
         for row in rows:
+            if route_plugin(row) is not ExecutionTarget.PLUGIN_RUNTIME_CONTAINER:
+                continue
             name = str(row.get("name") or "")
             if not name or not row.get("enabled", True) or name in denied_names or (
                 not row.get("owner_user_id") and str(row["_id"]) not in allowed_ids

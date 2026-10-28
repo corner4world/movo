@@ -1,5 +1,7 @@
 import asyncio
 import json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 
 import httpx
 
@@ -148,3 +150,41 @@ def test_legacy_direct_jsonrpc_endpoint_remains_compatible_when_initialize_is_re
 
     assert result == {"tools": []}
     assert methods == ["initialize", "tools/list"]
+
+
+def test_loopback_mcp_bypasses_system_proxy(monkeypatch):
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            body = json.dumps({
+                "jsonrpc": "2.0",
+                "id": payload["id"],
+                **({"error": {"code": -32601, "message": "unsupported"}}
+                   if payload["method"] == "initialize" else
+                   {"result": {"tools": [{"name": "search"}]}}),
+            }).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("http_proxy", "http://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
+    monkeypatch.setenv("no_proxy", "")
+    try:
+        result = asyncio.run(StreamableHttpMcpClient(
+            endpoint=f"http://127.0.0.1:{server.server_port}/mcp",
+        ).call("tools/list"))
+        assert result == {"tools": [{"name": "search"}]}
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

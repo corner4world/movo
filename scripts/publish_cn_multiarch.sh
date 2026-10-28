@@ -10,7 +10,7 @@ if [[ ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 
 registry="registry.cn-beijing.aliyuncs.com/himovo-cn/movo"
-services=(user-web dsh-runtime-host chat-api admin-api document-parser admin-web gateway)
+services=(user-web dsh-runtime-host chat-api admin-api document-parser admin-web gateway sandbox-manager sandbox-egress)
 infra=("mongo:6.0.20" "redis:7.4.2-alpine" "weaviate:1.25.7" "alpine:3.21")
 
 require_platform() {
@@ -70,7 +70,7 @@ for entry in "${infra[@]}"; do
     "${image}:arm64-${version}" "${image}:candidate-multiarch-${version}"
 done
 
-printf '[cn-multiarch] All 11 staged indexes contain linux/amd64 and linux/arm64; publishing tags.\n'
+printf '[cn-multiarch] All staged indexes contain linux/amd64 and linux/arm64; publishing tags.\n'
 for name in "${services[@]}"; do
   image="${registry}-${name}"
   docker buildx imagetools create --tag "${image}:latest" \
@@ -87,4 +87,4 @@ for entry in "${infra[@]}"; do
   require_platform "${image}:${version}" amd64
   require_platform "${image}:${version}" arm64
 done
-printf '[cn-multiarch] Published and verified all 11 dual-architecture tags.\n'
+printf '[cn-multiarch] Published and verified all dual-architecture tags.\n'

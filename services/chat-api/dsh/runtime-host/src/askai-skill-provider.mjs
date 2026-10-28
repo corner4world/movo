@@ -1,5 +1,4 @@
 import { SkillBundleMaterializer } from './skill-bundle-materializer.mjs'
-import { readSkillTextResource } from './skill-resource-reader.mjs'
 
 const PROVIDER_NAME = 'askai-enterprise'
 
@@ -53,7 +52,7 @@ export class AskaiSkillProvider {
       resourceBase: hasBundle
         ? {
             kind: 'opaque',
-            description: 'Package resources are available through skill_resource_read. Pass a path relative to this Skill package.',
+            description: 'Read text resources with skill_resource_read using package-relative paths. In MOVO run_script code, skill_dir is the absolute package root; copy final files into output_dir for delivery.',
           }
         : { kind: 'opaque', description: `MOVO immutable Skill ${skill.version}` },
       metadata: candidate.metadata,
@@ -70,8 +69,7 @@ export class AskaiSkillProvider {
     if (skill === undefined) throw new Error(`Unknown Skill: ${skillName}`)
     if (!skill.bundle_archive_base64 && !skill.bundle_archive_id) throw new Error(`Skill has no package resources: ${skillName}`)
     if (this.materializer === undefined) throw new Error('Skill package storage is unavailable')
-    const root = await this.materializer.materialize(skill)
-    const resource = await readSkillTextResource(root, options.path, options)
+    const resource = await this.materializer.readTextResource(skill, options.path, options)
     return { skill: skill.name, ...resource }
   }
 }

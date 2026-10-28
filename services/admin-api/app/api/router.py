@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import analytics, auth, dashboard, directory, directory_scope, dsh_plugins, external_search, invite_history, invite_members, knowledge_directories, knowledge_documents, knowledge_settings, knowledge_source_settings, models, organizations, page_collection, personal_knowledge_internal, position_roles, presentation_settings, setup, shortcut_settings, skill_lifecycle, skills, system, system_audit, tools, traffic_allocations, topic_admission
+from app.api.routes import analytics, auth, dashboard, directory, directory_scope, dsh_plugins, external_search, invite_history, invite_members, knowledge_directories, knowledge_documents, knowledge_settings, knowledge_source_settings, models, organizations, page_collection, personal_knowledge_internal, position_roles, presentation_settings, sandbox_settings, setup, shortcut_settings, skill_lifecycle, skills, system, system_audit, tools, traffic_allocations, topic_admission
 
 api_router = APIRouter()
 api_router.include_router(system.router, tags=["system"])
@@ -31,3 +31,4 @@ api_router.include_router(page_collection.router, prefix="/settings/page-collect
 api_router.include_router(presentation_settings.router, prefix="/settings/presentation", tags=["presentation-settings"])
 api_router.include_router(shortcut_settings.router, prefix="/settings/shortcuts", tags=["shortcut-settings"])
 api_router.include_router(topic_admission.router, prefix="/settings/topic-admission", tags=["topic-admission"])
+api_router.include_router(sandbox_settings.router, prefix="/settings/sandbox", tags=["sandbox-settings"])

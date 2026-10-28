@@ -215,6 +215,12 @@ export const appRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/settings/ExternalSearchSettingsPage.vue'),
         meta: { title: 'taskAdmission.title', hideInMenu: true },
       },
+      {
+        path: '/settings/sandbox',
+        name: 'SandboxSettings',
+        component: () => import('@/views/settings/ExternalSearchSettingsPage.vue'),
+        meta: { title: 'sandbox.title', hideInMenu: true },
+      },
     ],
   },
 ];

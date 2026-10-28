@@ -38,13 +38,25 @@ def test_accepts_flat_and_single_directory_skill_bundles():
         ({"SKILL.md": "no frontmatter"}, "missing_frontmatter"),
         ({"SKILL.md": skill_markdown("Bad Name")}, "invalid_skill_name"),
         ({"a/SKILL.md": skill_markdown("a"), "b/SKILL.md": skill_markdown("b")}, "multiple_skills"),
-        ({"a/b/SKILL.md": skill_markdown()}, "invalid_bundle_structure"),
     ],
 )
 def test_rejects_invalid_packages(files, code):
     with pytest.raises(SkillPackageError) as raised:
         validate_skill_zip(archive(files))
     assert raised.value.code == code
+
+
+def test_repository_zip_selects_only_its_unique_nested_skill():
+    package = validate_skill_zip(archive({
+        "repository/README.md": "Repository documentation",
+        "repository/skills/ppt-master/SKILL.md": skill_markdown("ppt-master"),
+        "repository/skills/ppt-master/templates/layout.txt": "layout",
+    }))
+    assert package.root_prefix == "ppt-master/"
+    assert {item["path"] for item in package.files} == {"SKILL.md", "templates/layout.txt"}
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as normalized:
+        assert "ppt-master/SKILL.md" in normalized.namelist()
+        assert "repository/README.md" not in normalized.namelist()
 
 
 def test_reports_tool_references_missing_from_metadata():
@@ -84,3 +96,10 @@ def test_accepts_version_mismatch_as_warning_and_uses_package_version():
         "packageVersion": "1.0.10",
         "skillVersion": "1.2.3",
     },)
+
+
+def test_reads_standard_nested_skill_metadata_version():
+    package = validate_skill_zip(archive({
+        "SKILL.md": "---\nname: ppt-master\ndescription: Slides\nmetadata:\n  version: 6.7.3\n---\nBody\n",
+    }))
+    assert package.version == "6.7.3"

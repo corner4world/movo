@@ -31,6 +31,7 @@ def compile_script_plugin(code: str) -> str:
         "    _os.makedirs(_askai_output_dir, exist_ok=True)\n"
         "    _os.chdir(_askai_output_dir)\n"
         "    output_dir = _askai_output_dir\n"
+        "    skill_dir = context.get('skill_dir') or ''\n"
         "    _stdout = _io.StringIO()\n"
         "    def print(*args, **kwargs):\n"
         "        kwargs.pop('file', None)\n"

@@ -73,3 +73,21 @@ test('remote bundle fetch rejects a digest mismatch', async () => {
     fetchImpl: async () => new Response(archive, { status: 200 }),
   }), /digest mismatch/)
 })
+
+test('materializes a package with more than 256 resources', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'movo-large-skill-'))
+  const files = { 'sample/SKILL.md': strToU8('---\nname: sample\ndescription: Sample\n---\nBody') }
+  for (let index = 0; index < 300; index += 1) {
+    files[`sample/templates/layout-${index}.txt`] = strToU8(`layout ${index}`)
+  }
+  const archive = Buffer.from(zipSync(files))
+  try {
+    const path = await new SkillBundleMaterializer(root).materialize({
+      name: 'sample', bundle_digest: createHash('sha256').update(archive).digest('hex'),
+      bundle_root: 'sample/', bundle_archive_base64: archive.toString('base64'),
+    })
+    assert.equal(await readFile(join(path, 'templates/layout-299.txt'), 'utf8'), 'layout 299')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

@@ -12,11 +12,13 @@ from typing import Any, Literal
 
 import yaml
 
+from .nested_archive import skill_subtree_zip
+
 
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
 MAX_FILE_BYTES = 100 * 1024 * 1024
-MAX_FILES = 256
+MAX_FILES = 20_000
 MAX_COMPRESSION_RATIO = 200
 SKILL_NAME = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,125}[a-z0-9])?$")
 SKILL_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
@@ -169,7 +171,10 @@ def validate_skill_zip(content: bytes) -> ValidatedSkillPackage:
         skill_path = roots[0]
         prefix = skill_path[:-len("SKILL.md")]
         if prefix and "/" in prefix.rstrip("/"):
-            raise SkillPackageError("invalid_bundle_structure", "SKILL.md may only be at the root or inside one top-level directory", file=skill_path)
+            normalized = skill_subtree_zip(archive, entries, prefix)
+            if len(normalized) > MAX_ARCHIVE_BYTES:
+                raise SkillPackageError("archive_too_large", "Skill subtree exceeds the archive limit")
+            return validate_skill_zip(normalized)
         outside = [path for _, path in entries if prefix and not path.startswith(prefix)]
         if outside:
             raise SkillPackageError("invalid_bundle_structure", "Files exist outside the Skill root directory", file=outside[0])
@@ -203,7 +208,8 @@ def validate_skill_zip(content: bytes) -> ValidatedSkillPackage:
         market_slug = str(market_meta.get("slug") or "").strip()
         if market_slug and market_slug != name:
             raise SkillPackageError("metadata_mismatch", "_meta.json slug does not match SKILL.md name", file=meta_path, field="slug")
-        front_version = str(meta.get("version") or "").strip()
+        nested_metadata = meta.get("metadata") if isinstance(meta.get("metadata"), dict) else {}
+        front_version = str(meta.get("version") or nested_metadata.get("version") or "").strip()
         market_version = str(market_meta.get("version") or "").strip()
         metadata_warnings: list[dict[str, str]] = []
         if front_version and market_version and front_version != market_version:

@@ -17,6 +17,7 @@ from app.core.tenant import add_main_scope, resolve_main_id
 from app.llm.factory import get_llm_client
 from app.llm.types import Message, Role
 from app.services.external_tool_limits import MCP_ENABLED_TOOL_LIMIT, enabled_mcp_tool_names, validate_mcp_activation
+from app.services.http_proxy_policy import should_trust_environment_proxy
 from app.services.mcp_call_result import build_mcp_call_outcome
 from app.services.mcp_streamable_http import StreamableHttpMcpClient
 
@@ -632,7 +633,11 @@ class ExternalToolService:
         headers = _safe_dict(resolved.get("headers"))
         query = _safe_dict(resolved.get("query"))
         body = resolved.get("body")
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            follow_redirects=True,
+            trust_env=should_trust_environment_proxy(url),
+        ) as client:
             response = await client.request(method, url, params=query or None, json=body if body not in ("", None) else None, headers=headers)
         content_type = response.headers.get("content-type", "")
         try:
@@ -667,7 +672,11 @@ class ExternalToolService:
             "uuid": uuid.uuid4().hex,
             "request": {"params": request_params},
         }
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            follow_redirects=True,
+            trust_env=should_trust_environment_proxy(gateway_url),
+        ) as client:
             response = await client.post(gateway_url, json=payload, headers=resolved.get("headers") or None)
         content_type = response.headers.get("content-type", "")
         try:

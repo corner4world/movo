@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterable, List
 
 import httpx
 
+from app.services.http_proxy_policy import should_trust_environment_proxy
+
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 _LEGACY_INITIALIZE_HTTP_STATUSES = {400, 404, 405}
@@ -39,6 +41,7 @@ class StreamableHttpMcpClient:
             timeout=self._timeout,
             follow_redirects=True,
             transport=self._transport,
+            trust_env=should_trust_environment_proxy(self._endpoint),
         ) as client:
             initialized = await self._initialize(client)
             if initialized is None:
@@ -52,7 +55,6 @@ class StreamableHttpMcpClient:
 
             await self._notify_initialized(client, session_headers)
             return await self._request(client, method, params or {}, session_headers)
-
     async def _initialize(self, client: httpx.AsyncClient) -> tuple[str, str] | None:
         request_id = uuid.uuid4().hex
         headers = self._base_headers()

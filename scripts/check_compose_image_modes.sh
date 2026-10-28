@@ -6,6 +6,8 @@ cd "${ROOT_DIR}"
 
 official_prefix="ghcr.io/himovo/movo"
 image_suffixes=(
+  sandbox-manager
+  sandbox-egress
   dsh-runtime-host
   chat-api
   admin-api

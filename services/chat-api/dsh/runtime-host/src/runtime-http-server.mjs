@@ -5,6 +5,7 @@ import { runtimeHealth } from './host-protocol.mjs'
 import { readJson, routeParts, sendJson } from './http-utils.mjs'
 import { RuntimeManager } from './runtime-manager.mjs'
 import { IsolatedPluginRuntimePool } from './isolated-plugin-runtime.mjs'
+import { ContainerPluginRuntimePool } from './container-plugin-runtime.mjs'
 import { admitSessionBody } from './session-admission.mjs'
 import { PluginArchiveMaterializer } from './plugin-archive-materializer.mjs'
 
@@ -23,9 +24,25 @@ export class RuntimeHttpServer {
     this.port = port
     this.authToken = authToken
     this.#manager = new RuntimeManager({ storageRoot })
-    this.#isolated = new IsolatedPluginRuntimePool(storageRoot)
+    this.#isolated = process.env.MOVO_SANDBOX_MANAGER_URL
+      ? new ContainerPluginRuntimePool({
+          managerUrl: process.env.MOVO_SANDBOX_MANAGER_URL,
+          managerToken: process.env.MOVO_SANDBOX_MANAGER_TOKEN,
+        })
+      : new IsolatedPluginRuntimePool(storageRoot)
     this.#pluginArchives = new PluginArchiveMaterializer(storageRoot)
     this.#server = createServer((request, response) => {
+      if (request.url?.startsWith('/v1/sandbox-relay/')) {
+        if (typeof this.#isolated.relay !== 'function') {
+          sendJson(response, 404, { error: { code: 'not_found' } })
+          return
+        }
+        this.#isolated.relay(request, response).catch(error => {
+          if (!response.headersSent) sendJson(response, 502, { error: { code: 'relay_failed', message: String(error) } })
+          else response.destroy(error)
+        })
+        return
+      }
       if (!validBearerToken(request.headers.authorization, this.authToken)) {
         response.setHeader('www-authenticate', 'Bearer realm="askai-dsh-runtime"')
         sendJson(response, 401, { error: { code: 'unauthorized', message: 'valid runtime bearer token required' } })

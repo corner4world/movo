@@ -794,10 +794,11 @@ def _adapt_ordinary(doc: Dict[str, Any]) -> Dict[str, Any] | None:
 
 
 class OrganizationSkillAdapter:
-    async def list_runtime_skills(self, *, main_id: str) -> List[Dict[str, Any]]:
+    async def list_runtime_skills(self, *, main_id: str, include_package_files: bool = True) -> List[Dict[str, Any]]:
         db = get_db()
         query = add_main_scope({}, main_id)
-        cursor = db.skills.find(query).sort("updated_at", -1)
+        projection = None if include_package_files else {"package_files": 0}
+        cursor = db.skills.find(query, projection).sort("updated_at", -1)
         out: List[Dict[str, Any]] = []
         async for doc in cursor:
             if not isinstance(doc, dict):

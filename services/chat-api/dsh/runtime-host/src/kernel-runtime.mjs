@@ -129,7 +129,7 @@ export class KernelRuntime {
       this.#toolBridge = new AskaiToolBridge(ctx, {
         ...this.modelProfile.toolProfile,
         profileVersion: this.profileVersion,
-      })
+      }, { skillInvocations: this.#skillInvocations })
     }
     this.#sessionComposer = new OfficialSessionComposer(ctx, {
       agentOptions: this.#agentOptions(),

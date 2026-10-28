@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -18,7 +19,9 @@ async def profile_without_unavailable_plugins(
 ) -> dict[str, Any]:
     profile = payload.get("modelProfile")
     plugins = profile.get("plugins") if isinstance(profile, dict) else None
-    if not isinstance(plugins, list) or not plugins or "plugin" not in str(failure).lower():
+    message = str(failure).lower()
+    install_failure = "plugin" in message and bool(re.search(r"failed to (install|load|activate)", message))
+    if not isinstance(plugins, list) or not plugins or not install_failure:
         raise failure
 
     available: list[dict[str, Any]] = []

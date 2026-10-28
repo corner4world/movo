@@ -17,6 +17,7 @@ from app.product.resource_access import resource_is_allowed
 from app.services.presentation.execution import PresentationJobRepository
 
 from app.enterprise_capabilities.runtime import CapabilityExecutionContext, InternalCapabilityService
+from app.execution_isolation.skill_context import invoked_skill_source_id
 from app.enterprise_capabilities.evidence import ExecutionEvidenceRepository
 from app.enterprise_capabilities.content.invocation_contract import (
     ContentInvocationContractRepository,
@@ -328,6 +329,14 @@ class EnterpriseToolService:
                     **dict(active_turn.get("turn_context") or {}),
                     **dict(active_turn.get("turn_metadata") or {}),
                 }
+                if str(tool.capability_ref or "") == "data.run_script@v1" and request.currentSkillName:
+                    profile = await self._profiles.get(request.profileVersion)
+                    try:
+                        capability_turn_context["selected_skill_id"] = invoked_skill_source_id(
+                            profile, request.currentSkillName,
+                        )
+                    except ValueError as exc:
+                        raise ToolPolicyDenied(str(exc)) from exc
                 if str(tool.capability_ref or "") == "content.produce@v1":
                     profile = await self._profiles.get(request.profileVersion)
                     try:

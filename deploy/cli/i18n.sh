@@ -55,6 +55,12 @@ movo_msg() {
     en:compose_missing) printf 'Error: Docker Compose v2 was not found.\n' ;;
     zh:docker_stopped) printf '错误：Docker 尚未运行，请先启动 Docker。\n' ;;
     en:docker_stopped) printf 'Error: Docker is not running. Start Docker first.\n' ;;
+    zh:sandbox_config_mismatch) printf '错误：沙箱模式需要同时设置 COMPOSE_PROFILES=sandbox 和 MOVO_SANDBOX_MANAGER_URL=http://sandbox-manager:8300。\n' ;;
+    en:sandbox_config_mismatch) printf 'Error: sandbox mode requires COMPOSE_PROFILES=sandbox and MOVO_SANDBOX_MANAGER_URL=http://sandbox-manager:8300 together.\n' ;;
+    zh:sandbox_engine_old) printf '错误：沙箱工作区需要 Docker Engine 26 或更新版本，当前版本：%s。\n' "$1" ;;
+    en:sandbox_engine_old) printf 'Error: sandbox workspaces require Docker Engine 26 or newer. Current version: %s.\n' "$1" ;;
+    zh:sandbox_unavailable) printf '错误：沙箱管理服务未就绪。请执行 ./movo logs sandbox-manager 查看原因。\n' ;;
+    en:sandbox_unavailable) printf 'Error: sandbox manager is not ready. Run ./movo logs sandbox-manager for details.\n' ;;
     zh:image_source_missing) printf '错误：无法确定公开镜像地址。请从 GitHub 克隆仓库、在 .env 设置 MOVO_IMAGE_PREFIX，或执行 ./movo up --build。\n' ;;
     en:image_source_missing) printf 'Error: public image location is unknown. Clone from GitHub, set MOVO_IMAGE_PREFIX in .env, or run ./movo up --build.\n' ;;
     zh:using_local_images) printf '未配置公开镜像地址，将使用现有的本地 MOVO 镜像。\n' ;;

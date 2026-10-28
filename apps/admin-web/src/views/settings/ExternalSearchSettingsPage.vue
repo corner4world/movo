@@ -84,6 +84,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
         <span>{{ t('taskAdmission.title') }}</span>
       </button>
+      <button class="settings-nav-item" :class="{ active: activeSection === 'sandbox' }" type="button" @click="switchSection('sandbox')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg>
+        <span>{{ t('sandbox.title') }}</span>
+      </button>
     </aside>
 
     <main v-if="activeSection === 'general'" class="settings-main">
@@ -158,6 +162,10 @@
 
     <main v-else-if="activeSection === 'topic-admission'" class="settings-main">
       <TopicAdmissionPanel />
+    </main>
+
+    <main v-else-if="activeSection === 'sandbox'" class="settings-main">
+      <SandboxStatusPanel />
     </main>
 
     <main v-else-if="activeSection === 'external-search'" class="settings-main">
@@ -665,6 +673,7 @@ import PresentationSettingsPanel from '@/components/settings/PresentationSetting
 import ShortcutSettingsPanel from '@/components/settings/ShortcutSettingsPanel.vue';
 import ShortcutSchemeOverview from '@/components/settings/ShortcutSchemeOverview.vue';
 import TopicAdmissionPanel from '@/components/settings/TopicAdmissionPanel.vue';
+import SandboxStatusPanel from '@/components/settings/SandboxStatusPanel.vue';
 import KnowledgeSourceSettingsPanel from '@/components/settings/KnowledgeSourceSettingsPanel.vue';
 import {
   fetchExternalSearchProviders,
@@ -688,7 +697,7 @@ import {
 import adminProductUiExtension from '@movo-admin-product-extension';
 
 const message = useMessage();
-type SettingsSection = 'general' | 'shortcuts' | 'presentation' | 'external-search' | 'page-collection' | 'knowledge' | 'topic-admission';
+type SettingsSection = 'general' | 'shortcuts' | 'presentation' | 'external-search' | 'page-collection' | 'knowledge' | 'topic-admission' | 'sandbox';
 type ShortcutView = 'schemes' | 'default';
 
 const route = useRoute();
@@ -701,6 +710,7 @@ const sectionRouteMap: Record<SettingsSection, string> = {
   'page-collection': '/settings/page-collection',
   knowledge: '/settings/knowledge',
   'topic-admission': '/settings/topic-admission',
+  sandbox: '/settings/sandbox',
 };
 const activeSection = ref<SettingsSection>('general');
 const hasShortcutSchemes = Boolean(adminProductUiExtension.shortcutSettingsExtension);
@@ -731,6 +741,7 @@ function warnBeforeUnload(event: BeforeUnloadEvent) {
 }
 
 function sectionFromPath(path: string): SettingsSection {
+  if (path.includes('/settings/sandbox')) return 'sandbox';
   if (path.includes('/settings/topic-admission')) return 'topic-admission';
   if (path.includes('/settings/shortcuts')) return 'shortcuts';
   if (path.includes('/settings/presentation')) return 'presentation';

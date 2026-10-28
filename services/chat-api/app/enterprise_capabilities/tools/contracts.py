@@ -17,6 +17,7 @@ class ToolExecuteRequest(BaseModel):
     toolName: str
     actionId: str
     idempotencyKey: str
+    currentSkillName: str = ""
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 

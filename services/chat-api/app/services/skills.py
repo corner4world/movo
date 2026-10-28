@@ -142,9 +142,10 @@ class UserSkillService(SkillTemplateGenerationMixin, SkillStyleGenerationMixin):
             "skill_markdown": fallback_markdown,
         }
 
-    async def list_skills(self, user_id: str, main_id: str = "default") -> List[Dict[str, Any]]:
+    async def list_skills(self, user_id: str, main_id: str = "default", *, include_package_files: bool = True) -> List[Dict[str, Any]]:
         db = get_db()
-        cursor = db.user_skills.find(add_main_scope({"user_id": str(user_id)}, main_id)).sort([("created_at", -1), ("_id", 1)])
+        projection = None if include_package_files else {"package_files": 0}
+        cursor = db.user_skills.find(add_main_scope({"user_id": str(user_id)}, main_id), projection).sort([("created_at", -1), ("_id", 1)])
         skills = []
         async for doc in cursor:
             skills.append(self._serialize(doc))
