@@ -18,6 +18,7 @@ import { computed, watch } from 'vue';
 import { zhCN, dateZhCN, enUS, dateEnUS, darkTheme } from 'naive-ui';
 import { useLocale } from '@/composables/i18n';
 import { useTheme } from '@/composables/theme';
+import { adminThemeOverrides } from '@/theme/naive-overrides';
 
 const { locale } = useLocale();
 const { activeTheme } = useTheme();
@@ -42,15 +43,5 @@ watch(
   { immediate: true },
 );
 
-const themeOverrides = {
-  common: {
-    primaryColor: '#366AFF',
-    primaryColorHover: '#5a84ff',
-    primaryColorPressed: '#2757e6',
-    borderRadius: '14px',
-  },
-  Card: {
-    borderRadius: '18px',
-  },
-};
+const themeOverrides = computed(() => adminThemeOverrides(activeTheme.value));
 </script>

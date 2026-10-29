@@ -6,7 +6,8 @@ export function adminDarkStyles() {
     postcssPlugin: 'movo-admin-dark-custom-styles',
     Once(root, { result }) {
       const source = result.opts.from?.replaceAll('\\', '/') ?? '';
-      if (!source.includes('/apps/admin-web/src/')) return;
+      // The Docker build copies admin-web to /app, so its styles live under /app/src.
+      if (!/(?:^|\/)src\//.test(source) || source.includes('/node_modules/')) return;
       const rules = [];
       root.walkRules((rule) => rules.push(rule));
       for (const rule of rules) {
@@ -21,7 +22,12 @@ export function adminDarkStyles() {
           if (value !== declaration.value) declarations.push(declaration.clone({ value }));
         });
         if (!declarations.length) continue;
-        const darkRule = rule.clone({ selector: rule.selectors.map((selector) => `html.dark ${selector}`).join(', ') });
+        const darkRule = rule.clone({ selector: rule.selectors.map((selector) => {
+          const deep = selector.match(/^:deep\((.+)\)$/);
+          // A leading :deep() has no local anchor. Prefixing it directly makes
+          // Vue scope html.dark itself, which can never match the document root.
+          return deep ? `:global(html.dark ${deep[1]})` : `html.dark ${selector}`;
+        }).join(', ') });
         darkRule.removeAll();
         declarations.forEach((declaration) => darkRule.append(declaration));
         rule.after(darkRule);

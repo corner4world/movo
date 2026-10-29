@@ -34,9 +34,9 @@ function darkHex(hex, role) {
 
 export function darkColorValue(property, value) {
   const name = property.toLowerCase();
-  const role = name.startsWith('background') ? 'background'
-    : name.startsWith('border') || name === 'outline' ? 'border'
-      : name === 'color' || name.endsWith('-color') ? 'color' : null;
+  const role = name.startsWith('background') || /^--n-color(?:-|$)/.test(name) ? 'background'
+    : name.startsWith('border') || name === 'outline' || /^--n-border(?:-|$)/.test(name) ? 'border'
+      : name === 'color' || name.endsWith('-color') || /^--n-text-color(?:-|$)/.test(name) ? 'color' : null;
   if (!role) return value;
   let changed = value.replace(HEX, (hex) => darkHex(hex, role));
   if (role === 'background') {

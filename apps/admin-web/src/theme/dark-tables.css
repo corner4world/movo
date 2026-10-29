@@ -1,0 +1,10 @@
+/* A flex-height table's empty area is not a table cell, so DataTable theme
+   colors alone do not cover the space below its header. */
+html.dark .n-data-table-base-table-body,
+html.dark .n-data-table-empty {
+  background: var(--n-merged-td-color);
+}
+
+html.dark .knowledge-layout {
+  background: #192333;
+}
