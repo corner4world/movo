@@ -10,7 +10,7 @@ test('vision profile materializes durable images for the authenticated model gat
   const requests = []
   globalThis.fetch = async (_url, options) => {
     requests.push(JSON.parse(options.body))
-    return new Response('{"type":"finish","reason":{"kind":"stop"}}\n', { status: 200 })
+    return new Response('{"type":"text-delta","text":"ok"}\n{"type":"finish","reason":{"kind":"stop"}}\n', { status: 200 })
   }
   try {
     const adapter = new AskaiModelGatewayAdapter({

@@ -17,6 +17,7 @@ from app.llm.configured_models import (
 from app.llm.types import Message, Role
 
 from .message_compat import normalize_tool_history
+from .stream_guard import EmptyModelStreamError, nonempty_model_stream
 from .token import ModelGatewayClaims
 from .tool_schema import to_openai_chat_tools
 from .tool_visibility import visible_tools
@@ -132,10 +133,12 @@ class ModelGatewayService:
             usage: dict[str, int] = {}
             tool_calls: dict[int, dict[str, str]] = {}
             try:
-                async for chunk in client.astream(messages, **kwargs):
+                saw_text = False
+                async for chunk in nonempty_model_stream(client, messages, kwargs, model=request.model):
                     content = chunk.content
                     text = content if isinstance(content, str) else str(content or "")
                     if text:
+                        saw_text = True
                         yield {"type": "text-delta", "text": text}
                     for raw_call in list(chunk.tool_calls or []):
                         if not isinstance(raw_call, dict):
@@ -150,15 +153,21 @@ class ModelGatewayService:
                             current["arguments"] += str(raw_call.get("arguments_delta") or "")
                     if chunk.usage:
                         usage = self._usage(chunk.usage)
-                for index in sorted(tool_calls):
-                    call = tool_calls[index]
-                    if call["id"] and call["name"]:
-                        yield {"type": "tool-call", **call}
+                valid_calls = [tool_calls[index] for index in sorted(tool_calls)
+                               if tool_calls[index]["id"] and tool_calls[index]["name"]]
+                if not saw_text and not valid_calls:
+                    raise EmptyModelStreamError("Model returned no usable text or tool calls")
+                for call in valid_calls:
+                    yield {"type": "tool-call", **call}
                 if usage:
                     yield {"type": "usage", "usage": usage}
-                yield {"type": "finish", "reason": {"kind": "tool-calls" if tool_calls else "stop"}}
+                yield {"type": "finish", "reason": {"kind": "tool-calls" if valid_calls else "stop"}}
             except Exception as exc:
-                code, retryable = self._classify_provider_failure(exc)
+                code, retryable = (
+                    ("empty_model_response", True)
+                    if isinstance(exc, EmptyModelStreamError)
+                    else self._classify_provider_failure(exc)
+                )
                 yield {
                     "type": "error",
                     "error": {

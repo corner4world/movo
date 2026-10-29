@@ -132,6 +132,9 @@ export class AskaiModelGatewayAdapter extends LlmAdapter {
         throw new LlmError(message, String(code).toUpperCase(), { retryable: Boolean(event.error?.retryable) })
       }
     }
+    if (!text && nextBlockIndex === 0) {
+      throw new LlmError('MOVO Model Gateway returned no text or tool calls', 'EMPTY_MODEL_RESPONSE', { retryable: true })
+    }
     if (textStarted) yield { type: 'block-end', index: nextBlockIndex, block: { type: 'text', text } }
     if (usage !== undefined) yield { type: 'usage', usage }
     yield { type: 'finish', reason: finishReason }
