@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .docker_engine import DockerEngine, split_docker_logs
 from .settings_store import SettingsStore
+from .skill_environments import SkillEnvironments
 
 
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -28,6 +29,7 @@ class ScriptJobs:
         self._pending = 0
         self._settings = SettingsStore(Path(os.environ.get("MOVO_SANDBOX_RUNTIME_ROOT", "/runtime-data")))
         self._max_pending = self._settings.max_pending(int(os.environ.get("MOVO_SANDBOX_MAX_PENDING", "8")))
+        self.environments = SkillEnvironments(engine)
 
     def set_max_pending(self, value: int) -> dict:
         if not 0 <= value <= 100:
@@ -57,6 +59,7 @@ class ScriptJobs:
         if skill_digest and (not SKILL_DIGEST.fullmatch(skill_digest) or
                              not (self.root / "skill-cache" / skill_digest).is_dir()):
             raise ValueError("Selected Skill package is unavailable")
+        image = self.environments.ready_image(skill_digest) if skill_digest else self.image
         with self._state_lock:
             if self._pending >= self._max_pending:
                 raise RuntimeError("Sandbox queue is full")
@@ -76,15 +79,18 @@ class ScriptJobs:
             network_id = self.engine.create_internal_network(f"movo-sandbox-{job_id}")
             self.engine.connect_network(network_id, proxy_id, ["sandbox-egress"])
             payload = {
-                "Image": self.image,
+                "Image": image,
                 "User": "65534:65534",
                 "Entrypoint": ["python"],
                 "Cmd": ["-I", "/job/runner.py", "/job/plugin.py", "/job/stdin.json"],
                 "WorkingDir": "/job",
                 "Env": [
+                    "HOME=/tmp", "TMPDIR=/tmp", "LANG=C.UTF-8", "PYTHONUNBUFFERED=1",
                     "HTTP_PROXY=http://sandbox-egress:3128", "HTTPS_PROXY=http://sandbox-egress:3128",
                     "http_proxy=http://sandbox-egress:3128", "https_proxy=http://sandbox-egress:3128",
                     "NO_PROXY=", "no_proxy=",
+                    "NODE_PATH=/opt/movo-skill-node-modules",
+                    "PATH=/opt/movo-skill-node-modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                 ],
                 "HostConfig": {
                     "NetworkMode": network_id,

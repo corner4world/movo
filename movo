@@ -228,10 +228,14 @@ command_build() {
   movo_configure_images true
   movo_msg building
   movo_print_dsh_build_target
-  movo_compose build "$@"
+  movo_compose build "$@" || return 1
+  if [[ $# -eq 0 ]] && movo_sandbox_enabled; then
+    movo_compose build sandbox-script || return 1
+  fi
 }
 
 command_update() {
+  local sandbox_image
   print_logo
   require_docker
   movo_sandbox_preflight
@@ -246,6 +250,14 @@ command_update() {
   export MOVO_PULL_POLICY
   movo_pull_images_serially always
   movo_run_database_upgrade || return 1
+  if movo_sandbox_enabled; then
+    sandbox_image="${MOVO_SANDBOX_SCRIPT_IMAGE:-$(dotenv_value MOVO_SANDBOX_SCRIPT_IMAGE)}"
+    if [[ -n "${sandbox_image}" ]]; then
+      "${DOCKER_BIN}" pull "${sandbox_image}" || return 1
+    else
+      movo_compose pull --policy always sandbox-script || return 1
+    fi
+  fi
   movo_sandbox_start --pull never || return 1
   movo_compose up -d --pull never
   refresh_gateway_resolution

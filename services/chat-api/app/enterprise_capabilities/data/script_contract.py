@@ -41,7 +41,7 @@ def compile_script_plugin(code: str) -> str:
         "    _artifacts = []\n"
         "    for _root, _dirs, _files in _os.walk(_askai_output_dir):\n"
         "        for _name in _files:\n"
-        "            _artifacts.append({'path': _os.path.join(_root, _name), 'filename': _name})\n"
+        "            _artifacts.append({'path': _os.path.relpath(_os.path.join(_root, _name), _askai_output_dir), 'filename': _name})\n"
         "    return {'data': {'stdout': _lines}, 'logs': _lines, 'artifacts': _artifacts}\n"
     )
 

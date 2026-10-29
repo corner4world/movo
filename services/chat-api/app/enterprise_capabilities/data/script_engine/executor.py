@@ -502,6 +502,7 @@ class ScriptPluginExecutor(BaseExecutor):
             raw_artifacts=raw_artifacts,
             output_dir=output_dir,
             user_id=user_id,
+            sandbox_output_dir=Path("/job/out") if container_backend_enabled() else None,
         )
         documents = exported["documents"]
         images = exported["images"]

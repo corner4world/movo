@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from .docker_engine import DockerEngine
 from .jobs import ScriptJobs
 from .plugin_runtimes import PluginRuntimes
+from .skill_environments import DependencyPreparationError
 
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -47,6 +48,10 @@ class UpdateSettingsRequest(BaseModel):
     max_pending: int = Field(ge=0, le=100)
 
 
+class PrepareSkillRequest(BaseModel):
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 def _authorize(authorization: str | None) -> None:
     token = os.environ["MOVO_SANDBOX_MANAGER_TOKEN"]
     supplied = (authorization or "").removeprefix("Bearer ")
@@ -71,8 +76,28 @@ def run_script(payload: ExecuteScriptRequest, authorization: str | None = Header
         return jobs().execute(payload.job_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except DependencyPreparationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+
+@app.post("/v1/skill-environments", status_code=202)
+def prepare_skill(payload: PrepareSkillRequest, authorization: str | None = Header(default=None)) -> dict:
+    _authorize(authorization)
+    try:
+        return {"status": jobs().environments.start(payload.digest, retry_failed=True)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/v1/skill-environments/{digest}")
+def skill_environment_status(digest: str, authorization: str | None = Header(default=None)) -> dict:
+    _authorize(authorization)
+    try:
+        return {"status": jobs().environments.status(digest)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.put("/v1/settings")

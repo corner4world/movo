@@ -36,6 +36,7 @@ export interface SkillInstallResult {
   updated: boolean
   fileCount: number
   digest: string
+  dependencyPreparation?: 'disabled' | 'not_required' | 'preparing' | 'ready' | 'failed' | 'unavailable'
   warnings: Array<{ code: string; message: string; tool?: string; packageVersion?: string; skillVersion?: string; childSlug?: string; declaredName?: string; skillName?: string }>
   childCount: number
   children: ExpertPackageChild[]
@@ -46,6 +47,11 @@ export interface SkillInstallResult {
     warnings: Array<{ code: string; message: string; tool?: string; packageVersion?: string; skillVersion?: string }>
   }
   upgrade?: SkillUpgradeInfo
+}
+
+export async function fetchSkillDependencyStatus(id: string): Promise<{ status: string }> {
+  const res = await api.get(`/skills/${encodeURIComponent(id)}/dependency-status`)
+  return dataOf<{ status: string }>(res)
 }
 
 export interface SkillUpgradeInfo {

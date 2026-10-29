@@ -26,6 +26,7 @@ def export_script_artifacts(
     output_dir: Path,
     user_id: str,
     uploader: AliyunOSSUploader | None = None,
+    sandbox_output_dir: Path | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Upload declared sandbox outputs and separate documents from images."""
     storage = uploader or AliyunOSSUploader()
@@ -40,6 +41,13 @@ def export_script_artifacts(
         if not raw_path:
             continue
         path = Path(raw_path)
+        if path.is_absolute() and sandbox_output_dir is not None:
+            try:
+                relative = path.relative_to(sandbox_output_dir)
+            except ValueError:
+                pass
+            else:
+                path = output_dir / relative
         if not path.is_absolute():
             path = output_dir / path
         path = path.resolve()

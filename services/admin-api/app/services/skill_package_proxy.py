@@ -54,3 +54,23 @@ def install_organization_skill_zip(*, main_id: str, filename: str, content: byte
     if not isinstance(data, dict):
         raise HTTPException(status_code=502, detail="ZIP 安装服务返回了无效结果")
     return data
+
+
+def organization_skill_dependency_status(*, main_id: str, skill_id: str) -> dict[str, Any]:
+    base_url = str(settings.backend_base_url or "http://127.0.0.1:8000").rstrip("/")
+    query = urllib.parse.urlencode({"mainId": main_id})
+    request = urllib.request.Request(
+        f"{base_url}/api/organization-skills/{urllib.parse.quote(skill_id, safe='')}/dependency-status?{query}",
+        headers={"X-MOVO-Service-Token": settings.backend_service_token},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(status_code=exc.code, detail="Skill dependency status unavailable") from exc
+    except (urllib.error.URLError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=backend_unavailable(str(exc))) from exc
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=502, detail="Skill dependency status unavailable")
+    return data

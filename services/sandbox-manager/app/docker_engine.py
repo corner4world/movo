@@ -101,3 +101,16 @@ class DockerEngine:
         if len(rows) != 1:
             raise RuntimeError(f"Expected one running {service} container for project {project}")
         return rows[0]["Id"]
+
+    def image_id(self, name: str) -> str | None:
+        try:
+            return str(self.request("GET", f"/images/{name}/json").json()["Id"])
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                return None
+            raise
+
+    def commit(self, container_id: str, repository: str, tag: str) -> str:
+        return str(self.request("POST", "/commit", params={
+            "container": container_id, "repo": repository, "tag": tag,
+        }, timeout=300).json()["Id"])

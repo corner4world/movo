@@ -60,6 +60,8 @@ def test_job_is_scoped_to_one_volume_subpath_and_cleaned(tmp_path: Path, monkeyp
     assert engine.created["HostConfig"]["Mounts"][0]["VolumeOptions"]["Subpath"] == job_id
     assert engine.created["HostConfig"]["ReadonlyRootfs"] is True
     assert engine.created["HostConfig"]["NetworkMode"] == "network-id"
+    assert any(item.startswith("NODE_PATH=/opt/movo-skill-node-modules") for item in engine.created["Env"])
+    assert any(item.startswith("PATH=/opt/movo-skill-node-modules/.bin:") for item in engine.created["Env"])
     assert engine.cleaned == ["container", "proxy", "network"]
 
 
@@ -124,6 +126,7 @@ def test_selected_skill_is_mounted_read_only_from_immutable_cache(tmp_path: Path
         (job / name).write_text("{}")
     (job / "skill-digest").write_text(digest)
     (tmp_path / "skill-cache" / digest).mkdir(parents=True)
+    (tmp_path / "skill-cache" / digest / "SKILL.md").write_text("---\nname: sample\n---\n")
     monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
     monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "test-script:1")

@@ -19,7 +19,7 @@ from app.core.config import settings
 from app.core.legacy_error_messages import backend_unavailable
 from app.core.db import get_db
 from app.product.resource_lifecycle import notify_resource_created, notify_resource_deleted
-from app.services.skill_package_proxy import install_organization_skill_zip
+from app.services.skill_package_proxy import install_organization_skill_zip, organization_skill_dependency_status
 from app.services.skill_lifecycle import OrganizationSkillLifecycle
 from app.services.workflow_validation import validate_workflow_config
 
@@ -451,6 +451,13 @@ async def install_skill_zip(
             "skill", str(current_user.get("main_id") or "default"), skill_id,
         )
     return result
+
+
+@router.get("/{skill_id}/dependency-status")
+def skill_dependency_status(skill_id: str, current_user: dict = Depends(get_current_admin_user)) -> dict[str, Any]:
+    return organization_skill_dependency_status(
+        main_id=str(current_user.get("main_id") or "default"), skill_id=skill_id,
+    )
 
 
 @router.get("/{skill_id}")

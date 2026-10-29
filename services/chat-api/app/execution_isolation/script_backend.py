@@ -63,7 +63,12 @@ def run_script_job(
             f"{url}/v1/script-jobs", json={"job_id": work_dir.name},
             headers={"Authorization": f"Bearer {token}"},
         )
-        response.raise_for_status()
+        if response.is_error:
+            try:
+                detail = str(response.json().get("detail") or "Sandbox job was rejected")
+            except ValueError:
+                detail = "Sandbox job was rejected"
+            raise RuntimeError(detail)
         payload = response.json()
     return subprocess.CompletedProcess(
         args=["sandbox-script-job", work_dir.name],

@@ -29,6 +29,21 @@ movo_sandbox_start() {
   if ! movo_sandbox_enabled; then
     return 0
   fi
+  local configured_image
+  configured_image="${MOVO_SANDBOX_SCRIPT_IMAGE:-$(dotenv_value MOVO_SANDBOX_SCRIPT_IMAGE)}"
+  if [[ " $* " == *" --build "* && -z "${configured_image}" ]]; then
+    movo_compose build sandbox-script || return 1
+  else
+    local script_image
+    script_image="${configured_image:-${MOVO_IMAGE_PREFIX}-sandbox-script:${MOVO_VERSION}}"
+    if ! "${DOCKER_BIN}" image inspect "${script_image}" >/dev/null 2>&1; then
+      if [[ -n "${configured_image}" ]]; then
+        "${DOCKER_BIN}" pull "${script_image}" || return 1
+      else
+        movo_compose pull sandbox-script || return 1
+      fi
+    fi
+  fi
   movo_compose up -d "$@" sandbox-manager || return 1
   local container_id status attempt
   container_id="$(movo_compose ps -q sandbox-manager)"

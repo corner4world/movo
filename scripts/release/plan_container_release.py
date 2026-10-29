@@ -30,6 +30,16 @@ class ImageDefinition:
 
 IMAGES = (
     ImageDefinition(
+        suffix="sandbox-script",
+        context="services/chat-api",
+        dockerfile="services/chat-api/Dockerfile.sandbox-script",
+        inputs=(
+            "services/chat-api/Dockerfile.sandbox-script",
+            "services/chat-api/sandbox_script/**",
+            "services/chat-api/requirements.txt",
+        ),
+    ),
+    ImageDefinition(
         suffix="sandbox-manager",
         context="services/sandbox-manager",
         dockerfile="services/sandbox-manager/Dockerfile",

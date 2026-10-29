@@ -11,6 +11,7 @@ from app.core.tenant import resolve_main_id
 
 from .validator import ValidatedSkillPackage
 from .archive_store import archive_fields, delete_archive
+from .prewarm import prewarm_skill_dependencies
 
 
 InstallScope = Literal["personal", "organization"]
@@ -20,6 +21,22 @@ class SkillPackageInstaller:
     """Persist validated packages into the existing personal/organization control planes."""
 
     async def install(
+        self,
+        package: ValidatedSkillPackage,
+        *,
+        scope: InstallScope,
+        main_id: str,
+        user_id: str = "",
+        package_source: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        result = await self._persist(
+            package, scope=scope, main_id=main_id, user_id=user_id,
+            package_source=package_source,
+        )
+        result["dependencyPreparation"] = await prewarm_skill_dependencies(package)
+        return result
+
+    async def _persist(
         self,
         package: ValidatedSkillPackage,
         *,

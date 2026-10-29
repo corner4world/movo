@@ -17,6 +17,7 @@ import { internalToolMessages } from './internalToolMessages'
 import { appShellMessages } from './appShellMessages'
 import { chatComposerMessages } from './chatComposerMessages'
 import { workspaceContextMessages } from './workspaceContextMessages'
+import { skillDependencyMessages } from './skillDependencyMessages'
 
 export type Locale = 'zh' | 'en'
 export type MessageValue = string | Record<Locale, string>
@@ -33,6 +34,7 @@ export const messages = {
   ...appShellMessages,
   ...chatComposerMessages,
   ...workspaceContextMessages,
+  ...skillDependencyMessages,
   'chat.question.title': { zh: '需要你的回答', en: 'Your input is needed' },
   'chat.question.subtitle': { zh: '回答后，助手会继续处理当前问题', en: 'The assistant will continue after you answer' },
   'chat.question.other': { zh: '填写其他答案', en: 'Enter another answer' },

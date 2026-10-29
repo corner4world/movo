@@ -25,6 +25,7 @@
         <li v-for="warning in result.warnings" :key="`${warning.code}-${warning.tool || ''}`">{{ localizeSkillInstallWarning(warning) }}</li>
       </ul>
     </n-alert>
+    <n-alert v-if="dependencyMessage" class="install-result" :type="dependencyStatus === 'failed' ? 'error' : 'info'">{{ dependencyMessage }}</n-alert>
     <n-alert v-else-if="failure" class="install-result" type="error" :title="failureTitle || t('skills.install_failed')">
       {{ failure }}
     </n-alert>
@@ -42,9 +43,9 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { NAlert, NButton, NModal, NSpace, NTag } from 'naive-ui';
-import { installPersonalSkillZip, type SkillInstallResult, type SkillUpgradeInfo } from '../../api/skills';
+import { fetchSkillDependencyStatus, installPersonalSkillZip, type SkillInstallResult, type SkillUpgradeInfo } from '../../api/skills';
 import { t } from '../../composables/i18n';
 import { SKILL_ZIP_INSTALL_EVENT } from '../../composables/skillZipInstallBridge';
 import { localizeSkillInstallError, localizeSkillInstallWarning } from './skillInstallError';
@@ -59,10 +60,30 @@ const result = ref<SkillInstallResult | null>(null);
 const failure = ref('');
 const failureTitle = ref('');
 const upgrade = ref<SkillUpgradeInfo | null>(null);
+const dependencyStatus = ref('');
+const dependencyMessage = computed(() => {
+  const key = dependencyStatus.value;
+  return ['preparing', 'ready', 'failed', 'unavailable', 'disabled'].includes(key) ? t(`skillDeps.${key}` as 'skillDeps.preparing') : '';
+});
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+function stopPolling() { if (pollTimer) clearTimeout(pollTimer); pollTimer = null; }
+async function pollDependencies() {
+  if (!props.show || !result.value) return;
+  try { dependencyStatus.value = (await fetchSkillDependencyStatus(result.value.id)).status; }
+  catch { dependencyStatus.value = 'unavailable'; }
+  if (['preparing', 'not_started', 'unavailable'].includes(dependencyStatus.value)) pollTimer = setTimeout(pollDependencies, 3000);
+}
+function startPolling() {
+  stopPolling();
+  dependencyStatus.value = result.value?.dependencyPreparation || '';
+  if (['preparing', 'not_started', 'unavailable'].includes(dependencyStatus.value)) pollTimer = setTimeout(pollDependencies, 3000);
+}
 
 function close() { emit('update:show', false); }
 function select(candidate?: File) {
   if (!candidate) return;
+  stopPolling();
+  dependencyStatus.value = '';
   if (!candidate.name.toLowerCase().endsWith('.zip')) {
     file.value = null;
     result.value = null;
@@ -90,6 +111,7 @@ async function install(confirmReplace = false) {
   try {
     result.value = await installPersonalSkillZip(file.value, confirmReplace);
     upgrade.value = null;
+    startPolling();
     emit('installed', result.value);
   } catch (error: any) {
     const detail = error?.response?.data?.detail;
@@ -107,7 +129,7 @@ async function install(confirmReplace = false) {
   }
 }
 watch(() => props.show, (visible) => {
-  if (!visible) { file.value = null; result.value = null; upgrade.value = null; failure.value = ''; failureTitle.value = ''; }
+  if (!visible) { stopPolling(); dependencyStatus.value = ''; file.value = null; result.value = null; upgrade.value = null; failure.value = ''; failureTitle.value = ''; }
 });
 function onMarketplaceInstall(event: Event) {
   const candidate = (event as CustomEvent<{ file?: File }>).detail?.file;
@@ -115,7 +137,7 @@ function onMarketplaceInstall(event: Event) {
   emit('update:show', true);
 }
 onMounted(() => window.addEventListener(SKILL_ZIP_INSTALL_EVENT, onMarketplaceInstall));
-onBeforeUnmount(() => window.removeEventListener(SKILL_ZIP_INSTALL_EVENT, onMarketplaceInstall));
+onBeforeUnmount(() => { stopPolling(); window.removeEventListener(SKILL_ZIP_INSTALL_EVENT, onMarketplaceInstall); });
 defineExpose({ select });
 </script>
 

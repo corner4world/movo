@@ -20,6 +20,7 @@ export interface SkillInstallResult {
   id: string; name: string; slug: string; description: string; version: string;
   type: 'ordinary' | 'expert_package'; enabled: boolean; duplicate: boolean; updated: boolean;
   fileCount: number; digest: string;
+  dependencyPreparation?: 'disabled' | 'not_required' | 'preparing' | 'ready' | 'failed' | 'unavailable';
   warnings: Array<{ code: string; message: string; tool?: string; packageVersion?: string; skillVersion?: string; childSlug?: string; declaredName?: string; skillName?: string }>;
   childCount: number; children: ExpertPackageChild[];
   compatibility: {
@@ -27,6 +28,11 @@ export interface SkillInstallResult {
     warnings: Array<{ code: string; message: string; tool?: string; packageVersion?: string; skillVersion?: string }>;
   };
   upgrade?: { action: 'install' | 'duplicate' | 'upgrade' | 'replace' | 'downgrade'; currentVersion?: string; incomingVersion?: string; currentName?: string };
+}
+
+export async function fetchSkillDependencyStatus(id: string): Promise<{ status: string }> {
+  const { data } = await apiClient.get(`/api/skills/${encodeURIComponent(id)}/dependency-status`);
+  return dataOf<{ status: string }>(data);
 }
 
 export interface SkillItem {

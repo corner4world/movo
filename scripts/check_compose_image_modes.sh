@@ -6,6 +6,7 @@ cd "${ROOT_DIR}"
 
 official_prefix="ghcr.io/himovo/movo"
 image_suffixes=(
+  sandbox-script
   sandbox-manager
   sandbox-egress
   dsh-runtime-host
@@ -27,7 +28,7 @@ compose_images() {
     -u MOVO_ALPINE_IMAGE \
     -u MOVO_DOCUMENT_API_IMAGE \
     -u MOVO_DOCUMENT_WORKER_IMAGE \
-    docker compose --env-file /dev/null "$@" config --images
+    docker compose --env-file /dev/null --profile sandbox --profile sandbox-image "$@" config --images
 }
 
 prebuilt_images="$(compose_images -f docker-compose.yml)"
@@ -46,7 +47,7 @@ china_images="$(
   MOVO_REDIS_IMAGE="${china_prefix}-redis:7.4.2-alpine" \
   MOVO_WEAVIATE_IMAGE="${china_prefix}-weaviate:1.25.7" \
   MOVO_ALPINE_IMAGE="${china_prefix}-alpine:3.21" \
-    docker compose --env-file /dev/null -f docker-compose.yml config --images
+    docker compose --env-file /dev/null --profile sandbox --profile sandbox-image -f docker-compose.yml config --images
 )"
 for suffix in "${image_suffixes[@]}"; do
   grep -Fxq "${china_prefix}-${suffix}:latest" <<<"${china_images}"
@@ -58,7 +59,7 @@ done
 
 source_images="$(
   env -u MOVO_DOCUMENT_API_IMAGE -u MOVO_DOCUMENT_WORKER_IMAGE \
-    MOVO_IMAGE_PREFIX=movo MOVO_VERSION=latest docker compose --env-file /dev/null \
+    MOVO_IMAGE_PREFIX=movo MOVO_VERSION=latest docker compose --env-file /dev/null --profile sandbox --profile sandbox-image \
     -f docker-compose.yml -f docker-compose.build.yml config --images
 )"
 for suffix in "${image_suffixes[@]}"; do

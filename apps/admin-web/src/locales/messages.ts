@@ -3,6 +3,7 @@ import { uncoveredMessages } from './uncoveredMessages';
 import { deepseekSearchMessages } from './modules/deepseekSearch';
 import { schemaDescriptionMessages } from './schemaDescriptionMessages';
 import { sandboxSettingsMessages } from './modules/sandboxSettings';
+import { skillDependencyMessages } from './modules/skillDependencies';
 
 export type Locale = 'zh-CN' | 'en-US';
 export type MessageKey = keyof typeof messages;
@@ -17,6 +18,7 @@ export const messages = {
   ...deepseekSearchMessages,
   ...schemaDescriptionMessages,
   ...sandboxSettingsMessages,
+  ...skillDependencyMessages,
   'directoryScope.scope': { 'zh-CN': '范围', 'en-US': 'Scope' },
   'directoryScope.title': { 'zh-CN': '选择统计范围', 'en-US': 'Select scope' },
   'directoryScope.organization': { 'zh-CN': '全员', 'en-US': 'All employees' },
