@@ -9,6 +9,7 @@ import TopicRuleDialog from './TopicRuleDialog.vue'
 import TopicRuleList from './TopicRuleList.vue'
 import TopicAdmissionModePicker from './TopicAdmissionModePicker.vue'
 import { useTopicRuleAudiences } from './useTopicRuleAudiences'
+import { createClientUuid } from '@/utils/clientUuid'
 
 const message = useMessage()
 const MAX_RULES = 200
@@ -163,7 +164,7 @@ async function addRule() {
     message.warning(t('taskAdmission.maxRules', { count: MAX_RULES }))
     return
   }
-  const rule: TopicRule = { id: crypto.randomUUID(), name: '', enabled: true, terms: [{ keyword: '', synonyms: [] }] }
+  const rule: TopicRule = { id: createClientUuid(), name: '', enabled: true, terms: [{ keyword: '', synonyms: [] }] }
   ruleListRef.value?.resetFilters()
   currentPage.value = 1
   currentQuery.value = ''
