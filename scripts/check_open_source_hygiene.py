@@ -71,7 +71,7 @@ REQUIRED_ROOT_FILES = (
     "SUPPORT.md",
     "CODE_OF_CONDUCT.md",
 )
-EXPECTED_MOVO_VOLUMES = 8
+EXPECTED_MOVO_VOLUMES = 9
 
 
 def tracked_files() -> list[str]:
@@ -103,7 +103,13 @@ def main() -> int:
     compose_text = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     if re.search(r"^\s*name:\s*askai_", compose_text, flags=re.MULTILINE):
         failures.append("Compose reuses an AskAI physical volume name")
-    volume_prefix_count = compose_text.count("${MOVO_VOLUME_PREFIX:-movo}_")
+    volume_prefix_count = len(
+        re.findall(
+            r"^\s{4}name:\s*\$\{MOVO_VOLUME_PREFIX:-movo\}_[-\w]+\s*$",
+            compose_text,
+            flags=re.MULTILINE,
+        )
+    )
     if volume_prefix_count != EXPECTED_MOVO_VOLUMES:
         failures.append(
             "Compose must define exactly "
