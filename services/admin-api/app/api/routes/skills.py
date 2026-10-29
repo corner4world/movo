@@ -533,6 +533,8 @@ async def set_skill_enabled(
     if not result.matched_count:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="技能不存在")
     doc = await db.skills.find_one({"_id": str(skill_id), "main_id": main_id})
+    if doc:
+        await attach_environment_status([doc], main_id)
     return _serialize(doc or {})
 
 

@@ -818,6 +818,7 @@ async def set_skill_enabled(
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Skill not found")
+    updated["environment_status"] = await environment_status(updated)
     return ApiResponse(code=0, message="success", data=_admin_shape_skill(updated))
 
 

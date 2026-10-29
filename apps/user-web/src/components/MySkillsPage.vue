@@ -66,7 +66,6 @@
                   <n-tag size="small" :bordered="false" :type="row.enabled ? 'success' : 'default'">
                     {{ row.enabled ? t('skills.enabled') : t('skills.disabled') }}
                   </n-tag>
-                  <SkillEnvironmentBadge :status="row.environmentStatus" :busy="Boolean(retryingById[row.id])" @retry="retryEnvironment(row)" />
                   <n-tag v-if="row.lifecycle?.authoringMode === 'platform'" size="small" :bordered="false" :type="row.lifecycle.publicationStatus === 'draft' ? 'warning' : row.lifecycle.hasUnpublishedChanges ? 'warning' : 'success'">
                     {{ row.lifecycle.publicationStatus === 'draft' ? t('skills.publish.draft') : row.lifecycle.hasUnpublishedChanges ? t('skills.publish.changed') : `v${row.lifecycle.publishedVersion}` }}
                   </n-tag>
@@ -77,13 +76,14 @@
                 </div>
                 <span class="card-time">{{ formatAppDateTime(row.updatedAt || row.createdAt, t('skills.just_created')) }}</span>
               </div>
+              <SkillEnvironmentBadge class="card-environment" :status="row.environmentStatus" :busy="Boolean(retryingById[row.id])" @retry="retryEnvironment(row)" />
 
               <div class="card-title">{{ row.name }}</div>
               <div class="card-desc">{{ row.description || t('skills.no_desc') }}</div>
 
               <div class="card-footrow">
                 <div class="card-actions">
-                  <div class="card-switch" @click.stop>
+                  <div class="card-switch" :class="{ 'card-switch-blocked': isEnvironmentBlocked(row) }" :tabindex="isEnvironmentBlocked(row) ? 0 : undefined" @click.stop="explainEnvironmentBlock(row)" @keydown.enter.prevent="explainEnvironmentBlock(row)" @keydown.space.prevent="explainEnvironmentBlock(row)">
                     <span class="card-switch-label">{{ row.enabled ? t('skills.enabled') : t('skills.disabled') }}</span>
                     <n-switch
                       size="small"
@@ -585,7 +585,7 @@ async function toggleEnabled(row: SkillItem, enabled: boolean) {
   switchingById.value = { ...switchingById.value, [row.id]: true };
   try {
     const updated = await setSkillEnabled(row.id, props.userId, props.mainId, enabled);
-    rows.value = rows.value.map((item) => (item.id === row.id ? updated : item));
+    rows.value = rows.value.map((item) => (item.id === row.id ? { ...updated, environmentStatus: updated.environmentStatus ?? item.environmentStatus } : item));
     message.success(enabled ? t('skills.msg_enabled_success') : t('skills.msg_disabled_success'));
   } catch (error: any) {
     message.error(skillActionErrorMessage(
@@ -601,6 +601,14 @@ async function toggleEnabled(row: SkillItem, enabled: boolean) {
 
 function handleEnabledUpdate(row: SkillItem, value: boolean) {
   void toggleEnabled(row, value);
+}
+
+function isEnvironmentBlocked(row: SkillItem): boolean {
+  return !row.enabled && Boolean(row.environmentStatus) && row.environmentStatus !== 'ready';
+}
+
+function explainEnvironmentBlock(row: SkillItem) {
+  if (isEnvironmentBlocked(row)) message.warning(t(row.environmentStatus === 'preparing' ? 'skillDeps.enableBlocked.preparing' : 'skillDeps.enableBlocked.retry'));
 }
 
 onMounted(() => { void loadRows(); environmentTimer = setInterval(() => {
@@ -864,6 +872,9 @@ watch(() => props.pendingFeedbackCount, (next, previous) => {
   background: #f6f9ff;
   border: 1px solid #e3ebfb;
 }
+
+.card-switch-blocked { cursor: pointer; }
+.card-switch-blocked :deep(.n-switch) { pointer-events: none; }
 
 .card-switch-label {
   color: #4a5d7c;

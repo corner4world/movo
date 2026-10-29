@@ -5,6 +5,8 @@ export const skillDependencyMessages = {
   'skillDeps.status.unavailable': { 'zh-CN': '环境状态不可用', 'en-US': 'Environment unavailable' },
   'skillDeps.status.disabled': { 'zh-CN': '环境不可用', 'en-US': 'Environment disabled' },
   'skillDeps.retry': { 'zh-CN': '重试准备', 'en-US': 'Retry preparation' },
+  'skillDeps.enableBlocked.preparing': { 'zh-CN': '环境正在准备，完成后才能启用 Skill。', 'en-US': 'The environment is being prepared. Enable the Skill after it is ready.' },
+  'skillDeps.enableBlocked.retry': { 'zh-CN': '环境尚未就绪，请先重试准备，成功后再启用 Skill。', 'en-US': 'The environment is not ready. Retry preparation before enabling the Skill.' },
   'skillDeps.preparing': { 'zh-CN': '正在准备 Skill 依赖，完成后即可在对话中使用。', 'en-US': 'Preparing Skill dependencies. The Skill will be ready for chat when this finishes.' },
   'skillDeps.ready': { 'zh-CN': 'Skill 依赖已准备完成，可以使用。', 'en-US': 'Skill dependencies are ready.' },
   'skillDeps.failed': { 'zh-CN': 'Skill 依赖准备失败。请检查沙箱管理服务日志后重新安装。', 'en-US': 'Skill dependency preparation failed. Check sandbox manager logs and reinstall.' },

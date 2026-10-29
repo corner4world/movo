@@ -65,20 +65,20 @@
                   <n-tag size="small" :bordered="false" :type="row.enabled ? 'success' : 'default'">
                     {{ row.enabled ? t('legacy.active_25d2843') : t('legacy.disabled_0fe5a98') }}
                   </n-tag>
-                  <SkillEnvironmentBadge :status="row.environmentStatus" :busy="retryingIds.has(row.id)" @retry="retryEnvironment(row)" />
                   <n-tag v-if="row.lifecycle?.authoringMode === 'platform'" size="small" :bordered="false" :type="row.lifecycle.publicationStatus === 'draft' || row.lifecycle.hasUnpublishedChanges ? 'warning' : 'success'">
                     {{ row.lifecycle.publicationStatus === 'draft' ? t('additional.draft') : row.lifecycle.hasUnpublishedChanges ? t('additional.unpublished_changes') : `v${row.lifecycle.publishedVersion}` }}
                   </n-tag>
                 </div>
                 <span class="card-time">{{ formatAdminDateTime(row.updatedAt || row.createdAt, t('legacy.just_created')) }}</span>
               </div>
+              <SkillEnvironmentBadge class="card-environment" :status="row.environmentStatus" :busy="retryingIds.has(row.id)" @retry="retryEnvironment(row)" />
 
               <div class="card-title">{{ row.name }}</div>
               <div class="card-desc">{{ row.description || t('legacy.no_description_filled') }}</div>
 
               <div class="card-footrow">
                 <div class="card-actions">
-                  <div class="card-switch" @click.stop>
+                  <div class="card-switch" :class="{ 'card-switch-blocked': isEnvironmentBlocked(row) }" :tabindex="isEnvironmentBlocked(row) ? 0 : undefined" @click.stop="explainEnvironmentBlock(row)" @keydown.enter.prevent="explainEnvironmentBlock(row)" @keydown.space.prevent="explainEnvironmentBlock(row)">
                     <span class="card-switch-label">{{ row.enabled ? t('legacy.active_595aabc') : t('legacy.disabled_0fe5a98') }}</span>
                     <n-switch
                       size="small"
@@ -522,7 +522,7 @@ async function toggleEnabled(row: SkillItem, enabled: boolean): Promise<boolean>
   switchingIds.value = next;
   try {
     const updated = await setSkillEnabled(row.id, enabled);
-    rows.value = rows.value.map((item) => (item.id === row.id ? updated : item));
+    rows.value = rows.value.map((item) => (item.id === row.id ? { ...updated, environmentStatus: updated.environmentStatus ?? item.environmentStatus } : item));
     message.success(enabled ? t('legacy.skill_enabled') : t('legacy.skill_disabled'));
     return true;
   } catch (error: any) {
@@ -540,6 +540,14 @@ function handleEnabledUpdate(row: SkillItem, value: boolean) {
   pendingEnabledRow.value = row;
   pendingEnabledValue.value = value;
   enabledConfirmVisible.value = true;
+}
+
+function isEnvironmentBlocked(row: SkillItem): boolean {
+  return !row.enabled && Boolean(row.environmentStatus) && row.environmentStatus !== 'ready';
+}
+
+function explainEnvironmentBlock(row: SkillItem) {
+  if (isEnvironmentBlocked(row)) message.warning(t(row.environmentStatus === 'preparing' ? 'skillDeps.enableBlocked.preparing' : 'skillDeps.enableBlocked.retry'));
 }
 
 async function confirmEnabledChange() {
@@ -804,6 +812,9 @@ onBeforeUnmount(() => { if (environmentTimer) clearInterval(environmentTimer); }
   background: #f6f9ff;
   border: 1px solid #e3ebfb;
 }
+
+.card-switch-blocked { cursor: pointer; }
+.card-switch-blocked :deep(.n-switch) { pointer-events: none; }
 
 .card-switch-label {
   color: #4a5d7c;

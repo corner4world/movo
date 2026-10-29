@@ -5,6 +5,8 @@ export const skillDependencyMessages = {
   'skillDeps.status.unavailable': { zh: '环境状态不可用', en: 'Environment unavailable' },
   'skillDeps.status.disabled': { zh: '环境不可用', en: 'Environment disabled' },
   'skillDeps.retry': { zh: '重试准备', en: 'Retry preparation' },
+  'skillDeps.enableBlocked.preparing': { zh: '环境正在准备，完成后才能启用 Skill。', en: 'The environment is being prepared. Enable the Skill after it is ready.' },
+  'skillDeps.enableBlocked.retry': { zh: '环境尚未就绪，请先重试准备，成功后再启用 Skill。', en: 'The environment is not ready. Retry preparation before enabling the Skill.' },
   'skillDeps.preparing': { zh: '正在准备 Skill 依赖，完成后即可在对话中使用。', en: 'Preparing Skill dependencies. The Skill will be ready for chat when this finishes.' },
   'skillDeps.ready': { zh: 'Skill 依赖已准备完成，可以使用。', en: 'Skill dependencies are ready.' },
   'skillDeps.failed': { zh: 'Skill 依赖准备失败。请联系管理员检查沙箱服务日志并重试安装。', en: 'Skill dependency preparation failed. Ask an administrator to check sandbox logs and retry installation.' },
