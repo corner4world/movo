@@ -4,9 +4,11 @@ import type { ExecutionItemV3 } from '../domain/model'
 import { toolCallSummary, toolName } from '../domain/repeatedToolCalls'
 import { t } from '../../../composables/i18n'
 import { localizedInternalToolLabel } from '../domain/internalToolLabels'
+import { toolAttemptStateKey, toolGroupFailureKey } from '../domain/toolAttemptPresentation'
+import type { ExecutionStateV3 } from '../domain/model'
 import ActivityIcon from './ActivityIcon.vue'
 
-const props = defineProps<{ items: ExecutionItemV3[]; statusItems: ExecutionItemV3[] }>()
+const props = defineProps<{ items: ExecutionItemV3[]; statusItems: ExecutionItemV3[]; runStatus: ExecutionStateV3['runStatus'] }>()
 const expanded = ref(false)
 const hasFailure = computed(() => props.statusItems.some(item => item.status === 'failed'))
 const isRunning = computed(() => props.statusItems.some(item => item.status === 'running'))
@@ -28,14 +30,20 @@ function syncExpanded(event: Event) {
       <ActivityIcon category="tool" kind="tool" />
       <span class="repeated-tool-label" :role="showsProgress ? 'status' : undefined" :aria-label="showsProgress ? `${label}${t('execution.v3.activity_separator')}${t('execution.v3.processing')}` : undefined">{{ label }}</span>
       <svg class="repeated-tool-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 5 5-5 5" /></svg>
-      <span v-if="hasFailure" class="repeated-tool-status">{{ t('execution.v3.repeated_failed') }}</span>
+      <span v-if="hasFailure" class="repeated-tool-status">{{ t(toolGroupFailureKey(runStatus)) }}</span>
     </summary>
     <ol>
       <li v-for="item in items" :key="item.id" :class="`status-${item.status}`">
         <ActivityIcon category="tool" kind="tool" />
         <span class="tool-call-name">{{ localizedToolName(item) }}</span>
         <span class="tool-call-summary">{{ toolCallSummary(item) || t(item.status === 'running' ? 'execution.v3.processing' : 'execution.v3.tool_call_completed') }}</span>
-        <span v-if="item.status === 'failed'" class="repeated-tool-error">{{ String(item.payload?.error || t('ui.failed')) }}</span>
+        <span v-if="item.status === 'failed'" class="repeated-tool-error">
+          {{ t(toolAttemptStateKey(runStatus)) }}
+          <details v-if="item.payload?.error" class="repeated-tool-error-details">
+            <summary>{{ t('execution.v3.tool_attempt_details') }}</summary>
+            <pre>{{ String(item.payload.error) }}</pre>
+          </details>
+        </span>
       </li>
     </ol>
   </details>
@@ -66,6 +74,9 @@ function syncExpanded(event: Event) {
 .tool-call-summary { min-width:0; overflow:hidden; color:#94a3b8; text-overflow:ellipsis; white-space:nowrap; }
 .repeated-tool-group li.status-failed { color:#b45309; }
 .repeated-tool-error { grid-column:2 / -1; display:block; margin-top:1px; color:#b45309; }
+.repeated-tool-error-details { margin-top:2px; color:#64748b; }
+.repeated-tool-error-details summary { display:list-item; min-height:0; cursor:pointer; }
+.repeated-tool-error-details pre { max-height:160px; overflow:auto; margin:4px 0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; }
 @keyframes repeated-tool-sheen { from { background-position:100% 0; } to { background-position:-140% 0; } }
 @media (max-width:640px) {
   .repeated-tool-group li { grid-template-columns:18px minmax(0,1fr); row-gap:1px; }

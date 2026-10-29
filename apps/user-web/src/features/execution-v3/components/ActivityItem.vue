@@ -7,9 +7,12 @@ import { activityOutcome, activityStateMessageKey } from '../domain/activityPres
 import { toolActionLabelKey, toolCallSummary, toolDisplayName } from '../domain/repeatedToolCalls'
 import { failureMessageKey } from '../domain/failureMessage'
 import { localizedInternalToolLabel } from '../domain/internalToolLabels'
+import { toolAttemptStateKey } from '../domain/toolAttemptPresentation'
+import type { ExecutionStateV3 } from '../domain/model'
 
-const props = withDefaults(defineProps<{ item: ExecutionItemV3; active?: boolean }>(), {
+const props = withDefaults(defineProps<{ item: ExecutionItemV3; active?: boolean; runStatus?: ExecutionStateV3['runStatus'] }>(), {
   active: true,
+  runStatus: 'running',
 })
 const emit = defineEmits<{
   (event: 'resolve-permission', requestId: string, decision: 'allow' | 'deny' | 'always_allow'): void
@@ -22,6 +25,9 @@ const category = computed(() => {
 const outcome = computed(() => activityOutcome(props.item.payload))
 const activelyRunning = computed(() => props.item.status === 'running' && props.active)
 const stateText = computed(() => {
+  if (props.item.kind === 'tool' && props.item.status === 'failed') {
+    return t(toolAttemptStateKey(props.runStatus))
+  }
   const key = activityStateMessageKey(props.item.status, outcome.value, props.item.payload)
   return key ? t(key) : ''
 })

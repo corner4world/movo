@@ -102,6 +102,7 @@ function toggle() {
           v-if="entry.type === 'tool-group'"
           :items="entry.items"
           :status-items="entry.statusItems"
+          :run-status="store.state.runStatus"
         />
         <CommentaryItem v-else-if="entry.item.kind === 'commentary'" :item="entry.item" />
         <ProvisionalAssistantItem v-else-if="entry.item.kind === 'final_answer'" :item="entry.item" />
@@ -109,6 +110,7 @@ function toggle() {
           v-else
           :item="entry.item"
           :active="!passiveRunningIds.has(entry.item.id)"
+          :run-status="store.state.runStatus"
           @resolve-permission="(requestId, decision) => emit('resolve-permission', requestId, decision)"
         />
       </template>
