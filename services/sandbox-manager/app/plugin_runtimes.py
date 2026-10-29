@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from .docker_engine import DockerEngine
 from .lease_store import LeaseStore
+from .storage_paths import legacy_runtime_root, manager_state_root, workspace_root
 
 
 class PluginRuntimes:
@@ -18,9 +19,10 @@ class PluginRuntimes:
         self.engine = engine
         self.project = os.environ.get("MOVO_SANDBOX_COMPOSE_PROJECT", "movo")
         self.image = os.environ["MOVO_SANDBOX_RUNTIME_IMAGE"]
-        self.volume = os.environ["MOVO_SANDBOX_RUNTIME_VOLUME"]
-        self.volume_root = Path(os.environ.get("MOVO_SANDBOX_RUNTIME_ROOT", "/runtime-data"))
-        self._store = LeaseStore(self.volume_root)
+        self.volume = os.environ["MOVO_SANDBOX_WORKSPACE_VOLUME"]
+        self.volume_root = workspace_root()
+        self.legacy_root = legacy_runtime_root()
+        self._store = LeaseStore(manager_state_root(), legacy_root=self.legacy_root)
         self._leases: dict[str, dict] = self._store.load()
         self._lock = threading.Lock()
         self._creating: set[str] = set()
@@ -50,10 +52,16 @@ class PluginRuntimes:
             self.dispose(previous)
         lease_id = uuid4().hex
         storage_key = hashlib.sha256(isolation_key.encode("utf-8")).hexdigest()
-        relative_storage = f"sandbox-runtimes/{storage_key}"
-        storage = self.volume_root / relative_storage
-        storage.mkdir(parents=True, exist_ok=True)
-        os.chown(storage, 1000, 1000)
+        legacy_storage = self.legacy_root / "sandbox-runtimes" / storage_key
+        if legacy_storage.is_dir():
+            relative_storage = f"sandbox-runtimes/{storage_key}"
+            storage_volume = os.environ["MOVO_SANDBOX_RUNTIME_VOLUME"]
+        else:
+            relative_storage = f"plugin-runtimes/{storage_key}"
+            storage = self.volume_root / relative_storage
+            storage.mkdir(parents=True, exist_ok=True)
+            storage.chmod(0o777)
+            storage_volume = self.volume
         proxy_id = self.engine.find_compose_service(self.project, "sandbox-egress")
         parent_id = self.engine.find_compose_service(self.project, "dsh-runtime-host")
         network_id = None
@@ -69,12 +77,12 @@ class PluginRuntimes:
             self.engine.connect_network(network_id, parent_id, ["sandbox-gateway"])
             connected_parent = True
             mounts = [{
-                "Type": "volume", "Source": self.volume, "Target": "/data/dsh-runtime",
+                "Type": "volume", "Source": storage_volume, "Target": "/data/dsh-runtime",
                 "VolumeOptions": {"Subpath": relative_storage, "NoCopy": True},
             }]
-            if (self.volume_root / "plugin-archives").is_dir():
+            if (self.legacy_root / "plugin-archives").is_dir():
                 mounts.append({
-                    "Type": "volume", "Source": self.volume,
+                    "Type": "volume", "Source": os.environ["MOVO_SANDBOX_RUNTIME_VOLUME"],
                     "Target": "/data/dsh-runtime/plugin-archives", "ReadOnly": True,
                     "VolumeOptions": {"Subpath": "plugin-archives", "NoCopy": True},
                 })

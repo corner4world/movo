@@ -9,13 +9,15 @@ from uuid import uuid4
 
 
 class LeaseStore:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, legacy_root: Path | None = None) -> None:
         self.path = root / "sandbox-plugin-leases.json"
+        self.legacy_path = legacy_root / "sandbox-plugin-leases.json" if legacy_root else None
 
     def load(self) -> dict[str, dict]:
-        if not self.path.exists():
+        source = self.path if self.path.exists() else self.legacy_path
+        if source is None or not source.exists():
             return {}
-        data = json.loads(self.path.read_text(encoding="utf-8"))
+        data = json.loads(source.read_text(encoding="utf-8"))
         if not isinstance(data, dict) or not all(isinstance(item, dict) for item in data.values()):
             raise ValueError("Invalid sandbox plugin lease store")
         return data

@@ -11,6 +11,7 @@ from pathlib import Path
 from .docker_engine import DockerEngine
 from .skill_environments import SkillEnvironments
 from .task_lease_store import TaskLeaseStore
+from .storage_paths import manager_state_root
 
 
 IDENTIFIER = re.compile(r"^[0-9a-f]{32}$")
@@ -40,11 +41,7 @@ class TaskContainers:
         self.slots = threading.BoundedSemaphore(int(os.environ.get("MOVO_SANDBOX_MAX_CONCURRENT", "2")))
         self._leases: dict[str, TaskLease] = {}
         self._lock = threading.RLock()
-        # The DSH Runtime volume is owned by uid 1000. The manager runs as
-        # uid 0 with all capabilities dropped, so it cannot create files at
-        # that volume root. Keep task leases on the manager-owned workspace
-        # volume instead.
-        self._store = TaskLeaseStore(self.root / ".task-state")
+        self._store = TaskLeaseStore(manager_state_root())
         self._restore()
 
     def execute(self, task_id: str, call_id: str) -> dict:

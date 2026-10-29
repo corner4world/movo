@@ -42,16 +42,21 @@ class EngineFake:
 
 def test_plugin_runtime_has_private_storage_and_scoped_token(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path / "workspaces"))
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_IMAGE", "dsh-test:1")
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_VOLUME", "runtime-volume")
-    monkeypatch.setattr("app.plugin_runtimes.os.chown", lambda *_: None)
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "workspace-volume")
+    (tmp_path / "plugin-archives").mkdir()
     engine = EngineFake()
     pool = PluginRuntimes(engine)
     lease = pool.create("tenant:t:profile:p")
     assert engine.payload["HostConfig"]["ReadonlyRootfs"] is True
     assert engine.payload["HostConfig"]["NetworkMode"] == "private-network"
     assert engine.payload["User"] == "1000:1000"
-    assert engine.payload["HostConfig"]["Mounts"][0]["VolumeOptions"]["Subpath"].startswith("sandbox-runtimes/")
+    assert engine.payload["HostConfig"]["Mounts"][0]["VolumeOptions"]["Subpath"].startswith("plugin-runtimes/")
+    assert engine.payload["HostConfig"]["Mounts"][0]["Source"] == "workspace-volume"
+    assert engine.payload["HostConfig"]["Mounts"][1]["Source"] == "runtime-volume"
+    assert engine.payload["HostConfig"]["Mounts"][1]["ReadOnly"] is True
     assert len(lease["token"]) == 64
     assert ("dsh-runtime-host", ["sandbox-gateway"]) in engine.connected
     restarted = PluginRuntimes(engine)
@@ -62,11 +67,31 @@ def test_plugin_runtime_has_private_storage_and_scoped_token(tmp_path: Path, mon
 
 def test_recreate_after_manager_restart_reclaims_old_lease(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path / "workspaces"))
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_IMAGE", "dsh-test:1")
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_VOLUME", "runtime-volume")
-    monkeypatch.setattr("app.plugin_runtimes.os.chown", lambda *_: None)
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "workspace-volume")
     engine = EngineFake()
     first = PluginRuntimes(engine).create("tenant:t:profile:p")
     second = PluginRuntimes(engine).create("tenant:t:profile:p")
     assert second["lease_id"] != first["lease_id"]
     assert engine.cleaned == ["killed", "removed", "dsh-runtime-host", "sandbox-egress", "network"]
+
+
+def test_existing_plugin_runtime_storage_remains_on_legacy_volume(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_ROOT", str(tmp_path / "runtime"))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path / "workspaces"))
+    monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_IMAGE", "dsh-test:1")
+    monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_VOLUME", "runtime-volume")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "workspace-volume")
+    import hashlib
+    key = hashlib.sha256(b"tenant:t:profile:p").hexdigest()
+    legacy = tmp_path / "runtime" / "sandbox-runtimes" / key
+    legacy.mkdir(parents=True)
+    (legacy / "saved.txt").write_text("keep")
+    engine = EngineFake()
+    PluginRuntimes(engine).create("tenant:t:profile:p")
+    mount = engine.payload["HostConfig"]["Mounts"][0]
+    assert mount["Source"] == "runtime-volume"
+    assert mount["VolumeOptions"]["Subpath"] == f"sandbox-runtimes/{key}"
+    assert (legacy / "saved.txt").read_text() == "keep"

@@ -63,7 +63,7 @@ def test_task_reuses_one_container_and_freezes_before_disposal(tmp_path: Path, m
             (call / filename).write_text("{}")
     engine = EngineFake()
     tasks = TaskContainers(engine)
-    assert (tmp_path / ".task-state" / "script-task-leases.json").is_file()
+    assert (tmp_path / ".manager-state" / "script-task-leases.json").is_file()
     assert tasks.execute(task_id, "b" * 32)["stdout"] == "ok"
     assert tasks.execute(task_id, "c" * 32)["stdout"] == "ok"
     assert engine.created == 1

@@ -110,11 +110,13 @@ def test_second_job_waits_without_sharing_the_first_slot(tmp_path: Path, monkeyp
 
 def test_queue_setting_persists_across_manager_restart(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("MOVO_SANDBOX_RUNTIME_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path / "workspaces"))
     monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
     monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "test-script:1")
     first = ScriptJobs(EngineFake())
     assert first.set_max_pending(3)["max_pending"] == 3
     assert ScriptJobs(EngineFake()).status()["max_pending"] == 3
+    assert (tmp_path / "workspaces" / ".manager-state" / "sandbox-settings.json").is_file()
 
 
 def test_selected_skill_is_mounted_read_only_from_immutable_cache(tmp_path: Path, monkeypatch) -> None:
