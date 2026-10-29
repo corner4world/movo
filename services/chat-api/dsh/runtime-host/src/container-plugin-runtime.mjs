@@ -1,8 +1,11 @@
 import { request as httpRequest } from 'node:http'
 
 import { validBearerToken } from './host-auth.mjs'
-import { sendJson } from './http-utils.mjs'
+import { readJson, sendJson } from './http-utils.mjs'
 import { RuntimeIdleReaper } from './runtime-idle-reaper.mjs'
+import { preparePluginCredentialRefresh, rewritePluginProfile } from './plugin-credential-relay.mjs'
+
+export { rewritePluginProfile } from './plugin-credential-relay.mjs'
 
 async function managerRequest(baseUrl, token, method, path, body) {
   const response = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, {
@@ -48,21 +51,6 @@ async function waitForReady(entry) {
     await new Promise(resolve => setTimeout(resolve, 250))
   }
   throw new Error('Container plugin Runtime did not become healthy')
-}
-
-export function rewritePluginProfile(profile, lease) {
-  if (!profile) return profile
-  const next = structuredClone(profile)
-  const relay = `http://sandbox-gateway:8101/v1/sandbox-relay/${lease.lease_id}`
-  next.gatewayUrl = `${relay}/model`
-  next.accessToken = lease.token
-  if (next.toolProfile) {
-    next.toolProfile.gatewayUrl = `${relay}/tools`
-    next.toolProfile.accessToken = lease.token
-  }
-  if (next.bundleGatewayUrl) next.bundleGatewayUrl = `${relay}/skill-bundles`
-  if (next.pluginGatewayUrl) next.pluginGatewayUrl = `${relay}/plugin-archives`
-  return next
 }
 
 function relayTarget(profile, kind, suffix) {
@@ -152,6 +140,18 @@ export class ContainerPluginRuntimePool {
   }
 
   async forward(entry, request, response) {
+    const credential = request.method === 'PUT'
+      ? /^\/v1\/runtimes\/[^/]+\/(model|tool)-credential$/.exec(new URL(request.url, 'http://runtime-host.local').pathname)
+      : null
+    if (credential) {
+      const refresh = preparePluginCredentialRefresh(entry, credential[1], await readJson(request))
+      const result = await this.#reaper.use(entry, () => requestJson(
+        entry, 'PUT', request.url, refresh.forwarded,
+      ))
+      entry.profile = refresh.profile
+      sendJson(response, 200, result)
+      return
+    }
     await this.#reaper.use(entry, () => new Promise((resolveForward, rejectForward) => {
       const upstream = httpRequest({
         hostname: entry.host, port: entry.port, path: request.url, method: request.method,
