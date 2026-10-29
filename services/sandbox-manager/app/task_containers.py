@@ -40,7 +40,11 @@ class TaskContainers:
         self.slots = threading.BoundedSemaphore(int(os.environ.get("MOVO_SANDBOX_MAX_CONCURRENT", "2")))
         self._leases: dict[str, TaskLease] = {}
         self._lock = threading.RLock()
-        self._store = TaskLeaseStore(Path(os.environ.get("MOVO_SANDBOX_RUNTIME_ROOT", "/runtime-data")))
+        # The DSH Runtime volume is owned by uid 1000. The manager runs as
+        # uid 0 with all capabilities dropped, so it cannot create files at
+        # that volume root. Keep task leases on the manager-owned workspace
+        # volume instead.
+        self._store = TaskLeaseStore(self.root / ".task-state")
         self._restore()
 
     def execute(self, task_id: str, call_id: str) -> dict:
