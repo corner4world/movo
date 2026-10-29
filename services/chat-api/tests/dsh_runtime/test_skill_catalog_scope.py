@@ -6,17 +6,20 @@ from app.dsh_runtime.profile.skills import catalog as catalog_module
 
 
 class PersonalService:
-    async def list_skills(self, user_id, main_id):
+    async def list_skills(self, user_id, main_id, *, include_package_files=True):
+        assert include_package_files is False
         return [{"id": "personal-1", "name": "Mine", "enabled": True, "visibility": "private"}]
 
 
 class OrganizationService:
-    async def list_runtime_skills(self, *, main_id):
+    async def list_runtime_skills(self, *, main_id, include_package_files=True):
+        assert include_package_files is False
         return [{"id": "org_skill:org-1", "name": "Org", "enabled": True, "visibility": "organization"}]
 
 
 class PackagePersonalService:
-    async def list_skills(self, user_id, main_id):
+    async def list_skills(self, user_id, main_id, *, include_package_files=True):
+        assert include_package_files is False
         return [{
             "id": "personal-package", "name": "Foshan guide", "enabled": True,
             "visibility": "private", "package_id": "package-1",
@@ -24,7 +27,8 @@ class PackagePersonalService:
 
 
 class EmptyOrganizationService:
-    async def list_runtime_skills(self, *, main_id):
+    async def list_runtime_skills(self, *, main_id, include_package_files=True):
+        assert include_package_files is False
         return []
 
 
@@ -37,8 +41,9 @@ class AsyncCursor:
 
 
 class PackageCollection:
-    def find(self, query):
+    def find(self, query, projection):
         assert query == {"_id": {"$in": ["package-1"]}, "main_id": "tenant-a"}
+        assert projection["files"] == {"$slice": 3}
         return AsyncCursor([{
             "_id": "package-1", "archive_base64": "YXJjaGl2ZQ==", "root_prefix": "foshan/",
             "files": [
@@ -74,7 +79,8 @@ def test_package_resources_are_attached_to_the_runtime_catalog(monkeypatch):
 
 def test_gridfs_package_is_referenced_without_embedding_archive(monkeypatch):
     class GridPackageCollection:
-        def find(self, query):
+        def find(self, query, projection):
+            assert projection["files"] == {"$slice": 3}
             return AsyncCursor([{
                 "_id": "package-1", "archive_gridfs_id": "a" * 32, "root_prefix": "foshan/",
                 "files": [{"path": "references/info.txt", "size": 21 * 1024 * 1024}],

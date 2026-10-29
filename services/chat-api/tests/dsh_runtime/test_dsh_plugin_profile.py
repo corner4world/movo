@@ -32,8 +32,8 @@ class Database:
 
 def test_personal_plugin_overrides_same_named_enterprise_plugin(monkeypatch):
     db = Database([
-        {"_id": "org-id", "name": "shared", "version": "1.0.0", "spec": "shared@1.0.0", "owner_user_id": "", "tool_names": ["enterprise_tool"]},
-        {"_id": "personal-id", "name": "shared", "version": "2.0.0", "spec": "shared@2.0.0", "owner_user_id": "user-a", "tool_names": ["personal_tool"]},
+        {"_id": "org-id", "name": "shared", "version": "1.0.0", "spec": "shared@1.0.0", "owner_user_id": "", "engine": "dsh", "tool_names": ["enterprise_tool"]},
+        {"_id": "personal-id", "name": "shared", "version": "2.0.0", "spec": "shared@2.0.0", "owner_user_id": "user-a", "engine": "dsh", "tool_names": ["personal_tool"]},
     ])
     monkeypatch.setattr(plugin_module, "get_db", lambda: db)
 
@@ -54,7 +54,7 @@ def test_uploaded_plugin_profile_carries_immutable_archive_reference(monkeypatch
     digest = "b" * 64
     monkeypatch.setattr(plugin_module, "get_db", lambda: Database([{
         "name": "uploaded", "version": "1.0.0", "spec": f"archive:{digest}",
-        "_id": "uploaded-id", "owner_user_id": "", "tool_names": ["uploaded_tool"],
+        "_id": "uploaded-id", "owner_user_id": "", "engine": "dsh", "tool_names": ["uploaded_tool"],
         "archive_id": archive_id, "archive_digest": digest,
     }]))
     plugins = asyncio.run(plugin_module.MongoPluginCatalog().list_enabled("tenant-a", "user-a"))
@@ -76,9 +76,9 @@ def test_uploaded_plugin_profile_carries_immutable_archive_reference(monkeypatch
 
 def test_denied_enterprise_plugin_cannot_be_restored_by_personal_same_name(monkeypatch):
     monkeypatch.setattr(plugin_module, "get_db", lambda: Database([
-        {"_id": "org-id", "name": "restricted", "version": "1", "spec": "restricted@1", "owner_user_id": ""},
-        {"_id": "self-id", "name": "restricted", "version": "2", "spec": "restricted@2", "owner_user_id": "user-b"},
-        {"_id": "self-only", "name": "personal", "version": "1", "spec": "personal@1", "owner_user_id": "user-b"},
+        {"_id": "org-id", "name": "restricted", "version": "1", "spec": "restricted@1", "owner_user_id": "", "engine": "dsh"},
+        {"_id": "self-id", "name": "restricted", "version": "2", "spec": "restricted@2", "owner_user_id": "user-b", "engine": "dsh"},
+        {"_id": "self-only", "name": "personal", "version": "1", "spec": "personal@1", "owner_user_id": "user-b", "engine": "dsh"},
     ]))
 
     async def restricted(resource_type, *, main_id, user_id, resource_ids):
