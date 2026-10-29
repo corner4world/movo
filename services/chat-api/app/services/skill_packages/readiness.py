@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -13,7 +13,10 @@ from .dependency_status import dependency_status
 from .prewarm import DEPENDENCY_FILES
 from app.core.db import get_db
 from .pending_upgrade import promote_if_ready
-from .archive_store import read_archive
+from .retry_cache import ensure_retry_bundle_cached
+
+
+LOG = logging.getLogger(__name__)
 
 
 def needs_environment(skill: dict[str, Any]) -> bool:
@@ -71,20 +74,15 @@ async def retry_environment(skill: dict[str, Any]) -> str | None:
     url = os.environ.get("MOVO_SANDBOX_MANAGER_URL", "").strip().rstrip("/")
     token = os.environ.get("MOVO_SANDBOX_MANAGER_TOKEN", "")
     if not url or len(token) < 32:
+        LOG.warning("Skill dependency retry unavailable: sandbox manager configuration is missing")
         return "unavailable"
     try:
         package_id = str((skill.get("pending_package") or {}).get("fields", {}).get("package_id") or skill.get("package_id") or "")
         package = await get_db().skill_packages.find_one({"_id": package_id})
         if not package:
+            LOG.warning("Skill dependency retry unavailable: package record is missing for skill %s", skill.get("_id") or skill.get("id"))
             return "unavailable"
-        archive = await read_archive(get_db(), package)
-        from app.execution_isolation.skill_bundle import SkillBundle, cache_skill_bundle
-        bundle = SkillBundle(
-            name=str(package["slug"]), root_prefix=str(package.get("root_prefix") or ""),
-            archive=archive, digest=str(package["digest"]),
-        )
-        root = Path(os.environ.get("MOVO_SANDBOX_WORKSPACE_ROOT", "/workspaces"))
-        await asyncio.to_thread(cache_skill_bundle, bundle, root)
+        await ensure_retry_bundle_cached(get_db(), package)
         async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
             response = await client.post(
                 f"{url}/v1/skill-environments",
@@ -94,4 +92,5 @@ async def retry_environment(skill: dict[str, Any]) -> str | None:
             response.raise_for_status()
             return str(response.json().get("status") or "preparing")
     except (httpx.HTTPError, ValueError, OSError, KeyError):
+        LOG.exception("Skill dependency retry could not be started")
         return "unavailable"

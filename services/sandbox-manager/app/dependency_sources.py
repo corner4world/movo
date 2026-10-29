@@ -43,6 +43,17 @@ def source_attempts() -> list[DependencySource]:
     return ordered if ordered[0] != ordered[1] else ordered[:1]
 
 
+def build_attempts() -> list[DependencySource]:
+    """Try the alternate registry before repeating transient failures."""
+    sources = source_attempts()
+    try:
+        extra = int(os.environ.get("MOVO_SKILL_DEPENDENCY_RETRIES", "1"))
+    except ValueError:
+        extra = 1
+    extra = max(0, min(extra, 2))
+    return sources + [sources[index % len(sources)] for index in range(extra)]
+
+
 def retryable_failure(detail: str) -> bool:
     text = detail.lower()
     return any(fragment in text for fragment in (

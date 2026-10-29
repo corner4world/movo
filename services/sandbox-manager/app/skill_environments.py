@@ -6,12 +6,13 @@ import hashlib
 import logging
 import os
 import threading
+import time
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from pathlib import Path
 from uuid import uuid4
 
 from .docker_engine import DockerEngine, split_docker_logs
-from .dependency_sources import source_attempts, retryable_failure
+from .dependency_sources import build_attempts, retryable_failure
 
 
 LOG = logging.getLogger(__name__)
@@ -102,6 +103,7 @@ class SkillEnvironments:
     def _build(self, digest: str, image: str) -> str:
         lease = uuid4().hex
         network_id = proxy_id = None
+        deadline = time.monotonic() + self._build_timeout()
         try:
             proxy_id = self.engine.find_compose_service(self.project, "sandbox-egress")
             network_id = self.engine.create_internal_network(f"movo-deps-{lease}")
@@ -113,6 +115,7 @@ class SkillEnvironments:
                 "http_proxy=http://sandbox-egress:3128",
                 "https_proxy=http://sandbox-egress:3128",
                 "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                f"MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT={self._step_timeout()}",
             ]
             payload = {
                 "Image": self.base_image,
@@ -137,20 +140,24 @@ class SkillEnvironments:
                 },
                 "Labels": {"movo.role": "skill-dependency-build", "movo.skill_digest": digest},
             }
-            for index, source in enumerate(source_attempts()):
+            sources = build_attempts()
+            for index, source in enumerate(sources):
                 container_id = None
                 try:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError("Skill dependency preparation exceeded its total time limit")
                     payload["Env"] = environment + source.environment()
                     container_id = self.engine.create(f"movo-deps-{lease}-{index}", payload)
                     self.engine.start(container_id)
-                    exit_code = self.engine.wait(container_id, 900)
+                    exit_code = self.engine.wait(container_id, remaining)
                     if exit_code == 0:
                         self.engine.commit(container_id, "movo-skill-deps", image.rsplit(":", 1)[1])
                         return image
                     stdout, stderr = split_docker_logs(self.engine.logs(container_id))
                     detail = (stderr or stdout)[-4000:].decode(errors="replace")
-                    if index == 0 and retryable_failure(detail):
-                        LOG.warning("Skill dependency source %s failed; trying alternate source for %s: %s", source.name, digest, detail)
+                    if index < len(sources) - 1 and retryable_failure(detail):
+                        LOG.warning("Skill dependency source %s failed; retrying with %s for %s: %s", source.name, sources[index + 1].name, digest, detail)
                         continue
                     raise RuntimeError(f"Skill dependency installation failed using {source.name}: {detail}")
                 finally:
@@ -165,3 +172,19 @@ class SkillEnvironments:
                 if proxy_id:
                     self.engine.disconnect_network(network_id, proxy_id)
                 self.engine.remove_network(network_id)
+
+    @staticmethod
+    def _step_timeout() -> int:
+        return SkillEnvironments._bounded_timeout("MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT", 480, 60, 1200)
+
+    @staticmethod
+    def _build_timeout() -> int:
+        return SkillEnvironments._bounded_timeout("MOVO_SKILL_DEPENDENCY_BUILD_TIMEOUT", 1800, 300, 3600)
+
+    @staticmethod
+    def _bounded_timeout(name: str, default: int, minimum: int, maximum: int) -> int:
+        try:
+            value = int(os.environ.get(name, str(default)))
+        except ValueError:
+            value = default
+        return max(minimum, min(value, maximum))

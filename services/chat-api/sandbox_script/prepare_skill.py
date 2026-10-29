@@ -14,6 +14,14 @@ BUILD = Path("/tmp/movo-skill-build")
 APT_NAME = re.compile(r"^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9-]+)?(?:=[a-z0-9:~+._-]+)?$")
 
 
+def step_timeout() -> int:
+    try:
+        value = int(os.environ.get("MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT", "480"))
+    except ValueError:
+        value = 480
+    return max(60, min(value, 1200))
+
+
 def apt_packages(path: Path) -> list[str]:
     packages = [line.split("#", 1)[0].strip() for line in path.read_text(encoding="utf-8").splitlines()]
     packages = [name for name in packages if name]
@@ -23,7 +31,7 @@ def apt_packages(path: Path) -> list[str]:
 
 
 def run(*args: str, cwd: Path | None = None) -> None:
-    subprocess.run(args, cwd=cwd, check=True, timeout=240)
+    subprocess.run(args, cwd=cwd, check=True, timeout=step_timeout())
 
 
 def configure_apt_mirror() -> None:
@@ -51,7 +59,7 @@ def main() -> None:
             shutil.rmtree("/var/lib/apt/lists", ignore_errors=True)
     requirements = BUILD / "requirements.txt"
     if requirements.is_file():
-        run("python", "-m", "pip", "install", "--no-cache-dir", "--timeout", "15", "--retries", "1", "-r", str(requirements), cwd=BUILD)
+        run("python", "-m", "pip", "install", "--no-cache-dir", "--timeout", "60", "--retries", "2", "-r", str(requirements), cwd=BUILD)
     package_json = BUILD / "package.json"
     if package_json.is_file():
         if not (BUILD / "package-lock.json").is_file():

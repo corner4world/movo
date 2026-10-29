@@ -10,6 +10,7 @@ class ImageEngine:
     def __init__(self):
         self.images = {"base:latest": "sha256:base"}
         self.created = None
+        self.wait_timeout = None
 
     def image_id(self, name):
         return self.images.get(name)
@@ -31,6 +32,7 @@ class ImageEngine:
         pass
 
     def wait(self, container, timeout):
+        self.wait_timeout = timeout
         return 0
 
     def commit(self, container, repository, tag):
@@ -48,9 +50,10 @@ class ImageEngine:
 
 
 class RetryingEngine(ImageEngine):
-    def __init__(self, failure: str):
+    def __init__(self, failure: str, failures: int = 1):
         super().__init__()
         self.failure = failure
+        self.failures = failures
         self.environments = []
         self.removed = []
 
@@ -59,7 +62,7 @@ class RetryingEngine(ImageEngine):
         return name
 
     def wait(self, container, timeout):
-        return 1 if len(self.environments) == 1 else 0
+        return 1 if len(self.environments) <= self.failures else 0
 
     def logs(self, container):
         raw = self.failure.encode()
@@ -87,6 +90,19 @@ def test_dependency_image_is_keyed_by_bundle_and_base_image(tmp_path: Path, monk
     assert engine.created["HostConfig"]["NetworkMode"] == "network"
     assert engine.created["HostConfig"]["CapDrop"] == ["ALL"]
     assert engine.created["HostConfig"]["CapAdd"] == ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETUID", "SETGID"]
+    assert "MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT=480" in engine.created["Env"]
+    assert 1790 <= engine.wait_timeout <= 1800
+
+
+def test_dependency_build_timeouts_are_configurable_and_bounded(monkeypatch):
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT", "720")
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_BUILD_TIMEOUT", "2400")
+    assert SkillEnvironments._step_timeout() == 720
+    assert SkillEnvironments._build_timeout() == 2400
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_STEP_TIMEOUT", "99999")
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_BUILD_TIMEOUT", "invalid")
+    assert SkillEnvironments._step_timeout() == 1200
+    assert SkillEnvironments._build_timeout() == 1800
 
 
 def test_bundle_without_declarations_uses_base_image(tmp_path: Path, monkeypatch):
@@ -191,6 +207,40 @@ def test_network_failure_retries_in_fresh_container(tmp_path: Path, monkeypatch)
     assert "MOVO_DEPENDENCY_SOURCE=cn" in engine.environments[0]
     assert "MOVO_DEPENDENCY_SOURCE=global" in engine.environments[1]
     assert len(engine.removed) == 2
+
+
+def test_network_failure_after_both_sources_gets_one_bounded_extra_attempt(tmp_path: Path, monkeypatch):
+    digest = "1" * 64
+    root = tmp_path / "skill-cache" / digest
+    root.mkdir(parents=True)
+    (root / "SKILL.md").write_text("sample")
+    (root / "requirements.txt").write_text("humanize==4.13.0")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
+    monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "base:latest")
+    monkeypatch.setenv("MOVO_DEPENDENCY_MIRROR", "cn")
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_RETRIES", "1")
+    engine = RetryingEngine("pip timed out", failures=2)
+    assert SkillEnvironments(engine).ready_image(digest).startswith("movo-skill-deps:")
+    assert len(engine.environments) == 3
+    assert [next(value for value in env if value.startswith("MOVO_DEPENDENCY_SOURCE=")) for env in engine.environments] == [
+        "MOVO_DEPENDENCY_SOURCE=cn", "MOVO_DEPENDENCY_SOURCE=global", "MOVO_DEPENDENCY_SOURCE=cn",
+    ]
+
+
+def test_non_network_failure_does_not_retry(tmp_path: Path, monkeypatch):
+    digest = "2" * 64
+    root = tmp_path / "skill-cache" / digest
+    root.mkdir(parents=True)
+    (root / "SKILL.md").write_text("sample")
+    (root / "requirements.txt").write_text("invalid-package")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
+    monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "base:latest")
+    engine = RetryingEngine("No matching distribution found", failures=3)
+    with pytest.raises(DependencyPreparationError):
+        SkillEnvironments(engine).ready_image(digest)
+    assert len(engine.environments) == 1
 
 
 def test_package_error_does_not_switch_source(tmp_path: Path, monkeypatch):

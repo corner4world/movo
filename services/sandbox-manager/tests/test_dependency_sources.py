@@ -1,4 +1,4 @@
-from app.dependency_sources import retryable_failure, source_attempts
+from app.dependency_sources import build_attempts, retryable_failure, source_attempts
 
 
 def test_china_deployment_uses_china_then_global(monkeypatch):
@@ -36,3 +36,11 @@ def test_only_transport_failures_trigger_fallback():
     assert retryable_failure("npm ERR! code EAI_AGAIN")
     assert not retryable_failure("No matching distribution found for package==99")
     assert not retryable_failure("package.json requires a package-lock.json")
+
+
+def test_extra_attempts_are_bounded_and_follow_source_order(monkeypatch):
+    monkeypatch.setenv("MOVO_DEPENDENCY_MIRROR", "cn")
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_RETRIES", "9")
+    assert [source.name for source in build_attempts()] == ["cn", "global", "cn", "global"]
+    monkeypatch.setenv("MOVO_SKILL_DEPENDENCY_RETRIES", "0")
+    assert [source.name for source in build_attempts()] == ["cn", "global"]

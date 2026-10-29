@@ -454,7 +454,12 @@ async function retryEnvironment(row: SkillItem) {
   retryingIds.value = new Set([...retryingIds.value, row.id]);
   try {
     const result = await retrySkillDependency(row.id);
+    if (result.status !== 'preparing' && result.status !== 'ready') {
+      message.error(t('skillDeps.retryNotStarted'));
+      return;
+    }
     rows.value = rows.value.map(item => item.id === row.id ? { ...item, environmentStatus: result.status as SkillItem['environmentStatus'] } : item);
+    message[result.status === 'ready' ? 'success' : 'info'](t(result.status === 'ready' ? 'skillDeps.ready' : 'skillDeps.retryStarted'));
   } catch { message.error(t('skillDeps.unavailable')); }
   finally { const next = new Set(retryingIds.value); next.delete(row.id); retryingIds.value = next; }
 }
