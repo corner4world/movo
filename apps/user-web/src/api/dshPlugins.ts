@@ -16,7 +16,7 @@ export interface DshPlugin {
 }
 
 export interface PluginAvailability {
-  status: 'verified' | 'session_exposed' | 'not_exposed' | 'unverified' | 'failed'
+  status: 'verified' | 'session_exposed' | 'not_exposed' | 'unsupported' | 'unverified' | 'failed'
   reason: string
   checks: Record<string, boolean>
   discovered_tools?: string[]

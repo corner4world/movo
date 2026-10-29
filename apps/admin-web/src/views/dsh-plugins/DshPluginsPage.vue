@@ -51,10 +51,12 @@ async function install(source: string | File) {
   if (installing.value) return
   installing.value = true
   try {
-    if (typeof source === 'string') await installDshPlugin(source)
-    else await uploadDshPlugin(source)
+    const plugin = typeof source === 'string' ? await installDshPlugin(source) : await uploadDshPlugin(source)
     showInstall.value = false
-    message.success(t('dshPlugins.installed'))
+    const status = plugin.availability?.reason === 'no_global_tool_detected' ? 'unsupported' : plugin.availability?.status
+    if (status === 'unsupported') message.warning(t('dshPlugins.installedUnsupported'))
+    else if (status === 'session_exposed' || status === 'verified') message.success(t('dshPlugins.installed'))
+    else message.warning(t('dshPlugins.installedNeedsCheck'))
     await reload()
   } catch (error) { message.error(String(errorText(error))) }
   finally { installing.value = false }

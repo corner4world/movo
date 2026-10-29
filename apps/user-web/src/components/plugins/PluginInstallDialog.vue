@@ -9,6 +9,7 @@
       <n-form-item :label="t('plugins.archive')"><input class="file-input" type="file" accept=".tgz,.gz,application/gzip" @change="selectFile" /></n-form-item>
       <p class="install-help">{{ t('plugins.archiveHelp') }}</p>
     </template>
+    <p class="install-help">{{ t('plugins.uiLimit') }}</p>
     <p v-if="installing" class="install-help" role="status">{{ t('plugins.environmentPreparing') }}</p>
     <template #footer><n-space justify="end"><n-button @click="emit('update:show', false)">{{ t('ui.cancel') }}</n-button><n-button type="primary" :loading="installing" :disabled="mode === 'remote' ? !spec.trim() : !file" @click="submit">{{ t('plugins.install') }}</n-button></n-space></template>
   </n-modal>

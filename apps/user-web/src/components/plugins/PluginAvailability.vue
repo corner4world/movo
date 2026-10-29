@@ -1,12 +1,14 @@
 <template>
   <div class="availability">
     <n-tag size="small" :type="tagType" :bordered="false">{{ t(`plugins.availability.${displayStatus}`) }}</n-tag>
+    <n-tag v-if="['session_exposed', 'verified'].includes(status)" size="small" type="warning" :bordered="false">{{ t('plugins.uiBadge') }}</n-tag>
     <n-popover trigger="click" placement="bottom-start" style="max-width:340px">
       <template #trigger><n-button size="tiny" text type="primary">{{ t('plugins.diagnosis') }}</n-button></template>
       <div class="diagnosis">
         <strong>{{ t('plugins.diagnosis') }}</strong>
         <p>{{ reason }}</p>
         <p v-if="status === 'failed'" class="next-step">{{ t('plugins.failureNextStep') }}</p>
+        <p v-if="['session_exposed', 'verified'].includes(status)" class="next-step">{{ t('plugins.uiLimit') }}</p>
         <div v-for="check in checks" :key="check" class="check">
           <span>{{ availability?.checks?.[check] ? '✓' : '○' }}</span> {{ t(`plugins.check.${check}`) }}
         </div>
@@ -27,8 +29,8 @@ const props = defineProps<{ availability?: Assessment; busy?: boolean; canVerify
 const emit = defineEmits<{ verify: [] }>()
 const checks = ['package', 'runtime', 'session', 'invocation']
 const status = computed(() => props.availability?.status || 'unverified')
-const displayStatus = computed(() => status.value === 'failed' && props.availability?.checks?.package && !props.availability?.checks?.runtime ? 'runtime_failed' : status.value)
-const tagType = computed(() => ['verified', 'session_exposed'].includes(status.value) ? 'success' : status.value === 'failed' || status.value === 'not_exposed' ? 'error' : 'warning')
+const displayStatus = computed(() => status.value === 'unverified' && props.availability?.reason === 'no_global_tool_detected' ? 'unsupported' : status.value === 'failed' && props.availability?.checks?.package && !props.availability?.checks?.runtime ? 'runtime_failed' : status.value)
+const tagType = computed(() => ['verified', 'session_exposed'].includes(status.value) ? 'success' : ['failed', 'not_exposed', 'unsupported'].includes(displayStatus.value) ? 'error' : 'warning')
 const reason = computed(() => {
   const value = props.availability?.reason || 'legacy_not_assessed'
   const known = ['invocation_verified', 'invocation_not_verified', 'tools_missing_from_session', 'no_global_tool_detected', 'legacy_not_assessed', 'not_assessed']

@@ -11,6 +11,7 @@ from app.dsh_runtime.transport import HttpKernelHostTransport
 from app.dsh_runtime.errors import DshTransportError
 from app.dsh_runtime.plugin_management.source_policy import is_fixed_npm_source
 from app.dsh_runtime.plugin_management.install_failure import install_error_text, is_missing_registry_dependency
+from app.dsh_runtime.plugin_management.compatibility import classify_conversation_tools
 
 logger = logging.getLogger(__name__)
 NPM_REGISTRY = "https://registry.npmjs.org/"
@@ -191,12 +192,7 @@ class DshPluginInstaller:
                         package["archive_id"] = archive_id
                         package["archive_digest"] = archive_digest
                     return package
-            if discovered and all(name in exposed for name in discovered):
-                status, reason = "session_exposed", "invocation_not_verified"
-            elif discovered:
-                status, reason = "not_exposed", "tools_missing_from_session"
-            else:
-                status, reason = "unverified", "no_global_tool_detected"
+            status, reason = classify_conversation_tools(set(discovered), exposed)
             package["availability"] = {
                 "status": status,
                 "reason": reason,

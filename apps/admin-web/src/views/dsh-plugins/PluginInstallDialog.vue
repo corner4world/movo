@@ -12,6 +12,7 @@
       <n-form-item :label="t('dshPlugins.archive')"><input class="file-input" type="file" accept=".tgz,.gz,application/gzip" @change="selectFile" /></n-form-item>
       <p class="help">{{ t('dshPlugins.archiveHelp') }}</p>
     </template>
+    <p class="help">{{ t('dshPlugins.uiLimit') }}</p>
     <p v-if="installing" class="help" role="status">{{ t('dshPlugins.environmentPreparing') }}</p>
     <template #footer><n-space justify="end"><n-button @click="emit('update:show', false)">{{ t('dshPlugins.cancel') }}</n-button><n-button type="primary" :loading="installing" :disabled="mode === 'remote' ? !spec.trim() : !file" @click="submit">{{ t('dshPlugins.install') }}</n-button></n-space></template>
   </n-modal>
