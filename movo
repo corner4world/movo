@@ -39,6 +39,7 @@ source "${ROOT_DIR}/deploy/cli/backup.sh"
 source "${ROOT_DIR}/deploy/cli/sequence-fix.sh"
 # shellcheck source=deploy/cli/sandbox.sh
 source "${ROOT_DIR}/deploy/cli/sandbox.sh"
+movo_sandbox_defaults
 
 print_logo() {
   printf '\n'

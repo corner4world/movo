@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+movo_sandbox_defaults() {
+  COMPOSE_PROFILES="${COMPOSE_PROFILES:-$(dotenv_value COMPOSE_PROFILES)}"
+  MOVO_SANDBOX_MANAGER_URL="${MOVO_SANDBOX_MANAGER_URL:-$(dotenv_value MOVO_SANDBOX_MANAGER_URL)}"
+  COMPOSE_PROFILES="${COMPOSE_PROFILES:-sandbox}"
+  MOVO_SANDBOX_MANAGER_URL="${MOVO_SANDBOX_MANAGER_URL:-http://sandbox-manager:8300}"
+  export COMPOSE_PROFILES MOVO_SANDBOX_MANAGER_URL
+}
+
 movo_sandbox_preflight() {
   local profiles configured_url engine_version major
   profiles="${COMPOSE_PROFILES:-$(dotenv_value COMPOSE_PROFILES)}"
