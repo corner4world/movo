@@ -5,9 +5,15 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
+import logging
 
 from app.dsh_runtime.bindings import KernelBindingRepository
 from app.dsh_runtime.conversation import ConversationRepository
+from app.execution_isolation.task_audit import finalize_task_audit
+from app.dsh_runtime.plugin_management.audit import index_plugin_calls
+
+
+logger = logging.getLogger(__name__)
 
 
 class TurnFinalizationRetryableError(RuntimeError):
@@ -79,6 +85,29 @@ class TurnStateFinalizer:
                     ),
                 ),
                 "persist the assistant projection",
+            )
+            try:
+                await index_plugin_calls(
+                    tenant_id=str(binding["tenant_id"]),
+                    user_id=str(binding["user_id"]),
+                    conversation_id=str(binding["conversation_id"]),
+                    message_id=message_id,
+                    events=list(assistant.execution_events),
+                )
+            except Exception:
+                # Native tool events are already durable; the query index can
+                # be rebuilt without blocking the user's turn.
+                logger.exception("failed to index plugin execution audit")
+        if clear_conversation:
+            await self._step(
+                lambda: finalize_task_audit(
+                    message_id=message_id,
+                    tenant_id=str(binding["tenant_id"]),
+                    user_id=str(binding["user_id"]),
+                    conversation_id=str(binding["conversation_id"]),
+                    status=status,
+                ),
+                "archive and release the code execution task",
             )
         await self._step(
             lambda: self._finish_binding(binding, message_id, status),

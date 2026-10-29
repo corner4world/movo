@@ -8,6 +8,7 @@ import resource
 import shutil
 import time
 from pathlib import Path
+from uuid import uuid4
 from typing import Any, AsyncIterator, Dict, Iterable, List, Tuple
 
 from app.enterprise_capabilities.runtime.execution_contracts import CapabilityTask
@@ -21,6 +22,7 @@ from app.enterprise_capabilities.data.script_engine.artifact_export import expor
 from app.execution_isolation.script_backend import child_path, container_backend_enabled, run_script_job, script_workspace
 from app.execution_isolation.skill_bundle import SkillBundle, cache_skill_bundle, stage_skill_bundle
 from app.execution_isolation.runner_source import runner_source
+from app.execution_isolation.call_audit import record_call
 
 
 class ScriptPluginExecutor(BaseExecutor):
@@ -114,18 +116,25 @@ class ScriptPluginExecutor(BaseExecutor):
         if not user_id:
             user_id = str(get_request_context().get("user_id") or "anonymous")
 
-        with script_workspace() as work_dir:
+        task_scope = task_id if container_backend_enabled() and task_id else ""
+        with script_workspace(task_scope) as work_dir:
+            call_id = uuid4().hex if task_scope else ""
+            call_dir = work_dir / "calls" / call_id if task_scope else work_dir
+            call_dir.mkdir(parents=True, exist_ok=True)
+            if task_scope:
+                call_dir.chmod(0o777)
             skill_digest = ""
             if skill_bundle and container_backend_enabled():
-                skill_digest = cache_skill_bundle(skill_bundle, work_dir.parent)
+                skill_digest = cache_skill_bundle(skill_bundle, work_dir.parent.parent if task_scope else work_dir.parent)
                 skill_dir = Path("/job/skills") / skill_bundle.root_prefix
             else:
                 skill_dir = stage_skill_bundle(skill_bundle, work_dir) if skill_bundle else None
-            input_dir = work_dir / "inputs"
-            output_dir = work_dir / "out"
+            input_dir = call_dir / "inputs" if task_scope else work_dir / "inputs"
+            output_dir = call_dir / "out" if task_scope else work_dir / "out"
             input_dir.mkdir(parents=True, exist_ok=True)
             output_dir.mkdir(parents=True, exist_ok=True)
             if container_backend_enabled():
+                input_dir.chmod(0o777)
                 output_dir.chmod(0o777)
 
             files = self._materialize_input_files(input_dir=input_dir, node=node, inputs=inputs)
@@ -134,9 +143,9 @@ class ScriptPluginExecutor(BaseExecutor):
                     {**item, "local_path": child_path(Path(item["local_path"]), work_dir)}
                     for item in files
                 ]
-            plugin_path = work_dir / "plugin.py"
-            runner_path = work_dir / "runner.py"
-            stdin_path = work_dir / "stdin.json"
+            plugin_path = call_dir / "plugin.py"
+            runner_path = call_dir / "runner.py"
+            stdin_path = call_dir / "stdin.json"
             plugin_path.write_text(plugin_code, encoding="utf-8")
             runner_path.write_text(self._runner_source(), encoding="utf-8")
 
@@ -168,27 +177,51 @@ class ScriptPluginExecutor(BaseExecutor):
             }
             stdin_path.write_text(json.dumps(payload, ensure_ascii=False, default=str), encoding="utf-8")
 
+            started_ns = time.time_ns()
             started = time.monotonic()
-            completed = run_script_job(
-                work_dir=work_dir, runner_path=runner_path, plugin_path=plugin_path,
-                stdin_path=stdin_path, env=self._safe_env(),
-                timeout_seconds=self._TIMEOUT_SECONDS,
-                limit_child_process=self._limit_child_process,
-                skill_digest=skill_digest,
-            )
+            try:
+                completed = run_script_job(
+                    work_dir=work_dir, runner_path=runner_path, plugin_path=plugin_path,
+                    stdin_path=stdin_path, env=self._safe_env(),
+                    timeout_seconds=self._TIMEOUT_SECONDS,
+                    limit_child_process=self._limit_child_process,
+                    skill_digest=skill_digest,
+                    task_id=task_scope, call_id=call_id,
+                )
+            except Exception as exc:
+                if task_scope:
+                    record_call(call_dir, action_id=run_id, skill_digest=skill_digest,
+                                duration_ms=int((time.monotonic() - started) * 1000),
+                                status="failed", error=str(exc), started_ns=started_ns)
+                raise
             duration_ms = int((time.monotonic() - started) * 1000)
             stdout = (completed.stdout or "")[: self._MAX_STDOUT_BYTES]
             stderr = (completed.stderr or "")[:8000]
-            if completed.returncode != 0:
-                raise RuntimeError(f"script plugin exited with code {completed.returncode}: {stderr or stdout}")
-            result = self._parse_stdout(stdout)
-            return self._build_artifacts(
-                result=result,
-                output_dir=output_dir,
-                user_id=user_id,
-                duration_ms=duration_ms,
-                stderr=stderr,
-            )
+            image_ref = str(getattr(completed, "image_ref", ""))
+            try:
+                if completed.returncode != 0:
+                    raise RuntimeError(f"script plugin exited with code {completed.returncode}: {stderr or stdout}")
+                result = self._parse_stdout(stdout)
+                artifacts = self._build_artifacts(
+                    result=result,
+                    output_dir=output_dir,
+                    user_id=user_id,
+                    duration_ms=duration_ms,
+                    stderr=stderr,
+                    sandbox_output_dir=Path(child_path(output_dir, work_dir)) if container_backend_enabled() else None,
+                )
+            except Exception as exc:
+                if task_scope:
+                    record_call(call_dir, action_id=run_id, skill_digest=skill_digest,
+                                duration_ms=duration_ms, status="failed", stdout=stdout,
+                                stderr=stderr, error=str(exc), started_ns=started_ns,
+                                image_ref=image_ref)
+                raise
+            if task_scope:
+                record_call(call_dir, action_id=run_id, skill_digest=skill_digest,
+                            duration_ms=duration_ms, status="succeeded", stdout=stdout,
+                            stderr=stderr, started_ns=started_ns, image_ref=image_ref)
+            return artifacts
 
     def _materialize_input_files(self, *, input_dir: Path, node: CapabilityTask, inputs: CapabilityInputs) -> List[Dict[str, Any]]:
         uploader = AliyunOSSUploader()
@@ -494,6 +527,7 @@ class ScriptPluginExecutor(BaseExecutor):
         user_id: str,
         duration_ms: int,
         stderr: str,
+        sandbox_output_dir: Path | None = None,
     ) -> Dict[str, Any]:
         raw_artifacts = result.get("artifacts") if isinstance(result.get("artifacts"), list) else []
         if not raw_artifacts and isinstance(result.get("files"), list):
@@ -502,7 +536,7 @@ class ScriptPluginExecutor(BaseExecutor):
             raw_artifacts=raw_artifacts,
             output_dir=output_dir,
             user_id=user_id,
-            sandbox_output_dir=Path("/job/out") if container_backend_enabled() else None,
+            sandbox_output_dir=sandbox_output_dir,
         )
         documents = exported["documents"]
         images = exported["images"]
@@ -568,4 +602,4 @@ class ScriptPluginExecutor(BaseExecutor):
 
     @staticmethod
     def _runner_source() -> str:
-        return runner_source()
+        return runner_source(container_isolated=container_backend_enabled())

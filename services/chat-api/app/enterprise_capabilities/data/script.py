@@ -14,6 +14,8 @@ from app.enterprise_capabilities.data.script_inputs import governed_script_files
 from app.enterprise_capabilities.artifacts.delivery_scope import apply_result_delivery_scope
 from app.execution_isolation import ExecutionTarget, route_capability
 from app.execution_isolation.skill_bundle import selected_skill_bundle
+from app.execution_isolation.call_audit import record_rejected_code
+from app.execution_isolation.script_backend import container_backend_enabled
 
 
 async def run_script(arguments: dict[str, Any], context: CapabilityExecutionContext) -> dict[str, Any]:
@@ -28,12 +30,19 @@ async def run_script(arguments: dict[str, Any], context: CapabilityExecutionCont
     # and optional data, but those arguments must not replace the actual
     # message or a Skill invocation prefix with model-reconstructed text.
     user_request = str(context.turn_context.get("user_request") or "")
+    source = str(arguments.get("code") or "")
+    try:
+        compiled = compile_script_plugin(source)
+    except (SyntaxError, ValueError) as exc:
+        if container_backend_enabled() and context.message_id:
+            record_rejected_code(context.message_id, context.action_id, source, str(exc))
+        raise
     node = CapabilityTask(
         node_id=f"dsh-script-{context.action_id}", goal="Run governed data-processing script",
         assigned_agent="agent.analysis", expected_artifacts=["plugin_result", "documents", "images"],
         meta={
             "capability_id": "file.run_script_plugin",
-            "semantic_config": {"pluginCode": compile_script_plugin(str(arguments.get("code") or ""))},
+            "semantic_config": {"pluginCode": compiled},
         },
     )
     inputs = CapabilityInputs(
@@ -56,7 +65,7 @@ async def run_script(arguments: dict[str, Any], context: CapabilityExecutionCont
         tenant_id=context.tenant_id, user_id=context.user_id,
     )
     async for event, produced in ScriptPluginExecutor().execute(
-        runtime=None, task_id=context.conversation_id, run_id=context.action_id,
+        runtime=None, task_id=context.message_id, run_id=context.action_id,
         node=node, inputs=inputs,
         skills={"_movo_selected_skill_bundle": bundle} if bundle else {},
     ):

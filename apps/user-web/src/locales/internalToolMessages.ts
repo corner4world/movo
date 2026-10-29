@@ -20,5 +20,5 @@ export const internalToolMessages = {
   'internalTool.document_transform': { zh: '文档保真翻译', en: 'Translate document with formatting' },
   'internalTool.table_fill': { zh: '填写文档表单', en: 'Fill document form' },
   'internalTool.browser_task': { zh: '浏览器任务', en: 'Browser task' },
-  'internalTool.run_script': { zh: '受控脚本处理', en: 'Run controlled script' },
+  'internalTool.run_script': { zh: '代码执行', en: 'Code execution' },
 } as const

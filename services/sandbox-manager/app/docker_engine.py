@@ -53,12 +53,28 @@ class DockerEngine:
     def logs(self, container_id: str) -> bytes:
         return self.request("GET", f"/containers/{container_id}/logs", params={"stdout": 1, "stderr": 1}).content
 
+    def execute(self, container_id: str, command: list[str], timeout: float) -> tuple[int, bytes, bytes]:
+        created = self.request("POST", f"/containers/{container_id}/exec", json={
+            "AttachStdout": True, "AttachStderr": True, "Cmd": command,
+            "User": "65534:65534", "WorkingDir": "/job/work",
+        }).json()["Id"]
+        response = self.client.post(
+            f"/exec/{created}/start", json={"Detach": False, "Tty": False}, timeout=timeout,
+        )
+        response.raise_for_status()
+        status = self.request("GET", f"/exec/{created}/json").json()
+        stdout, stderr = split_docker_logs(response.content)
+        return int(status["ExitCode"]), stdout, stderr
+
     def kill(self, container_id: str) -> None:
         try:
             self.request("POST", f"/containers/{container_id}/kill")
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code not in {304, 404, 409}:
                 raise
+
+    def inspect(self, container_id: str) -> dict:
+        return self.request("GET", f"/containers/{container_id}/json").json()
 
     def remove(self, container_id: str) -> None:
         try:

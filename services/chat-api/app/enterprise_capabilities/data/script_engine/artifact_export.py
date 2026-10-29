@@ -62,7 +62,9 @@ def export_script_artifacts(
             raise FileNotFoundError(f"script plugin output not found: {path.name}")
         ext = path.suffix.lower()
         if ext not in ALLOWED_OUTPUT_EXTS:
-            raise ValueError(f"unsupported script plugin output extension: {ext}")
+            # Keep other files in the task audit workspace without presenting
+            # them as user-facing deliverables.
+            continue
         filename = _safe_filename(
             str(item.get("name") or item.get("filename") or path.name),
             fallback=f"plugin_output_{idx}{ext}",

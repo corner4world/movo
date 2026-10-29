@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -18,14 +19,33 @@ def container_backend_enabled() -> bool:
     return bool(os.environ.get("MOVO_SANDBOX_MANAGER_URL", "").strip())
 
 
+def task_key(message_id: str) -> str:
+    return hashlib.sha256(message_id.encode("utf-8")).hexdigest()[:32]
+
+
+def task_workspace(message_id: str) -> Path:
+    return Path(os.environ.get("MOVO_SANDBOX_WORKSPACE_ROOT", "/workspaces")) / task_key(message_id)
+
+
 @contextmanager
-def script_workspace() -> Iterator[Path]:
+def script_workspace(task_id: str = "") -> Iterator[Path]:
     if not container_backend_enabled():
         with tempfile.TemporaryDirectory(prefix="askai_script_plugin_") as path:
             yield Path(path)
         return
     root = Path(os.environ.get("MOVO_SANDBOX_WORKSPACE_ROOT", "/workspaces"))
     root.mkdir(parents=True, exist_ok=True)
+    if task_id:
+        task_root = task_workspace(task_id)
+        work = task_root / "work"
+        work.mkdir(parents=True, exist_ok=True)
+        temporary = work / "tmp"
+        temporary.mkdir(exist_ok=True)
+        task_root.chmod(0o777)
+        work.chmod(0o777)
+        temporary.chmod(0o777)
+        yield work
+        return
     path = root / uuid4().hex
     path.mkdir(mode=0o700)
     # The worker runs as an unprivileged UID and sees only this subdirectory.
@@ -39,12 +59,14 @@ def script_workspace() -> Iterator[Path]:
 def child_path(path: Path, work_dir: Path) -> str:
     if not container_backend_enabled():
         return str(path)
-    return str(Path("/job") / path.relative_to(work_dir))
+    base = Path("/job/work") if work_dir.name == "work" else Path("/job")
+    return str(base / path.relative_to(work_dir))
 
 
 def run_script_job(
     *, work_dir: Path, runner_path: Path, plugin_path: Path, stdin_path: Path,
     env: dict[str, str], timeout_seconds: int, limit_child_process, skill_digest: str = "",
+    task_id: str = "", call_id: str = "",
 ) -> subprocess.CompletedProcess[str]:
     if not container_backend_enabled():
         return subprocess.run(
@@ -57,10 +79,11 @@ def run_script_job(
     if len(token) < 32:
         raise RuntimeError("Sandbox manager token is missing")
     if skill_digest:
-        (work_dir / "skill-digest").write_text(skill_digest, encoding="ascii")
+        ((work_dir.parent if task_id else work_dir) / "skill-digest").write_text(skill_digest, encoding="ascii")
     with httpx.Client(timeout=timeout_seconds + 30, trust_env=False) as client:
         response = client.post(
-            f"{url}/v1/script-jobs", json={"job_id": work_dir.name},
+            f"{url}/v1/script-task-calls" if task_id else f"{url}/v1/script-jobs",
+            json={"task_id": task_key(task_id), "call_id": call_id} if task_id else {"job_id": work_dir.name},
             headers={"Authorization": f"Bearer {token}"},
         )
         if response.is_error:
@@ -70,9 +93,11 @@ def run_script_job(
                 detail = "Sandbox job was rejected"
             raise RuntimeError(detail)
         payload = response.json()
-    return subprocess.CompletedProcess(
+    completed = subprocess.CompletedProcess(
         args=["sandbox-script-job", work_dir.name],
         returncode=int(payload["exit_code"]),
         stdout=str(payload.get("stdout") or ""),
         stderr=str(payload.get("stderr") or ""),
     )
+    completed.image_ref = str(payload.get("image_ref") or "")
+    return completed

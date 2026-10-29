@@ -12,11 +12,13 @@ from .docker_engine import DockerEngine
 from .jobs import ScriptJobs
 from .plugin_runtimes import PluginRuntimes
 from .skill_environments import DependencyPreparationError
+from .task_containers import TaskContainers
 
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 _jobs: ScriptJobs | None = None
 _plugins: PluginRuntimes | None = None
+_tasks: TaskContainers | None = None
 _jobs_lock = threading.Lock()
 
 
@@ -36,8 +38,21 @@ def plugins() -> PluginRuntimes:
     return _plugins
 
 
+def tasks() -> TaskContainers:
+    global _tasks
+    with _jobs_lock:
+        if _tasks is None:
+            _tasks = TaskContainers(DockerEngine())
+    return _tasks
+
+
 class ExecuteScriptRequest(BaseModel):
     job_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+
+
+class ExecuteTaskCallRequest(BaseModel):
+    task_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    call_id: str = Field(pattern=r"^[0-9a-f]{32}$")
 
 
 class CreatePluginRuntimeRequest(BaseModel):
@@ -80,6 +95,39 @@ def run_script(payload: ExecuteScriptRequest, authorization: str | None = Header
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+
+@app.post("/v1/script-task-calls")
+def run_task_call(payload: ExecuteTaskCallRequest, authorization: str | None = Header(default=None)) -> dict:
+    _authorize(authorization)
+    try:
+        return tasks().execute(payload.task_id, payload.call_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except DependencyPreparationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+
+@app.delete("/v1/script-tasks/{task_id}")
+def dispose_task(task_id: str, authorization: str | None = Header(default=None)) -> dict:
+    _authorize(authorization)
+    try:
+        tasks().dispose(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"disposed": True}
+
+
+@app.post("/v1/script-tasks/{task_id}/freeze")
+def freeze_task(task_id: str, authorization: str | None = Header(default=None)) -> dict:
+    _authorize(authorization)
+    try:
+        tasks().freeze(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"frozen": True}
 
 
 @app.post("/v1/skill-environments", status_code=202)

@@ -27,3 +27,15 @@ def test_configured_backend_fails_closed_without_credential(tmp_path: Path, monk
             stdin_path=tmp_path / "stdin.json", env={}, timeout_seconds=1,
             limit_child_process=lambda: None,
         )
+
+
+def test_task_workspace_persists_between_calls(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MOVO_SANDBOX_MANAGER_URL", "http://sandbox-manager:8300")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
+    with script_backend.script_workspace("message-1") as work:
+        (work / "intermediate.txt").write_text("kept")
+        assert script_backend.child_path(work / "intermediate.txt", work) == "/job/work/intermediate.txt"
+    with script_backend.script_workspace("message-1") as work:
+        assert (work / "intermediate.txt").read_text() == "kept"
+    with script_backend.script_workspace("message-2") as other:
+        assert not (other / "intermediate.txt").exists()

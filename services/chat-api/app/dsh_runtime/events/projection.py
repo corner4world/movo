@@ -89,6 +89,8 @@ class KernelEventProjector:
                 "name": name,
                 "display_name": str(presentation.get("display_name") or name),
                 "plugin_name": str(presentation.get("plugin_name") or ""),
+                "plugin_version": str(presentation.get("plugin_version") or ""),
+                "plugin_spec": str(presentation.get("plugin_spec") or ""),
                 "description": str(presentation.get("description") or ""),
                 "risk_level": str(presentation.get("risk_level") or ""),
                 "args": self._arguments(event.payload.get("arguments")),
@@ -117,6 +119,8 @@ class KernelEventProjector:
                     started.get("display_name") or presentation.get("display_name") or name
                 ),
                 "plugin_name": str(started.get("plugin_name") or presentation.get("plugin_name") or ""),
+                "plugin_version": str(started.get("plugin_version") or presentation.get("plugin_version") or ""),
+                "plugin_spec": str(started.get("plugin_spec") or presentation.get("plugin_spec") or ""),
                 "description": str(
                     started.get("description") or presentation.get("description") or ""
                 ),
