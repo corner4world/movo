@@ -129,9 +129,7 @@ export function useDocumentEditors<T extends DocumentMessage>(options: {
       ''
     ).trim()
     if (!blueprintPath) {
-      // Fallback: open HTML preview in new tab
-      const targetUrl = await resolveDocumentOpenUrl(doc)
-      if (targetUrl) await openPreviewResource(targetUrl)
+      editorMessage.info(t('chat.presentation_edit_unavailable'))
       return
     }
     try {
@@ -151,9 +149,7 @@ export function useDocumentEditors<T extends DocumentMessage>(options: {
       presentationEditorOpen.value = true
     } catch (err) {
       console.error('Failed to load blueprint:', err)
-      // Fallback to HTML preview
-      const targetUrl = await resolveDocumentOpenUrl(doc)
-      if (targetUrl) await openPreviewResource(targetUrl)
+      editorMessage.error(t('chat.presentation_edit_load_failed'))
     }
   }
 

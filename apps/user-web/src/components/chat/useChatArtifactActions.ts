@@ -19,6 +19,11 @@ export function useChatArtifactActions(options: {
   function onArtifactOpen(artifact: ArtifactItem, message: ChatMessage, index: number) {
     const document = artifactToDocumentInfo(artifact)
     if (document.type === 'doc') return options.downloadDocument(document)
+    if (document.type === 'ppt' || document.type === 'pptx') {
+      return document.bundle?.preview_metadata?.blueprint_artifact_path || document.bundle?.deck_ir_artifact?.object_path
+        ? options.openPresentationEditor(document, message)
+        : options.downloadDocument(document)
+    }
     return options.openDocumentEditor(document, message, index)
   }
   function onArtifactEditPresentation(artifact: ArtifactItem, message: ChatMessage) {

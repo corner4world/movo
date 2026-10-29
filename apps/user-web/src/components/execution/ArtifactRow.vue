@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { resolveArtifactPresentation } from '../../registries'
 import { t } from '../../composables/i18n'
 import type { ArtifactItem } from '../../features/execution-v3/domain/delivery'
+import { resolveArtifactKind } from '../../features/execution-v3/domain/artifactKind'
 
 const props = defineProps<{ artifact: ArtifactItem }>()
 const emit = defineEmits<{
@@ -17,6 +18,12 @@ const emit = defineEmits<{
 const desc = computed(() => resolveArtifactPresentation(props.artifact))
 const title = computed(() => props.artifact.title || props.artifact.filename || t(desc.value.labelKey))
 const subtitle = computed(() => props.artifact.filename || t(desc.value.labelKey))
+const downloadLabel = computed(() => {
+  const kind = resolveArtifactKind(props.artifact)
+  return (kind === 'ppt' || kind === 'pptx') && !desc.value.actions.includes('edit')
+    ? t('artifact.download_to_edit')
+    : t('ui.download')
+})
 const has = (action: string) => desc.value.actions.includes(action as any)
 </script>
 
@@ -35,7 +42,7 @@ const has = (action: string) => desc.value.actions.includes(action as any)
     <button v-if="has('edit')"     type="button" class="min-h-11 px-2 text-xs text-blue-600 hover:text-blue-700 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('edit', artifact)">{{ t('ui.edit') }}</button>
     <button v-if="has('preview')"  type="button" class="min-h-11 px-2 text-xs text-slate-600 hover:text-slate-800 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('preview', artifact)">{{ t('ui.preview') }}</button>
     <button v-if="has('export')"   type="button" class="min-h-11 px-2 text-xs text-emerald-700 hover:text-emerald-800 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('export', artifact)">{{ t('ui.export') }}</button>
-    <button v-if="has('download')" type="button" class="min-h-11 px-2 text-xs text-blue-600 hover:text-blue-700 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('download', artifact)">{{ t('ui.download') }}</button>
+    <button v-if="has('download')" type="button" class="min-h-11 px-2 text-xs text-blue-600 hover:text-blue-700 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('download', artifact)">{{ downloadLabel }}</button>
     <button v-if="has('copy')"     type="button" class="min-h-11 px-2 text-xs text-slate-600 hover:text-slate-800 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" @click.stop="emit('copy', artifact)">{{ t('ui.copy') }}</button>
   </div>
 </template>

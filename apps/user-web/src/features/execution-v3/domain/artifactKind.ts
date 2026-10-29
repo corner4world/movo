@@ -7,6 +7,10 @@ export interface ArtifactIdentity {
   url?: string
   signed_url?: string
   content_type?: string
+  bundle?: {
+    preview_metadata?: { blueprint_artifact_path?: string }
+    deck_ir_artifact?: { object_path?: string }
+  } | null
 }
 
 const SUPPORTED_KINDS = new Set([

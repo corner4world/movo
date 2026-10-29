@@ -30,7 +30,13 @@ export function resolveArtifact(kind: string): ArtifactDescriptor {
 }
 
 export function resolveArtifactPresentation(artifact: ArtifactIdentity): ArtifactDescriptor {
-  return resolveArtifact(resolveArtifactKind(artifact))
+  const kind = resolveArtifactKind(artifact)
+  if (kind === 'ppt' || kind === 'pptx') {
+    const blueprint = artifact.bundle?.preview_metadata?.blueprint_artifact_path
+      || artifact.bundle?.deck_ir_artifact?.object_path
+    if (!blueprint) return { icon: ICON_PPT, labelKey: 'artifact.pptx', actions: ['download'] }
+  }
+  return resolveArtifact(kind)
 }
 
 export function resolveArtifactIcon(type: string): string {
