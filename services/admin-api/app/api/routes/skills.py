@@ -19,7 +19,8 @@ from app.core.config import settings
 from app.core.legacy_error_messages import backend_unavailable
 from app.core.db import get_db
 from app.product.resource_lifecycle import notify_resource_created, notify_resource_deleted
-from app.services.skill_package_proxy import install_organization_skill_zip, organization_skill_dependency_status
+from app.services.skill_package_proxy import install_organization_skill_zip, organization_skill_dependency_status, retry_organization_skill_dependency
+from app.services.skill_readiness import attach_environment_status
 from app.services.skill_lifecycle import OrganizationSkillLifecycle
 from app.services.workflow_validation import validate_workflow_config
 
@@ -71,6 +72,7 @@ def _serialize(doc: dict[str, Any]) -> dict[str, Any]:
         "type": str(doc.get("type") or "writing_style"),
         "config": _safe_dict(doc.get("config")),
         "enabled": _safe_bool(doc.get("enabled"), True),
+        "environmentStatus": doc.get("environment_status"),
         "createdAt": _time_text(doc.get("created_at")),
         "updatedAt": _time_text(doc.get("updated_at")),
         "lifecycle": lifecycle.view(doc),
@@ -249,7 +251,9 @@ async def list_skills(current_user: dict = Depends(get_current_admin_user)) -> l
     main_id = str(current_user.get("main_id") or "default")
     db = get_db()
     cursor = db.skills.find({"main_id": main_id}).sort("updated_at", -1)
-    return [_serialize(doc) async for doc in cursor]
+    rows = [doc async for doc in cursor]
+    await attach_environment_status(rows, main_id)
+    return [_serialize(doc) for doc in rows]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -460,6 +464,13 @@ def skill_dependency_status(skill_id: str, current_user: dict = Depends(get_curr
     )
 
 
+@router.post("/{skill_id}/dependency-retry")
+def retry_skill_dependency(skill_id: str, current_user: dict = Depends(get_current_admin_user)) -> dict[str, Any]:
+    return retry_organization_skill_dependency(
+        main_id=str(current_user.get("main_id") or "default"), skill_id=skill_id,
+    )
+
+
 @router.get("/{skill_id}")
 async def get_skill(skill_id: str, current_user: dict = Depends(get_current_admin_user)) -> dict[str, Any]:
     main_id = str(current_user.get("main_id") or "default")
@@ -486,6 +497,10 @@ async def update_skill(skill_id: str, payload: SkillPayload, current_user: dict 
     current = await db.skills.find_one({"_id": str(skill_id), "main_id": main_id})
     if current is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="技能不存在")
+    if normalized_payload.get("enabled"):
+        await attach_environment_status([current], main_id)
+        if current.get("environment_status") not in {None, "ready"}:
+            raise HTTPException(status_code=409, detail="Skill environment is not ready")
     if current.get("package_id") or str(current.get("type") or "") not in {"writing_style", "workflow"}:
         await db.skills.update_one({"_id": str(skill_id), "main_id": main_id}, {"$set": {**normalized_payload, "updated_at": _now()}})
         return _serialize(await db.skills.find_one({"_id": str(skill_id), "main_id": main_id}) or current)
@@ -505,6 +520,10 @@ async def set_skill_enabled(
     main_id = str(current_user.get("main_id") or "default")
     db = get_db()
     current = await db.skills.find_one({"_id": str(skill_id), "main_id": main_id})
+    if payload.enabled and current:
+        await attach_environment_status([current], main_id)
+        if current.get("environment_status") not in {None, "ready"}:
+            raise HTTPException(status_code=409, detail="Skill environment is not ready")
     if payload.enabled and current and current.get("publication_status") == "draft" and not current.get("published_version"):
         raise HTTPException(status_code=409, detail="请先发布 Skill，再启用")
     result = await db.skills.update_one(

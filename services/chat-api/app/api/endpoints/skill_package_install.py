@@ -12,7 +12,7 @@ from app.services.skill_packages.upgrade import SkillPackageUpgradeInspector
 from app.services.skill_sharing.distribution import SkillDistributionService
 from app.utils.uploads import read_upload_with_limit
 from app.core.db import get_db
-from app.services.skill_packages.dependency_status import dependency_status
+from app.services.skill_packages.readiness import environment_status, retry_environment
 
 
 router = APIRouter()
@@ -61,7 +61,7 @@ async def install_personal_skill_zip(
         user_id=principal.user_id,
         package_source={"kind": "local_zip", "fileName": str(file.filename or "")},
     )
-    if upgrade_inspector.requires_confirmation(upgrade):
+    if upgrade_inspector.requires_confirmation(upgrade) and not result.get("staged"):
         await SkillDistributionService().publish_from_skill(
             main_id=principal.main_id,
             owner_user_id=principal.user_id,
@@ -78,10 +78,22 @@ async def personal_skill_dependency_status(
 ) -> dict[str, Any]:
     row = await get_db().user_skills.find_one({
         "_id": skill_id, "main_id": principal.main_id, "user_id": principal.user_id,
-    }, {"package_digest": 1})
+    }, {"package_digest": 1, "package_files": 1, "pending_package": 1, "user_id": 1, "main_id": 1})
     if not row or not row.get("package_digest"):
         raise HTTPException(status_code=404, detail="Skill package not found")
-    return _response({"status": await dependency_status(str(row["package_digest"]))})
+    return _response({"status": await environment_status(row) or "not_required"})
+
+
+@router.post("/skills/{skill_id}/dependency-retry")
+async def retry_personal_skill_dependency(
+    skill_id: str, principal: ApiPrincipal = Depends(require_end_user_principal),
+) -> dict[str, Any]:
+    row = await get_db().user_skills.find_one({
+        "_id": skill_id, "main_id": principal.main_id, "user_id": principal.user_id,
+    }, {"package_digest": 1, "package_files": 1, "pending_package": 1, "user_id": 1, "main_id": 1})
+    if not row:
+        raise HTTPException(status_code=404, detail="Skill package not found")
+    return _response({"status": await retry_environment(row) or "not_required"})
 
 
 @router.post("/organization-skills/install-zip")
@@ -122,7 +134,21 @@ async def organization_skill_dependency_status(
         raise HTTPException(status_code=403, detail="organization_install_forbidden")
     row = await get_db().skills.find_one({
         "_id": skill_id, "main_id": principal.main_id,
-    }, {"package_digest": 1})
+    }, {"package_digest": 1, "package_files": 1, "pending_package": 1})
     if not row or not row.get("package_digest"):
         raise HTTPException(status_code=404, detail="Skill package not found")
-    return _response({"status": await dependency_status(str(row["package_digest"]))})
+    return _response({"status": await environment_status(row) or "not_required"})
+
+
+@router.post("/organization-skills/{skill_id}/dependency-retry")
+async def retry_organization_skill_dependency(
+    skill_id: str, principal: ApiPrincipal = Depends(require_api_principal),
+) -> dict[str, Any]:
+    if principal.kind != "admin_service":
+        raise HTTPException(status_code=403, detail="organization_install_forbidden")
+    row = await get_db().skills.find_one({
+        "_id": skill_id, "main_id": principal.main_id,
+    }, {"package_digest": 1, "package_files": 1, "pending_package": 1})
+    if not row:
+        raise HTTPException(status_code=404, detail="Skill package not found")
+    return _response({"status": await retry_environment(row) or "not_required"})

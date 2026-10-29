@@ -66,6 +66,7 @@
                   <n-tag size="small" :bordered="false" :type="row.enabled ? 'success' : 'default'">
                     {{ row.enabled ? t('skills.enabled') : t('skills.disabled') }}
                   </n-tag>
+                  <SkillEnvironmentBadge :status="row.environmentStatus" :busy="Boolean(retryingById[row.id])" @retry="retryEnvironment(row)" />
                   <n-tag v-if="row.lifecycle?.authoringMode === 'platform'" size="small" :bordered="false" :type="row.lifecycle.publicationStatus === 'draft' ? 'warning' : row.lifecycle.hasUnpublishedChanges ? 'warning' : 'success'">
                     {{ row.lifecycle.publicationStatus === 'draft' ? t('skills.publish.draft') : row.lifecycle.hasUnpublishedChanges ? t('skills.publish.changed') : `v${row.lifecycle.publishedVersion}` }}
                   </n-tag>
@@ -88,6 +89,7 @@
                       size="small"
                       :value="row.enabled"
                       :loading="Boolean(switchingById[row.id])"
+                      :disabled="!row.enabled && Boolean(row.environmentStatus) && row.environmentStatus !== 'ready'"
                       @update:value="handleEnabledUpdate(row, $event)"
                     />
                   </div>
@@ -241,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   NButton,
   NCard,
@@ -261,10 +263,11 @@ import {
   type FormInst,
   type FormRules,
 } from 'naive-ui';
-import { createSkill, deleteSkill, fetchSkills, setSkillEnabled, updateSkill, type SkillItem, type SkillPayload, type SkillType } from '../api/skills';
+import { createSkill, deleteSkill, fetchSkills, retrySkillDependency, setSkillEnabled, updateSkill, type SkillItem, type SkillPayload, type SkillType } from '../api/skills';
 import { t } from '../composables/i18n';
 import { formatAppDateTime, parseAppDate } from '../composables/appTimezone';
 import SkillZipInstaller from './skills/SkillZipInstaller.vue';
+import SkillEnvironmentBadge from './skills/SkillEnvironmentBadge.vue';
 import SkillPackageDetails from './skills/SkillPackageDetails.vue';
 import SkillShareDialog from './skills/SkillShareDialog.vue';
 import SkillShareInstallDialog from './skills/SkillShareInstallDialog.vue';
@@ -502,6 +505,17 @@ async function loadRows(options: { silent?: boolean } = {}) {
   }
 }
 
+const retryingById = ref<Record<string, boolean>>({});
+let environmentTimer: ReturnType<typeof setInterval> | null = null;
+async function retryEnvironment(row: SkillItem) {
+  retryingById.value = { ...retryingById.value, [row.id]: true };
+  try {
+    const result = await retrySkillDependency(row.id);
+    rows.value = rows.value.map(item => item.id === row.id ? { ...item, environmentStatus: result.status as SkillItem['environmentStatus'] } : item);
+  } catch { message.error(t('skillDeps.unavailable')); }
+  finally { const next = { ...retryingById.value }; delete next[row.id]; retryingById.value = next; }
+}
+
 async function submitCreate() {
   await createFormRef.value?.validate();
   if (!props.userId) {
@@ -589,7 +603,10 @@ function handleEnabledUpdate(row: SkillItem, value: boolean) {
   void toggleEnabled(row, value);
 }
 
-onMounted(loadRows);
+onMounted(() => { void loadRows(); environmentTimer = setInterval(() => {
+  if (rows.value.some(row => row.environmentStatus === 'preparing')) void loadRows({ silent: true });
+}, 3000); });
+onBeforeUnmount(() => { if (environmentTimer) clearInterval(environmentTimer); });
 watch(() => [props.userId, props.mainId], () => {
   void loadRows();
 });

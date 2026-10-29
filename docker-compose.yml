@@ -241,6 +241,8 @@ services:
       MOVO_SANDBOX_RUNTIME_ROOT: /runtime-data
       MOVO_PIP_INDEX_URL: ${MOVO_PIP_INDEX_URL:-}
       MOVO_NPM_REGISTRY: ${MOVO_NPM_REGISTRY:-}
+      MOVO_APT_MIRROR: ${MOVO_APT_MIRROR:-}
+      MOVO_DEPENDENCY_MIRROR: ${MOVO_DEPENDENCY_MIRROR:-global}
     volumes:
       - deployment-secrets:/run/askai-secrets:ro
       - sandbox-workspaces:/workspaces

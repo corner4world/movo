@@ -37,7 +37,7 @@
             <div class="card-footrow">
               <n-tag size="small" :bordered="false" :type="plugin.scope === 'organization' ? 'info' : 'success'">{{ t(plugin.scope === 'organization' ? 'plugins.enterprise' : 'plugins.mine') }}</n-tag>
               <div v-if="plugin.scope === 'personal'" class="card-actions">
-                <div class="card-switch"><span>{{ t(plugin.enabled ? 'plugins.enabled' : 'plugins.disabled') }}</span><n-switch size="small" :value="plugin.enabled" :loading="busyId === plugin.id" :disabled="!plugin.enabled && ['failed', 'not_exposed'].includes(plugin.availability?.status || '')" @update:value="enabled => emit('toggle', plugin, enabled)" /></div>
+                <div class="card-switch"><span>{{ t(plugin.enabled ? 'plugins.enabled' : 'plugins.disabled') }}</span><n-switch size="small" :value="plugin.enabled" :loading="busyId === plugin.id" :disabled="!plugin.enabled && !['session_exposed', 'verified'].includes(plugin.availability?.status || '')" @update:value="enabled => emit('toggle', plugin, enabled)" /></div>
                 <n-popconfirm @positive-click="emit('remove', plugin)">
                   <template #trigger><n-button class="delete-btn" size="small" quaternary circle :title="t('plugins.remove')" :aria-label="t('plugins.remove')"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg></n-button></template>
                   {{ t('plugins.confirmRemove') }}

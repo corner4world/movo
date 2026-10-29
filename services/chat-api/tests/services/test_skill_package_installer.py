@@ -36,6 +36,8 @@ class Collection:
         row = await self.find_one(query)
         assert row is not None
         row.update(update["$set"])
+        for field in update.get("$unset", {}):
+            row.pop(field, None)
         self.rows[row["_id"]] = row
         return Result()
 
@@ -52,10 +54,12 @@ class Database:
         self.skill_packages = Collection()
 
 
-def package(version="1.0.0", body="Instructions"):
+def package(version="1.0.0", body="Instructions", requirements=""):
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as bundle:
         bundle.writestr("SKILL.md", f"---\nname: imported-skill\ndescription: Imported\nversion: {version}\n---\n{body}\n")
+        if requirements:
+            bundle.writestr("requirements.txt", requirements)
     return validate_skill_zip(output.getvalue())
 
 
@@ -69,6 +73,32 @@ def test_personal_and_organization_installations_keep_separate_ownership(monkeyp
     assert organization["enabled"] is False
     assert next(iter(db.user_skills.rows.values()))["user_id"] == "user"
     assert "user_id" not in next(iter(db.skills.rows.values()))
+
+
+def test_personal_skill_with_dependencies_starts_disabled(monkeypatch):
+    db = Database()
+    monkeypatch.setattr(installer_module, "get_db", lambda: db)
+    result = asyncio.run(SkillPackageInstaller().install(
+        package(requirements="humanize==4.13.0\n"),
+        scope="personal", main_id="tenant", user_id="user",
+    ))
+    row = next(iter(db.user_skills.rows.values()))
+    assert result["enabled"] is False
+    assert row["package_requires_environment"] is True
+    assert row["is_active"] is False
+
+
+def test_dependency_upgrade_preserves_active_version_until_ready(monkeypatch):
+    db = Database()
+    monkeypatch.setattr(installer_module, "get_db", lambda: db)
+    service = SkillPackageInstaller()
+    first = asyncio.run(service.install(package("1.0.0"), scope="personal", main_id="tenant", user_id="user"))
+    next_package = package("2.0.0", requirements="humanize==4.13.0\n")
+    asyncio.run(service.install(next_package, scope="personal", main_id="tenant", user_id="user"))
+    row = db.user_skills.rows[first["id"]]
+    assert row["enabled"] is True
+    assert row["package_version"] == "1.0.0"
+    assert row["pending_package"]["digest"] == next_package.archive_digest
 
 
 def test_reinstall_updates_in_place_and_exact_duplicate_is_idempotent(monkeypatch):

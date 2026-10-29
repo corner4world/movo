@@ -47,6 +47,28 @@ class ImageEngine:
         pass
 
 
+class RetryingEngine(ImageEngine):
+    def __init__(self, failure: str):
+        super().__init__()
+        self.failure = failure
+        self.environments = []
+        self.removed = []
+
+    def create(self, name, payload):
+        self.environments.append(list(payload["Env"]))
+        return name
+
+    def wait(self, container, timeout):
+        return 1 if len(self.environments) == 1 else 0
+
+    def logs(self, container):
+        raw = self.failure.encode()
+        return bytes([2, 0, 0, 0]) + len(raw).to_bytes(4, "big") + raw
+
+    def remove(self, container):
+        self.removed.append(container)
+
+
 def test_dependency_image_is_keyed_by_bundle_and_base_image(tmp_path: Path, monkeypatch):
     digest = "a" * 64
     root = tmp_path / "skill-cache" / digest / "sample"
@@ -150,3 +172,37 @@ def test_build_error_is_reported_without_exposing_install_logs(tmp_path: Path, m
     with pytest.raises(DependencyPreparationError):
         environments.ready_image(digest)
     assert engine.creates == 2
+
+
+def test_network_failure_retries_in_fresh_container(tmp_path: Path, monkeypatch):
+    digest = "f" * 64
+    root = tmp_path / "skill-cache" / digest
+    root.mkdir(parents=True)
+    (root / "SKILL.md").write_text("sample")
+    (root / "requirements.txt").write_text("humanize==4.13.0")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
+    monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "base:latest")
+    monkeypatch.setenv("MOVO_DEPENDENCY_MIRROR", "cn")
+    engine = RetryingEngine("pip timed out")
+    image = SkillEnvironments(engine).ready_image(digest)
+    assert image.startswith("movo-skill-deps:")
+    assert len(engine.environments) == 2
+    assert "MOVO_DEPENDENCY_SOURCE=cn" in engine.environments[0]
+    assert "MOVO_DEPENDENCY_SOURCE=global" in engine.environments[1]
+    assert len(engine.removed) == 2
+
+
+def test_package_error_does_not_switch_source(tmp_path: Path, monkeypatch):
+    digest = "0" * 64
+    root = tmp_path / "skill-cache" / digest
+    root.mkdir(parents=True)
+    (root / "SKILL.md").write_text("sample")
+    (root / "requirements.txt").write_text("missing==99")
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOVO_SANDBOX_WORKSPACE_VOLUME", "test-workspaces")
+    monkeypatch.setenv("MOVO_SANDBOX_SCRIPT_IMAGE", "base:latest")
+    engine = RetryingEngine("No matching distribution found")
+    with pytest.raises(DependencyPreparationError):
+        SkillEnvironments(engine).ready_image(digest)
+    assert len(engine.environments) == 1

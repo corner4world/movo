@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import os
 from pathlib import Path
 
 
@@ -22,7 +23,20 @@ def apt_packages(path: Path) -> list[str]:
 
 
 def run(*args: str, cwd: Path | None = None) -> None:
-    subprocess.run(args, cwd=cwd, check=True, timeout=600)
+    subprocess.run(args, cwd=cwd, check=True, timeout=240)
+
+
+def configure_apt_mirror() -> None:
+    mirror = os.environ.get("MOVO_APT_MIRROR", "").strip().rstrip("/")
+    if not mirror:
+        return
+    if not mirror.startswith("https://") or any(char.isspace() for char in mirror):
+        raise ValueError("Invalid apt mirror URL")
+    sources = Path("/etc/apt/sources.list.d/debian.sources")
+    content = sources.read_text(encoding="utf-8")
+    content = content.replace("http://deb.debian.org/debian-security", f"{mirror}/debian-security")
+    content = content.replace("http://deb.debian.org/debian", f"{mirror}/debian")
+    sources.write_text(content, encoding="utf-8")
 
 
 def main() -> None:
@@ -31,17 +45,18 @@ def main() -> None:
     if apt_file.is_file():
         packages = apt_packages(apt_file)
         if packages:
+            configure_apt_mirror()
             run("apt-get", "update")
             run("apt-get", "install", "-y", "--no-install-recommends", *packages)
             shutil.rmtree("/var/lib/apt/lists", ignore_errors=True)
     requirements = BUILD / "requirements.txt"
     if requirements.is_file():
-        run("python", "-m", "pip", "install", "--no-cache-dir", "-r", str(requirements), cwd=BUILD)
+        run("python", "-m", "pip", "install", "--no-cache-dir", "--timeout", "15", "--retries", "1", "-r", str(requirements), cwd=BUILD)
     package_json = BUILD / "package.json"
     if package_json.is_file():
         if not (BUILD / "package-lock.json").is_file():
             raise ValueError("A Skill with package.json must include package-lock.json")
-        run("npm", "ci", "--omit=dev", "--prefix", str(BUILD))
+        run("npm", "ci", "--omit=dev", "--fetch-retries=1", "--fetch-timeout=30000", "--prefix", str(BUILD))
         target = Path("/opt/movo-skill-node-modules")
         if (BUILD / "node_modules").is_dir():
             shutil.move(str(BUILD / "node_modules"), target)

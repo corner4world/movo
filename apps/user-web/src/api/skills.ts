@@ -54,6 +54,11 @@ export async function fetchSkillDependencyStatus(id: string): Promise<{ status: 
   return dataOf<{ status: string }>(res)
 }
 
+export async function retrySkillDependency(id: string): Promise<{ status: string }> {
+  const res = await api.post(`/skills/${encodeURIComponent(id)}/dependency-retry`)
+  return dataOf<{ status: string }>(res)
+}
+
 export interface SkillUpgradeInfo {
   action: 'install' | 'duplicate' | 'upgrade' | 'replace' | 'downgrade'
   currentVersion?: string
@@ -93,6 +98,7 @@ export interface SkillItem {
   type: SkillType
   config: Record<string, any>
   enabled: boolean
+  environmentStatus?: 'preparing' | 'ready' | 'failed' | 'unavailable' | 'disabled' | null
   createdAt: string
   updatedAt: string
   packageSource?: {

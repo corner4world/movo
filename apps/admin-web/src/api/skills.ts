@@ -35,6 +35,11 @@ export async function fetchSkillDependencyStatus(id: string): Promise<{ status: 
   return dataOf<{ status: string }>(data);
 }
 
+export async function retrySkillDependency(id: string): Promise<{ status: string }> {
+  const { data } = await apiClient.post(`/api/skills/${encodeURIComponent(id)}/dependency-retry`);
+  return dataOf<{ status: string }>(data);
+}
+
 export interface SkillItem {
   id: string;
   mainId: string;
@@ -44,6 +49,7 @@ export interface SkillItem {
   type: SkillType;
   config: Record<string, any>;
   enabled: boolean;
+  environmentStatus?: 'preparing' | 'ready' | 'failed' | 'unavailable' | 'disabled' | null;
   createdAt: string;
   updatedAt: string;
   lifecycle?: { authoringMode: 'platform' | 'package'; publicationStatus: 'draft' | 'published' | 'package'; publishedVersion: string; publishedReleaseId: string; draftRevision: number; hasUnpublishedChanges: boolean };

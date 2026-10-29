@@ -783,6 +783,8 @@ def _adapt_ordinary(doc: Dict[str, Any]) -> Dict[str, Any] | None:
         "package_slug": str(doc.get("package_slug") or ""),
         "package_version": str(doc.get("package_version") or ""),
         "package_digest": str(doc.get("package_digest") or ""),
+        **({"pending_package": dict(doc["pending_package"])} if isinstance(doc.get("pending_package"), dict) else {}),
+        **({"package_requires_environment": bool(doc["package_requires_environment"])} if "package_requires_environment" in doc else {}),
         "package_files": list(doc.get("package_files") or []),
         "package_warnings": list(doc.get("package_warnings") or []),
         "package_kind": str(doc.get("package_kind") or "ordinary"),

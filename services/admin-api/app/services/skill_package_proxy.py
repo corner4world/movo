@@ -57,11 +57,20 @@ def install_organization_skill_zip(*, main_id: str, filename: str, content: byte
 
 
 def organization_skill_dependency_status(*, main_id: str, skill_id: str) -> dict[str, Any]:
+    return _organization_skill_dependency_request(main_id=main_id, skill_id=skill_id, action="dependency-status", method="GET")
+
+
+def retry_organization_skill_dependency(*, main_id: str, skill_id: str) -> dict[str, Any]:
+    return _organization_skill_dependency_request(main_id=main_id, skill_id=skill_id, action="dependency-retry", method="POST")
+
+
+def _organization_skill_dependency_request(*, main_id: str, skill_id: str, action: str, method: str) -> dict[str, Any]:
     base_url = str(settings.backend_base_url or "http://127.0.0.1:8000").rstrip("/")
     query = urllib.parse.urlencode({"mainId": main_id})
     request = urllib.request.Request(
-        f"{base_url}/api/organization-skills/{urllib.parse.quote(skill_id, safe='')}/dependency-status?{query}",
+        f"{base_url}/api/organization-skills/{urllib.parse.quote(skill_id, safe='')}/{action}?{query}",
         headers={"X-MOVO-Service-Token": settings.backend_service_token},
+        method=method,
     )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:

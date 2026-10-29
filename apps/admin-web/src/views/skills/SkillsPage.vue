@@ -65,6 +65,7 @@
                   <n-tag size="small" :bordered="false" :type="row.enabled ? 'success' : 'default'">
                     {{ row.enabled ? t('legacy.active_25d2843') : t('legacy.disabled_0fe5a98') }}
                   </n-tag>
+                  <SkillEnvironmentBadge :status="row.environmentStatus" :busy="retryingIds.has(row.id)" @retry="retryEnvironment(row)" />
                   <n-tag v-if="row.lifecycle?.authoringMode === 'platform'" size="small" :bordered="false" :type="row.lifecycle.publicationStatus === 'draft' || row.lifecycle.hasUnpublishedChanges ? 'warning' : 'success'">
                     {{ row.lifecycle.publicationStatus === 'draft' ? t('additional.draft') : row.lifecycle.hasUnpublishedChanges ? t('additional.unpublished_changes') : `v${row.lifecycle.publishedVersion}` }}
                   </n-tag>
@@ -83,6 +84,7 @@
                       size="small"
                       :value="row.enabled"
                       :loading="switchingIds.has(row.id)"
+                      :disabled="!row.enabled && Boolean(row.environmentStatus) && row.environmentStatus !== 'ready'"
                       @update:value="handleEnabledUpdate(row, $event)"
                     />
                   </div>
@@ -231,12 +233,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage, type FormInst, type FormRules } from 'naive-ui';
 import { t } from '@/composables/i18n';
 import { formatAdminDateTime, parseAdminDate } from '@/composables/adminTimezone';
-import { createSkill, deleteSkill, fetchSkills, setSkillEnabled, updateSkill, type SkillItem, type SkillPayload, type SkillType } from '@/api/skills';
+import { createSkill, deleteSkill, fetchSkills, retrySkillDependency, setSkillEnabled, updateSkill, type SkillItem, type SkillPayload, type SkillType } from '@/api/skills';
+import SkillEnvironmentBadge from './SkillEnvironmentBadge.vue';
 import SkillZipInstaller from './SkillZipInstaller.vue';
 import SkillPackageDetails from './SkillPackageDetails.vue';
 import OrganizationSkillFeedback from './OrganizationSkillFeedback.vue';
@@ -435,6 +438,27 @@ async function loadRows() {
   }
 }
 
+const retryingIds = ref(new Set<string>());
+let environmentTimer: ReturnType<typeof setInterval> | null = null;
+async function refreshEnvironmentStatuses() {
+  if (!rows.value.some(row => row.environmentStatus === 'preparing')) return;
+  try {
+    const latest = await fetchSkills();
+    const statusById = new Map(latest.map(row => [row.id, row.environmentStatus]));
+    const promoted = rows.value.some(row => row.environmentStatus === 'preparing' && statusById.get(row.id) === 'ready');
+    rows.value = rows.value.map(row => ({ ...row, environmentStatus: statusById.get(row.id) ?? row.environmentStatus }));
+    if (promoted) await loadRows();
+  } catch { /* Keep the last known status until the next refresh. */ }
+}
+async function retryEnvironment(row: SkillItem) {
+  retryingIds.value = new Set([...retryingIds.value, row.id]);
+  try {
+    const result = await retrySkillDependency(row.id);
+    rows.value = rows.value.map(item => item.id === row.id ? { ...item, environmentStatus: result.status as SkillItem['environmentStatus'] } : item);
+  } catch { message.error(t('skillDeps.unavailable')); }
+  finally { const next = new Set(retryingIds.value); next.delete(row.id); retryingIds.value = next; }
+}
+
 async function submitCreate() {
   await createFormRef.value?.validate();
   creating.value = true;
@@ -534,7 +558,8 @@ async function confirmEnabledChange() {
   return true;
 }
 
-onMounted(loadRows);
+onMounted(() => { void loadRows(); environmentTimer = setInterval(() => void refreshEnvironmentStatuses(), 3000); });
+onBeforeUnmount(() => { if (environmentTimer) clearInterval(environmentTimer); });
 </script>
 
 <style scoped>

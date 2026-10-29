@@ -17,6 +17,7 @@ from pydantic import AliasChoices, BaseModel, Field
 from app.api.time_utils import utc_iso
 from app.services.skill_assets.trajectory_distiller import distill_trajectory, refine_steps
 from app.services.skills import user_skill_service
+from app.services.skill_packages.readiness import attach_environment_status, environment_status
 from app.services.org_skill_adapter import _workflow_markdown, _workflow_nodes, organization_skill_adapter
 from app.services.personal_knowledge.document_selection import validate_personal_workflow_documents
 from app.core.config import get_settings
@@ -628,6 +629,7 @@ async def list_skills(
     await legacy_skill_share_migration.migrate_owned(main_id=main_id, owner_user_id=user_id)
     await legacy_skill_share_migration.migrate_installed(main_id=main_id, recipient_user_id=user_id)
     skills = await user_skill_service.list_skills(user_id, main_id=main_id)
+    await attach_environment_status(skills)
     from app.services.resource_feedback.summary import skill_feedback_summary_service
     await skill_feedback_summary_service.attach(main_id=main_id, user_id=user_id, skills=skills)
     return ApiResponse(code=0, message="success", data=[_admin_shape_skill(item) for item in skills])
@@ -668,11 +670,14 @@ async def list_selectable_skills(
     )
 
     items: List[Dict[str, Any]] = []
+    await attach_environment_status(list(user_skills or []) + list(org_skills or []))
     seen: set[str] = set()
     for skill in list(user_skills or []) + list(org_skills or []):
         if not isinstance(skill, dict):
             continue
         if not _safe_bool(skill.get("enabled"), _safe_bool(skill.get("is_active"), True)):
+            continue
+        if skill.get("environment_status") not in {None, "ready"} and not skill.get("pending_package"):
             continue
         skill_id = str(skill.get("id") or skill.get("_id") or "").strip()
         if _skill_source_scope(skill) == "organization" and skill_id not in allowed_organization_ids:
@@ -773,6 +778,8 @@ async def update_skill(
     current = await user_skill_service.get_skill(user_id, skill_id, main_id=resolved_main_id)
     if not current:
         raise HTTPException(status_code=404, detail="Skill not found")
+    if updates.get("enabled") and await environment_status(current) not in {None, "ready"}:
+        raise HTTPException(status_code=409, detail="Skill environment is not ready")
     await _validate_personal_workflow_documents(payload, main_id=resolved_main_id, user_id=user_id)
     lifecycle = SkillLifecycleService()
     if not lifecycle.is_platform_skill(current):
@@ -804,6 +811,8 @@ async def set_skill_enabled(
         raise HTTPException(status_code=409, detail={
             "code": "skill_publish_required", "message": "Publish this Skill before enabling it",
         })
+    if payload.enabled and await environment_status(current) not in {None, "ready"}:
+        raise HTTPException(status_code=409, detail="Skill environment is not ready")
     updated = await user_skill_service.set_skill_enabled(
         user_id, skill_id, bool(payload.enabled), main_id=resolved_main_id,
     )

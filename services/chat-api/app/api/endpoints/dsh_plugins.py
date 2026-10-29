@@ -181,7 +181,7 @@ async def set_plugin_enabled(
     existing = await repository.get(main_id=principal.main_id, user_id=owner, plugin_id=plugin_id)
     if existing is None:
         raise HTTPException(status_code=404, detail="plugin_not_found")
-    if body.enabled and (existing.get("availability") or {}).get("status") in {"failed", "not_exposed"}:
+    if body.enabled and (existing.get("availability") or {}).get("status") not in {"session_exposed", "verified"}:
         raise HTTPException(status_code=409, detail="plugin_failed_movo_availability_check")
     row = await repository.set_enabled(
         main_id=principal.main_id, user_id=owner,

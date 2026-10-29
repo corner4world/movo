@@ -12,6 +12,7 @@ from app.core.tenant import resolve_main_id
 from .validator import ValidatedSkillPackage
 from .archive_store import archive_fields, delete_archive
 from .prewarm import prewarm_skill_dependencies
+from .prewarm import DEPENDENCY_FILES
 
 
 InstallScope = Literal["personal", "organization"]
@@ -122,7 +123,14 @@ class SkillPackageInstaller:
             "source_kind": "zip",
             "updated_at": now,
         }
+        has_environment = any(item.get("path") in DEPENDENCY_FILES for item in package.files)
+        common["package_requires_environment"] = has_environment
         if current:
+            pending = current.get("pending_package") or {}
+            if pending.get("digest") == package.archive_digest:
+                await db.skill_packages.delete_one({"_id": package_id})
+                await delete_archive(db, package_doc)
+                return self._result(current, package, duplicate=True, updated=False, package_source=package_source)
             previous = [str(item) for item in current.get("previous_package_ids") or [] if str(item)]
             old_package = str(current.get("package_id") or "")
             if old_package:
@@ -130,11 +138,26 @@ class SkillPackageInstaller:
             retained = previous[-5:]
             common["previous_package_ids"] = retained
             try:
-                await collection.update_one({"_id": current["_id"], **owner_query}, {"$set": common})
+                if has_environment:
+                    await collection.update_one(
+                        {"_id": current["_id"], **owner_query},
+                        {"$set": {"pending_package": {"digest": package.archive_digest, "fields": common}, "updated_at": now}},
+                    )
+                else:
+                    await collection.update_one(
+                        {"_id": current["_id"], **owner_query},
+                        {"$set": common, "$unset": {"pending_package": ""}},
+                    )
             except Exception:
                 await db.skill_packages.delete_one({"_id": package_id})
                 await delete_archive(db, package_doc)
                 raise
+            replaced_pending_id = str((pending.get("fields") or {}).get("package_id") or "")
+            if replaced_pending_id:
+                replaced_pending = await db.skill_packages.find_one({"_id": replaced_pending_id})
+                await db.skill_packages.delete_one({"_id": replaced_pending_id})
+                if replaced_pending:
+                    await delete_archive(db, replaced_pending)
             expired = [item for item in previous if item not in retained]
             if expired:
                 await db.skill_packages.delete_many({"_id": {"$in": expired}})
@@ -150,8 +173,8 @@ class SkillPackageInstaller:
             "main_id": tenant_id,
             **common,
             "config": {},
-            "enabled": scope == "personal",
-            "is_active": scope == "personal",
+            "enabled": scope == "personal" and not has_environment,
+            "is_active": scope == "personal" and not has_environment,
             "visibility": "private" if scope == "personal" else "organization",
             "category": "Imported Expert Package" if package.package_kind == "expert_package" else "Imported Skill",
             "tags": ["zip", package.package_kind],
@@ -205,6 +228,7 @@ class SkillPackageInstaller:
             "enabled": bool(record.get("enabled", record.get("is_active", False))),
             "duplicate": duplicate,
             "updated": updated,
+            "staged": bool((record.get("pending_package") or {}).get("digest") == package.archive_digest),
             "fileCount": len(package.files),
             "digest": package.archive_digest,
             "warnings": [dict(item) for item in package.warnings],

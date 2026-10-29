@@ -11,7 +11,7 @@
           <span>{{ availability?.checks?.[check] ? '✓' : '○' }}</span> {{ t(`plugins.check.${check}`) }}
         </div>
         <p v-if="availability?.discovered_tools?.length">{{ t('plugins.detectedToolsList', { names: availability.discovered_tools.join(', ') }) }}</p>
-        <n-button v-if="canVerify" size="small" :loading="busy" @click="emit('verify')">{{ t('plugins.verify') }}</n-button>
+        <n-button v-if="canVerify" size="small" :loading="busy" @click="emit('verify')">{{ t(status === 'failed' ? 'plugins.retryPreparation' : 'plugins.verify') }}</n-button>
       </div>
     </n-popover>
   </div>
@@ -28,7 +28,7 @@ const emit = defineEmits<{ verify: [] }>()
 const checks = ['package', 'runtime', 'session', 'invocation']
 const status = computed(() => props.availability?.status || 'unverified')
 const displayStatus = computed(() => status.value === 'failed' && props.availability?.checks?.package && !props.availability?.checks?.runtime ? 'runtime_failed' : status.value)
-const tagType = computed(() => status.value === 'verified' ? 'success' : status.value === 'session_exposed' ? 'info' : status.value === 'failed' || status.value === 'not_exposed' ? 'error' : 'warning')
+const tagType = computed(() => ['verified', 'session_exposed'].includes(status.value) ? 'success' : status.value === 'failed' || status.value === 'not_exposed' ? 'error' : 'warning')
 const reason = computed(() => {
   const value = props.availability?.reason || 'legacy_not_assessed'
   const known = ['invocation_verified', 'invocation_not_verified', 'tools_missing_from_session', 'no_global_tool_detected', 'legacy_not_assessed', 'not_assessed']

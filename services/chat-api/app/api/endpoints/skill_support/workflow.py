@@ -267,6 +267,7 @@ def _admin_shape_skill(skill: Dict[str, Any]) -> Dict[str, Any]:
         "type": raw_type,
         "config": config,
         "enabled": _safe_bool(skill.get("enabled"), _safe_bool(skill.get("is_active"), True)),
+        "environmentStatus": skill.get("environment_status"),
         "createdAt": _time_text(skill.get("created_at")),
         "updatedAt": _time_text(skill.get("updated_at")),
         "packageSource": _safe_dict(skill.get("package_source")),

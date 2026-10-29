@@ -37,7 +37,7 @@
               <n-tag size="small" :bordered="false" type="info">{{ t('dshPlugins.enterprise') }}</n-tag>
               <div class="card-actions">
                 <n-button v-if="canManageAccess" size="small" quaternary :title="t('dshPlugins.access')" @click="emit('access', plugin)">{{ t('dshPlugins.access') }}</n-button>
-                <div class="card-switch"><span>{{ t(plugin.enabled ? 'dshPlugins.running' : 'dshPlugins.disabled') }}</span><n-switch size="small" :value="plugin.enabled" :loading="busyId === plugin.id" :disabled="!plugin.enabled && ['failed', 'not_exposed'].includes(plugin.availability?.status || '')" @update:value="value => emit('toggle', plugin, value)" /></div>
+                <div class="card-switch"><span>{{ t(plugin.enabled ? 'dshPlugins.running' : 'dshPlugins.disabled') }}</span><n-switch size="small" :value="plugin.enabled" :loading="busyId === plugin.id" :disabled="!plugin.enabled && !['session_exposed', 'verified'].includes(plugin.availability?.status || '')" @update:value="value => emit('toggle', plugin, value)" /></div>
                 <n-popconfirm @positive-click="emit('remove', plugin)">
                   <template #trigger><n-button class="delete-btn" size="small" quaternary circle :title="t('dshPlugins.remove')" :aria-label="t('dshPlugins.remove')"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg></n-button></template>
                   {{ t('dshPlugins.confirmRemove') }}

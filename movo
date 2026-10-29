@@ -29,6 +29,8 @@ source "${ROOT_DIR}/deploy/cli/dsh-version.sh"
 # shellcheck source=deploy/cli/images.sh
 source "${ROOT_DIR}/deploy/cli/images.sh"
 movo_configure_mirror
+# shellcheck source=deploy/cli/dependency-sources.sh
+source "${ROOT_DIR}/deploy/cli/dependency-sources.sh"
 # shellcheck source=deploy/cli/migrations.sh
 source "${ROOT_DIR}/deploy/cli/migrations.sh"
 # shellcheck source=deploy/cli/pull.sh
@@ -173,6 +175,7 @@ command_up() {
   print_logo
   require_docker
   movo_sandbox_preflight
+  movo_configure_dependency_sources
   deployment_urls
   if movo_has_build_flag "$@"; then
     if [[ "${MOVO_MIRROR:-global}" == cn ]]; then
@@ -240,6 +243,7 @@ command_update() {
   print_logo
   require_docker
   movo_sandbox_preflight
+  movo_configure_dependency_sources
   deployment_urls
   movo_configure_images false
   if [[ "${MOVO_USING_LOCAL_IMAGES:-false}" == "true" ]]; then

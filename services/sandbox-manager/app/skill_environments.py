@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .docker_engine import DockerEngine, split_docker_logs
+from .dependency_sources import source_attempts, retryable_failure
 
 
 LOG = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ class SkillEnvironments:
 
     def _build(self, digest: str, image: str) -> str:
         lease = uuid4().hex
-        container_id = network_id = proxy_id = None
+        network_id = proxy_id = None
         try:
             proxy_id = self.engine.find_compose_service(self.project, "sandbox-egress")
             network_id = self.engine.create_internal_network(f"movo-deps-{lease}")
@@ -113,12 +114,6 @@ class SkillEnvironments:
                 "https_proxy=http://sandbox-egress:3128",
                 "PIP_DISABLE_PIP_VERSION_CHECK=1",
             ]
-            pip_index = os.environ.get("MOVO_PIP_INDEX_URL", "").strip()
-            npm_registry = os.environ.get("MOVO_NPM_REGISTRY", "").strip()
-            if pip_index:
-                environment.append(f"PIP_INDEX_URL={pip_index}")
-            if npm_registry:
-                environment.append(f"npm_config_registry={npm_registry}")
             payload = {
                 "Image": self.base_image,
                 "User": "0:0",
@@ -142,21 +137,30 @@ class SkillEnvironments:
                 },
                 "Labels": {"movo.role": "skill-dependency-build", "movo.skill_digest": digest},
             }
-            container_id = self.engine.create(f"movo-deps-{lease}", payload)
-            self.engine.start(container_id)
-            exit_code = self.engine.wait(container_id, 900)
-            if exit_code:
-                stdout, stderr = split_docker_logs(self.engine.logs(container_id))
-                detail = (stderr or stdout)[-4000:].decode(errors="replace")
-                raise RuntimeError(f"Skill dependency installation failed: {detail}")
-            self.engine.commit(container_id, "movo-skill-deps", image.rsplit(":", 1)[1])
-            return image
+            for index, source in enumerate(source_attempts()):
+                container_id = None
+                try:
+                    payload["Env"] = environment + source.environment()
+                    container_id = self.engine.create(f"movo-deps-{lease}-{index}", payload)
+                    self.engine.start(container_id)
+                    exit_code = self.engine.wait(container_id, 900)
+                    if exit_code == 0:
+                        self.engine.commit(container_id, "movo-skill-deps", image.rsplit(":", 1)[1])
+                        return image
+                    stdout, stderr = split_docker_logs(self.engine.logs(container_id))
+                    detail = (stderr or stdout)[-4000:].decode(errors="replace")
+                    if index == 0 and retryable_failure(detail):
+                        LOG.warning("Skill dependency source %s failed; trying alternate source for %s: %s", source.name, digest, detail)
+                        continue
+                    raise RuntimeError(f"Skill dependency installation failed using {source.name}: {detail}")
+                finally:
+                    if container_id:
+                        self.engine.remove(container_id)
+            raise RuntimeError("Skill dependency installation failed after all sources")
         except Exception:
             LOG.exception("Skill dependency build failed for %s", digest)
             raise
         finally:
-            if container_id:
-                self.engine.remove(container_id)
             if network_id:
                 if proxy_id:
                     self.engine.disconnect_network(network_id, proxy_id)

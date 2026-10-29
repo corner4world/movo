@@ -8,6 +8,7 @@ from app.services.org_skill_adapter import organization_skill_adapter
 from app.services.skills import user_skill_service
 from app.core.db import get_db
 from app.product.resource_access import filter_allowed_resource_ids
+from app.services.skill_packages.readiness import attach_environment_status
 
 
 class SkillCatalog(Protocol):
@@ -26,6 +27,7 @@ class MongoSkillCatalog:
         )
         rows: list[dict[str, Any]] = []
         seen: set[str] = set()
+        await attach_environment_status([*personal, *organization])
         for item in [*personal, *organization]:
             if not isinstance(item, dict):
                 continue
@@ -34,11 +36,15 @@ class MongoSkillCatalog:
                 continue
             if item.get("enabled", item.get("is_active", True)) is False:
                 continue
+            if item.get("environment_status") not in {None, "ready"} and not item.get("pending_package"):
+                continue
             is_organization = str(item.get("visibility") or "").lower() == "organization" or str(item.get("source") or "") == "org_db"
             if is_organization and source_id not in allowed_organization_ids:
                 continue
             seen.add(source_id)
-            rows.append(dict(item))
+            runtime_skill = dict(item)
+            runtime_skill.pop("pending_package", None)
+            rows.append(runtime_skill)
         package_ids = [str(item.get("package_id") or "") for item in rows if item.get("package_id")]
         if package_ids:
             packages = await get_db().skill_packages.find({
