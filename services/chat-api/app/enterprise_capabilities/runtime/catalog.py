@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from .contracts import CapabilityDefinition
+from app.execution_isolation.script_approval_policy import script_requires_approval
 from app.enterprise_capabilities.spreadsheets import workbook_input_schema
 from app.enterprise_capabilities.content import (
     content_production_input_schema,
@@ -366,7 +367,8 @@ class InternalCapabilityCatalog:
                     "data": {"type": "object"},
                     "files": {"type": "array", "items": artifact},
                     "delivery_scope": {"type": "string", "enum": ["final", "intermediate"]},
-                }, ("code", "delivery_scope")), risk_level="dangerous", approval_required=True,
+                }, ("code", "delivery_scope")), risk_level="dangerous",
+                approval_required=script_requires_approval(),
                 timeout_ms=90_000, idempotent=False,
             ),
         )

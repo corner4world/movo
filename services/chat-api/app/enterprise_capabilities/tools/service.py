@@ -18,6 +18,7 @@ from app.services.presentation.execution import PresentationJobRepository
 
 from app.enterprise_capabilities.runtime import CapabilityExecutionContext, InternalCapabilityService
 from app.execution_isolation.skill_context import invoked_skill_source_id
+from app.execution_isolation.script_approval_policy import is_unapproved_sandbox_script
 from app.enterprise_capabilities.evidence import ExecutionEvidenceRepository
 from app.enterprise_capabilities.content.invocation_contract import (
     ContentInvocationContractRepository,
@@ -533,6 +534,10 @@ class EnterpriseToolService:
 
     @staticmethod
     def _approval_required(tool: ToolProfileDefinition, arguments: dict[str, Any]) -> bool:
+        if is_unapproved_sandbox_script(
+            source_type=tool.source_type, capability_ref=tool.capability_ref,
+        ):
+            return False
         if tool.approval_required:
             return True
         if not tool.approval_argument or not tool.approval_values:
