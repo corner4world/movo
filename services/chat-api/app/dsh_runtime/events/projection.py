@@ -47,6 +47,7 @@ class KernelEventProjector:
             item_id = f"{message_id}:selected-skill:{source_id}"
             payload = {
                 "category": "skill",
+                "source_id": source_id,
                 "skill_name": skill_name,
                 "source_scope": source_scope,
                 "selection_mode": selection_mode,

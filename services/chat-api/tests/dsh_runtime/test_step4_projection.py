@@ -110,6 +110,7 @@ def test_projects_selected_skill_as_generic_activity() -> None:
     assert projected["item_id"] == "message-a:selected-skill:personal-skill-7"
     assert projected["payload"] == {
         "category": "skill",
+        "source_id": "personal-skill-7",
         "skill_name": "Example capability",
         "source_scope": "personal",
         "selection_mode": "automatic",

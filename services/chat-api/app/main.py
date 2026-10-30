@@ -151,6 +151,7 @@ from app.api.endpoints import (
     session_shares,
     session_snapshots,
     session_live,
+    sandbox_audit_internal,
     resource_feedback,
     personal_knowledge,
     tasks,
@@ -195,6 +196,7 @@ app.include_router(shortcuts.router, prefix="/api")
 app.include_router(browser_ws_endpoint.router, prefix="/api")
 app.include_router(dsh_model_gateway.router)
 app.include_router(dsh_tool_gateway.internal_router)
+app.include_router(sandbox_audit_internal.router)
 app.include_router(dsh_skill_bundles.router)
 app.include_router(dsh_tool_gateway.public_router, prefix="/api")
 
